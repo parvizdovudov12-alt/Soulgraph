@@ -178,7 +178,9 @@ Preferred communication style: Simple, everyday language.
   - State breakdown and total use signed values for accuracy
   - Event count with Russian pluralization
   - Interactive tooltip on hover showing signed impact values
-  - Empty state message when no events in timeframe
+  - **Empty state**: Shows transparent circle with subtle outline, "0" in center, "Нет событий" text
+    - Diagram remains visible but unfilled when no events or all impacts are zero
+    - State breakdown list hidden when empty
 - **Color Scheme**:
   - Mental: Purple (280, 65%, 65%)
   - Physical: Cyan (200, 85%, 55%)

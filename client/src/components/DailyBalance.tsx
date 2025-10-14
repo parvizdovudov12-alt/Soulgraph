@@ -42,7 +42,7 @@ export default function DailyBalance({ news }: DailyBalanceProps) {
     });
 
     // Prepare data for pie chart - use absolute values for visualization only
-    const data: StateData[] = [
+    const allStates: StateData[] = [
       {
         name: 'mental',
         value: Math.abs(totals.mental),
@@ -71,10 +71,24 @@ export default function DailyBalance({ news }: DailyBalanceProps) {
         color: 'hsl(142, 76%, 36%)', // Green
         label: 'Финансовое',
       },
-    ].filter(item => item.value > 0); // Only show non-zero values
+    ];
+    
+    const data: StateData[] = allStates.filter(item => item.value > 0);
+    
+    // If no data, create empty state visualization
+    const isEmpty = data.length === 0;
+    const chartData = isEmpty ? [{
+      name: 'empty',
+      value: 1,
+      actualValue: 0,
+      color: 'hsl(17, 12%, 20%)', // Subtle outline color
+      label: '',
+    }] : data;
 
     return {
       data,
+      chartData,
+      isEmpty,
       totals,
       eventCount: recentNews.length,
     };
@@ -92,90 +106,102 @@ export default function DailyBalance({ news }: DailyBalanceProps) {
         </p>
       </div>
 
-      {dailyData.data.length === 0 ? (
-        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-          Нет событий за последние 24 часа
-        </div>
-      ) : (
-        <>
-          <div className="relative h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={dailyData.data}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={(entry) => entry.label}
-                  labelLine={false}
-                >
-                  {dailyData.data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload as StateData;
-                      const isPositive = data.actualValue >= 0;
-                      return (
-                        <div className="bg-card/95 backdrop-blur-sm border border-card-border rounded-lg px-3 py-2">
-                          <p className="text-sm font-medium" style={{ color: data.color }}>
-                            {data.label}
-                          </p>
-                          <p className={`text-xs font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                            Влияние: {isPositive ? '+' : ''}{data.actualValue.toFixed(0)}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
+      <div className="relative h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={dailyData.chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={90}
+              paddingAngle={dailyData.isEmpty ? 0 : 2}
+              dataKey="value"
+              label={dailyData.isEmpty ? false : (entry) => entry.label}
+              labelLine={false}
+              stroke={dailyData.isEmpty ? 'hsl(17, 12%, 20%)' : 'none'}
+              strokeWidth={dailyData.isEmpty ? 2 : 0}
+            >
+              {dailyData.chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={dailyData.isEmpty ? 'transparent' : entry.color}
+                  stroke={dailyData.isEmpty ? 'hsl(17, 12%, 20%)' : 'none'}
+                  strokeWidth={dailyData.isEmpty ? 2 : 0}
                 />
-              </PieChart>
-            </ResponsiveContainer>
+              ))}
+            </Pie>
+            {!dailyData.isEmpty && (
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload as StateData;
+                    const isPositive = data.actualValue >= 0;
+                    return (
+                      <div className="bg-card/95 backdrop-blur-sm border border-card-border rounded-lg px-3 py-2">
+                        <p className="text-sm font-medium" style={{ color: data.color }}>
+                          {data.label}
+                        </p>
+                        <p className={`text-xs font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                          Влияние: {isPositive ? '+' : ''}{data.actualValue.toFixed(0)}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+            )}
+          </PieChart>
+        </ResponsiveContainer>
 
-            {/* Center label with total */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
+        {/* Center label with total or empty state message */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            {dailyData.isEmpty ? (
+              <>
+                <div className="text-xl font-bold text-muted-foreground">0</div>
+                <div className="text-xs text-muted-foreground mt-1">Нет событий</div>
+              </>
+            ) : (
+              <>
                 <div className={`text-2xl font-bold font-mono ${totalBalance >= 0 ? 'text-positive' : 'text-negative'}`}>
                   {totalBalance >= 0 ? '+' : ''}{totalBalance.toFixed(0)}
                 </div>
                 <div className="text-xs text-muted-foreground">Баланс дня</div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
+        </div>
+      </div>
 
-          {/* State breakdown */}
-          <div className="mt-4 space-y-2">
-            {dailyData.data.map((item, index) => {
-              const isPositive = item.actualValue >= 0;
-              return (
-                <div
-                  key={index}
-                  className="flex items-center justify-between text-sm"
-                  data-testid={`balance-state-${item.name}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-muted-foreground">{item.label}</span>
-                  </div>
-                  <span 
-                    className={`font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}
-                  >
-                    {isPositive ? '+' : ''}{item.actualValue.toFixed(0)}
-                  </span>
+      {/* State breakdown - only show when there's data */}
+      {!dailyData.isEmpty && (
+        <div className="mt-4 space-y-2">
+          {dailyData.data.map((item, index) => {
+            const isPositive = item.actualValue >= 0;
+            return (
+              <div
+                key={index}
+                className="flex items-center justify-between text-sm"
+                data-testid={`balance-state-${item.name}`}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-muted-foreground">{item.label}</span>
                 </div>
-              );
-            })}
-          </div>
-        </>
+                <span 
+                  className={`font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}
+                >
+                  {isPositive ? '+' : ''}{item.actualValue.toFixed(0)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
