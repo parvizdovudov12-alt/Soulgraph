@@ -234,9 +234,9 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     seriesRef.current.financial?.applyOptions({ visible: visibleStates.financial });
   }, [visibleStates]);
 
-  // Update markers for news
+  // Update markers for news (only works with line charts)
   useEffect(() => {
-    if (!seriesRef.current.aggregate || news.length === 0) return;
+    if (!seriesRef.current.aggregate || news.length === 0 || chartType === 'candlestick') return;
 
     const markers: SeriesMarker<Time>[] = news.map((event) => ({
       time: event.time,
@@ -247,7 +247,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     }));
 
     (seriesRef.current.aggregate as any).setMarkers(markers);
-  }, [news]);
+  }, [news, chartType]);
 
   return (
     <div 

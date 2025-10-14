@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import LifeChart, { StateData, NewsEvent } from '@/components/LifeChart';
 import ControlPanel from '@/components/ControlPanel';
 import NewsModal from '@/components/NewsModal';
-import { BarChart3 } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export default function Dashboard() {
   // Initial state data for last 30 days
@@ -99,16 +99,16 @@ export default function Dashboard() {
       {/* Header */}
       <header className="h-16 border-b border-border flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <BarChart3 className="w-6 h-6 text-primary" />
+          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <Activity className="w-5 h-5 text-primary" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Soulgraph</h1>
+            <h1 className="text-xl font-semibold text-foreground tracking-tight">Soulgraph</h1>
             <p className="text-xs text-muted-foreground">Трекер жизни</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground font-medium">
             {new Date().toLocaleDateString('ru-RU', { 
               year: 'numeric', 
               month: 'long', 

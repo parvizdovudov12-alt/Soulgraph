@@ -1,8 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { TrendingUp, TrendingDown, LineChart, CandlestickChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins } from 'lucide-react';
 
 type StateKey = 'mental' | 'physical' | 'moral' | 'financial';
 
@@ -39,11 +38,11 @@ export default function ControlPanel({
   chartType,
   onChartTypeChange,
 }: ControlPanelProps) {
-  const states: Array<{ key: StateKey; label: string; color: string }> = [
-    { key: 'mental', label: 'Душевное', color: 'text-mental' },
-    { key: 'physical', label: 'Физическое', color: 'text-physical' },
-    { key: 'moral', label: 'Моральное', color: 'text-moral' },
-    { key: 'financial', label: 'Финансовое', color: 'text-financial' },
+  const states: Array<{ key: StateKey; label: string; color: string; bgColor: string; icon: any }> = [
+    { key: 'mental', label: 'Душевное', color: 'text-mental', bgColor: 'bg-mental/10', icon: Sparkles },
+    { key: 'physical', label: 'Физическое', color: 'text-physical', bgColor: 'bg-physical/10', icon: Activity },
+    { key: 'moral', label: 'Моральное', color: 'text-moral', bgColor: 'bg-moral/10', icon: Heart },
+    { key: 'financial', label: 'Финансовое', color: 'text-financial', bgColor: 'bg-financial/10', icon: Coins },
   ];
 
   return (
@@ -73,9 +72,9 @@ export default function ControlPanel({
       {/* Chart Type Toggle */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Тип графика
+          График
         </p>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             variant={chartType === 'line' ? 'default' : 'outline'}
             size="sm"
@@ -83,7 +82,7 @@ export default function ControlPanel({
             className="flex-1"
             data-testid="button-chart-line"
           >
-            <LineChart className="w-4 h-4 mr-2" />
+            <LineChart className="w-4 h-4 mr-1" />
             Линии
           </Button>
           <Button
@@ -93,34 +92,47 @@ export default function ControlPanel({
             className="flex-1"
             data-testid="button-chart-candlestick"
           >
-            <CandlestickChart className="w-4 h-4 mr-2" />
+            <CandlestickChart className="w-4 h-4 mr-1" />
             Свечи
           </Button>
         </div>
       </div>
 
-      {/* State Toggles */}
+      {/* State Indicators */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Состояния
+          Индикаторы
         </p>
-        {states.map((state) => (
-          <div key={state.key} className="flex items-center gap-3">
-            <Checkbox
-              id={`state-${state.key}`}
-              checked={visibleStates[state.key]}
-              onCheckedChange={() => onToggleState(state.key)}
-              className="data-[state=checked]:bg-chart-1"
-              data-testid={`checkbox-${state.key}`}
-            />
-            <Label
-              htmlFor={`state-${state.key}`}
-              className={`text-sm cursor-pointer ${state.color}`}
-            >
-              {state.label}
-            </Label>
-          </div>
-        ))}
+        <div className="grid grid-cols-2 gap-2">
+          {states.map((state) => {
+            const Icon = state.icon;
+            const isActive = visibleStates[state.key];
+            return (
+              <button
+                key={state.key}
+                onClick={() => onToggleState(state.key)}
+                className={`
+                  relative flex flex-col items-center gap-2 p-3 rounded-lg
+                  transition-all duration-200
+                  ${isActive ? state.bgColor : 'bg-background/50'}
+                  ${isActive ? 'border-2' : 'border'} 
+                  ${isActive ? `border-${state.key}` : 'border-border'}
+                  hover-elevate
+                `}
+                style={isActive ? { borderColor: `hsl(var(--chart-${states.findIndex(s => s.key === state.key) + 1}))` } : {}}
+                data-testid={`indicator-${state.key}`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? state.color : 'text-muted-foreground'}`} />
+                <span className={`text-xs font-medium ${isActive ? state.color : 'text-muted-foreground'}`}>
+                  {state.label}
+                </span>
+                {isActive && (
+                  <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${state.color.replace('text-', 'bg-')}`} />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Weight Sliders */}
@@ -152,24 +164,28 @@ export default function ControlPanel({
       {/* News Actions */}
       <div className="space-y-3 pt-4 border-t border-border">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Добавить событие
+          События
         </p>
-        <Button
-          onClick={onAddPositiveNews}
-          className="w-full bg-positive hover:bg-positive/90 text-white"
-          data-testid="button-add-positive-news"
-        >
-          <TrendingUp className="w-4 h-4 mr-2" />
-          Положительная новость
-        </Button>
-        <Button
-          onClick={onAddNegativeNews}
-          className="w-full bg-negative hover:bg-negative/90 text-white"
-          data-testid="button-add-negative-news"
-        >
-          <TrendingDown className="w-4 h-4 mr-2" />
-          Отрицательная новость
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={onAddPositiveNews}
+            className="bg-positive hover:bg-positive/90 text-white flex-1"
+            size="sm"
+            data-testid="button-add-positive-news"
+          >
+            <TrendingUp className="w-4 h-4 mr-1" />
+            Позитив
+          </Button>
+          <Button
+            onClick={onAddNegativeNews}
+            className="bg-negative hover:bg-negative/90 text-white flex-1"
+            size="sm"
+            data-testid="button-add-negative-news"
+          >
+            <TrendingDown className="w-4 h-4 mr-1" />
+            Негатив
+          </Button>
+        </div>
       </div>
     </div>
   );

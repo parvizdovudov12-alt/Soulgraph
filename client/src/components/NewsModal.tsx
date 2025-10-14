@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +54,9 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
           <DialogTitle className={`text-xl font-semibold ${isPositive ? 'text-positive' : 'text-negative'}`}>
             {isPositive ? 'Положительная новость' : 'Отрицательная новость'}
           </DialogTitle>
+          <DialogDescription>
+            Добавьте событие и укажите его влияние на каждое состояние
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
