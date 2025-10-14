@@ -75,15 +75,38 @@ export default function DailyBalance({ news }: DailyBalanceProps) {
     
     const data: StateData[] = allStates.filter(item => item.value > 0);
     
-    // If no data, create empty state visualization
+    // If no data, create empty state visualization with colored segments
     const isEmpty = data.length === 0;
-    const chartData = isEmpty ? [{
-      name: 'empty',
-      value: 1,
-      actualValue: 0,
-      color: 'hsl(17, 12%, 20%)', // Subtle outline color
-      label: '',
-    }] : data;
+    const chartData = isEmpty ? [
+      {
+        name: 'mental',
+        value: 0.25,
+        actualValue: 0,
+        color: 'hsl(280, 65%, 65%)', // Purple
+        label: '',
+      },
+      {
+        name: 'physical',
+        value: 0.25,
+        actualValue: 0,
+        color: 'hsl(200, 85%, 55%)', // Cyan
+        label: '',
+      },
+      {
+        name: 'moral',
+        value: 0.25,
+        actualValue: 0,
+        color: 'hsl(45, 90%, 60%)', // Amber
+        label: '',
+      },
+      {
+        name: 'financial',
+        value: 0.25,
+        actualValue: 0,
+        color: 'hsl(142, 76%, 36%)', // Green
+        label: '',
+      },
+    ] : data;
 
     return {
       data,
@@ -115,19 +138,18 @@ export default function DailyBalance({ news }: DailyBalanceProps) {
               cy="50%"
               innerRadius={60}
               outerRadius={90}
-              paddingAngle={dailyData.isEmpty ? 0 : 2}
+              paddingAngle={dailyData.isEmpty ? 2 : 2}
               dataKey="value"
               label={dailyData.isEmpty ? false : (entry) => entry.label}
               labelLine={false}
-              stroke={dailyData.isEmpty ? 'hsl(17, 12%, 20%)' : 'none'}
-              strokeWidth={dailyData.isEmpty ? 2 : 0}
+              stroke="none"
+              strokeWidth={0}
             >
               {dailyData.chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={dailyData.isEmpty ? 'transparent' : entry.color}
-                  stroke={dailyData.isEmpty ? 'hsl(17, 12%, 20%)' : 'none'}
-                  strokeWidth={dailyData.isEmpty ? 2 : 0}
+                  fill={dailyData.isEmpty ? entry.color : entry.color}
+                  fillOpacity={dailyData.isEmpty ? 0.3 : 1}
                 />
               ))}
             </Pie>
