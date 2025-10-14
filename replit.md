@@ -155,6 +155,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Key Features
 
+### Clickable Candlesticks
+- **Click on candlestick**: Opens popup showing all events from that day
+- **Click on event marker**: Opens popup showing that specific event
+- **Implementation**: Uses lightweight-charts `subscribeClick` API
+- **Date matching**: Groups events by calendar date (ignores time of day)
+- **Popup displays**: Multiple events in scrollable list with individual timestamps
+
 ### Chart Tooltip System
 - Hover-activated tooltips display event details directly on chart
 - Triggered by lightweight-charts crosshair movement
