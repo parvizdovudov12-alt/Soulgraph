@@ -39,6 +39,7 @@ export default function Dashboard() {
 
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
+  const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
 
   // Calculate aggregate index
   const aggregateIndex = useMemo(() => {
@@ -126,6 +127,7 @@ export default function Dashboard() {
             visibleStates={visibleStates}
             weights={weights}
             news={newsEvents}
+            chartType={chartType}
           />
         </div>
 
@@ -144,6 +146,8 @@ export default function Dashboard() {
             setNewsModalType('negative');
             setNewsModalOpen(true);
           }}
+          chartType={chartType}
+          onChartTypeChange={setChartType}
         />
       </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createChart, LineSeries, IChartApi, ISeriesApi, LineData, SeriesMarker, Time } from 'lightweight-charts';
+import { createChart, LineSeries, CandlestickSeries, IChartApi, LineData, CandlestickData, SeriesMarker, Time } from 'lightweight-charts';
 
 export interface StateData {
   time: Time;
@@ -36,9 +36,10 @@ interface LifeChartProps {
     financial: number;
   };
   news: NewsEvent[];
+  chartType?: 'line' | 'candlestick';
 }
 
-export default function LifeChart({ data, visibleStates, weights, news }: LifeChartProps) {
+export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line' }: LifeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<{
@@ -95,14 +96,28 @@ export default function LifeChart({ data, visibleStates, weights, news }: LifeCh
     chartRef.current = chart;
 
     // Aggregate series (always visible)
-    const aggregateSeries = chart.addSeries(LineSeries, {
-      color: '#60a5fa',
-      lineWidth: 2,
-      title: 'Агрегированный индекс',
-      priceLineVisible: true,
-      lastValueVisible: true,
-    });
-    seriesRef.current.aggregate = aggregateSeries;
+    if (chartType === 'candlestick') {
+      const aggregateSeries = chart.addSeries(CandlestickSeries, {
+        upColor: '#10b981',
+        downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#10b981',
+        wickDownColor: '#ef4444',
+        title: 'Агрегированный индекс',
+        priceLineVisible: true,
+        lastValueVisible: true,
+      });
+      seriesRef.current.aggregate = aggregateSeries;
+    } else {
+      const aggregateSeries = chart.addSeries(LineSeries, {
+        color: '#60a5fa',
+        lineWidth: 2,
+        title: 'Агрегированный индекс',
+        priceLineVisible: true,
+        lastValueVisible: true,
+      });
+      seriesRef.current.aggregate = aggregateSeries;
+    }
 
     // State series
     const mentalSeries = chart.addSeries(LineSeries, {
@@ -152,32 +167,64 @@ export default function LifeChart({ data, visibleStates, weights, news }: LifeCh
       resizeObserver.disconnect();
       chart.remove();
     };
-  }, []);
+  }, [chartType]);
 
   // Update data
   useEffect(() => {
     if (!seriesRef.current.aggregate || data.length === 0) return;
 
     // Calculate aggregate data
-    const aggregateData: LineData[] = data.map((point) => {
-      const total = weights.mental + weights.physical + weights.moral + weights.financial;
-      const value =
-        (point.mental * weights.mental +
-          point.physical * weights.physical +
-          point.moral * weights.moral +
-          point.financial * weights.financial) /
-        total;
-      return { time: point.time, value };
-    });
+    const total = weights.mental + weights.physical + weights.moral + weights.financial;
+    
+    if (chartType === 'candlestick') {
+      const candleData: CandlestickData[] = data.map((point, index) => {
+        const value =
+          (point.mental * weights.mental +
+            point.physical * weights.physical +
+            point.moral * weights.moral +
+            point.financial * weights.financial) /
+          total;
+        
+        const prevValue = index > 0 
+          ? (data[index - 1].mental * weights.mental +
+             data[index - 1].physical * weights.physical +
+             data[index - 1].moral * weights.moral +
+             data[index - 1].financial * weights.financial) / total
+          : value;
+        
+        const volatility = Math.abs(value - prevValue) * 0.5;
+        
+        return {
+          time: point.time,
+          open: prevValue,
+          high: Math.max(value, prevValue) + volatility,
+          low: Math.min(value, prevValue) - volatility,
+          close: value,
+        };
+      });
+      
+      seriesRef.current.aggregate.setData(candleData);
+    } else {
+      const aggregateData: LineData[] = data.map((point) => {
+        const value =
+          (point.mental * weights.mental +
+            point.physical * weights.physical +
+            point.moral * weights.moral +
+            point.financial * weights.financial) /
+          total;
+        return { time: point.time, value };
+      });
+      
+      seriesRef.current.aggregate.setData(aggregateData);
+    }
 
-    seriesRef.current.aggregate.setData(aggregateData);
     seriesRef.current.mental?.setData(data.map((d) => ({ time: d.time, value: d.mental })));
     seriesRef.current.physical?.setData(data.map((d) => ({ time: d.time, value: d.physical })));
     seriesRef.current.moral?.setData(data.map((d) => ({ time: d.time, value: d.moral })));
     seriesRef.current.financial?.setData(data.map((d) => ({ time: d.time, value: d.financial })));
 
     chartRef.current?.timeScale().fitContent();
-  }, [data, weights]);
+  }, [data, weights, chartType]);
 
   // Update visibility
   useEffect(() => {

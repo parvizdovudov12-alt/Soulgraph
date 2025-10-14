@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, LineChart, CandlestickChart } from 'lucide-react';
 
 type StateKey = 'mental' | 'physical' | 'moral' | 'financial';
 
@@ -24,6 +24,8 @@ interface ControlPanelProps {
   onWeightChange: (state: StateKey, value: number) => void;
   onAddPositiveNews: () => void;
   onAddNegativeNews: () => void;
+  chartType: 'line' | 'candlestick';
+  onChartTypeChange: (type: 'line' | 'candlestick') => void;
 }
 
 export default function ControlPanel({
@@ -34,6 +36,8 @@ export default function ControlPanel({
   onWeightChange,
   onAddPositiveNews,
   onAddNegativeNews,
+  chartType,
+  onChartTypeChange,
 }: ControlPanelProps) {
   const states: Array<{ key: StateKey; label: string; color: string }> = [
     { key: 'mental', label: 'Душевное', color: 'text-mental' },
@@ -63,6 +67,35 @@ export default function ControlPanel({
               {aggregateIndex >= 50 ? '+' : ''}{(aggregateIndex - 50).toFixed(1)}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* Chart Type Toggle */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          Тип графика
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant={chartType === 'line' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChartTypeChange('line')}
+            className="flex-1"
+            data-testid="button-chart-line"
+          >
+            <LineChart className="w-4 h-4 mr-2" />
+            Линии
+          </Button>
+          <Button
+            variant={chartType === 'candlestick' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChartTypeChange('candlestick')}
+            className="flex-1"
+            data-testid="button-chart-candlestick"
+          >
+            <CandlestickChart className="w-4 h-4 mr-2" />
+            Свечи
+          </Button>
         </div>
       </div>
 

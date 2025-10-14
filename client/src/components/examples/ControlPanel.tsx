@@ -16,6 +16,8 @@ export default function ControlPanelExample() {
     financial: 0.25,
   });
 
+  const [chartType, setChartType] = useState<'line' | 'candlestick'>('line');
+
   const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
     setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
     console.log(`Toggled ${state}`);
@@ -36,6 +38,8 @@ export default function ControlPanelExample() {
         onWeightChange={handleWeightChange}
         onAddPositiveNews={() => console.log('Add positive news')}
         onAddNegativeNews={() => console.log('Add negative news')}
+        chartType={chartType}
+        onChartTypeChange={setChartType}
       />
     </div>
   );
