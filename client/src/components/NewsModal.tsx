@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Upload, X, Image as ImageIcon, Video } from 'lucide-react';
 
 interface NewsModalProps {
   open: boolean;
@@ -18,6 +19,10 @@ interface NewsModalProps {
       moral: number;
       financial: number;
     };
+    media?: {
+      type: 'image' | 'video';
+      url: string;
+    }[];
   }) => void;
 }
 
@@ -29,6 +34,7 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
     moral: 0,
     financial: 0,
   });
+  const [mediaFiles, setMediaFiles] = useState<{ type: 'image' | 'video'; url: string }[]>([]);
 
   const handleSubmit = () => {
     if (!text.trim()) return;
@@ -37,12 +43,33 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
       text,
       time: Date.now() / 1000,
       impact,
+      media: mediaFiles.length > 0 ? mediaFiles : undefined,
     });
 
     // Reset form
     setText('');
     setImpact({ mental: 0, physical: 0, moral: 0, financial: 0 });
+    setMediaFiles([]);
     onClose();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const url = event.target?.result as string;
+        const type = file.type.startsWith('image/') ? 'image' : 'video';
+        setMediaFiles((prev) => [...prev, { type, url }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeMedia = (index: number) => {
+    setMediaFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const isPositive = type === 'positive';
@@ -146,6 +173,59 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
                 data-testid="slider-financial"
               />
             </div>
+          </div>
+
+          {/* Media Upload */}
+          <div className="space-y-3 pt-4 border-t border-border">
+            <Label className="text-sm text-muted-foreground">Медиа файлы (опционально)</Label>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                id="media-upload"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+                data-testid="input-media-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('media-upload')?.click()}
+                className="flex items-center gap-2"
+                data-testid="button-upload-media"
+              >
+                <Upload className="w-4 h-4" />
+                Загрузить фото/видео
+              </Button>
+            </div>
+
+            {/* Media Preview */}
+            {mediaFiles.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {mediaFiles.map((media, index) => (
+                  <div key={index} className="relative group rounded-md overflow-hidden bg-background border border-border">
+                    {media.type === 'image' ? (
+                      <img src={media.url} alt={`Media ${index + 1}`} className="w-full h-24 object-cover" />
+                    ) : (
+                      <video src={media.url} className="w-full h-24 object-cover" />
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      {media.type === 'image' ? <ImageIcon className="w-6 h-6 text-white" /> : <Video className="w-6 h-6 text-white" />}
+                    </div>
+                    <button
+                      onClick={() => removeMedia(index)}
+                      className="absolute top-1 right-1 bg-negative rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      data-testid={`button-remove-media-${index}`}
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 justify-end pt-4">

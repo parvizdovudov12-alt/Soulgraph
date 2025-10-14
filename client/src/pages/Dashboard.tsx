@@ -67,6 +67,7 @@ export default function Dashboard() {
     text: string;
     time: number;
     impact: { mental: number; physical: number; moral: number; financial: number };
+    media?: { type: 'image' | 'video'; url: string }[];
   }) => {
     // Add news event
     const newsEvent: NewsEvent = {
@@ -74,6 +75,7 @@ export default function Dashboard() {
       type: newsModalType,
       text: data.text,
       impact: data.impact,
+      media: data.media,
     };
     setNewsEvents([...newsEvents, newsEvent]);
 

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries, CandlestickSeries, IChartApi, LineData, CandlestickData, SeriesMarker, Time } from 'lightweight-charts';
+import NewsPopup from './NewsPopup';
 
 export interface StateData {
   time: Time;
@@ -19,6 +20,10 @@ export interface NewsEvent {
     moral: number;
     financial: number;
   };
+  media?: {
+    type: 'image' | 'video';
+    url: string;
+  }[];
 }
 
 interface LifeChartProps {
@@ -55,6 +60,10 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     moral: null,
     financial: null,
   });
+  
+  const [selectedNews, setSelectedNews] = useState<NewsEvent | null>(null);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [markersReady, setMarkersReady] = useState(false);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -224,6 +233,9 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     seriesRef.current.financial?.setData(data.map((d) => ({ time: d.time, value: d.financial })));
 
     chartRef.current?.timeScale().fitContent();
+    
+    // Trigger markers update after chart is ready
+    setTimeout(() => setMarkersReady(true), 100);
   }, [data, weights, chartType]);
 
   // Update visibility
@@ -247,13 +259,107 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     }));
 
     (seriesRef.current.aggregate as any).setMarkers(markers);
+    
+    // Re-render HTML markers when news changes
+    setMarkersReady(false);
+    setTimeout(() => setMarkersReady(true), 100);
   }, [news, chartType]);
 
+  // Render custom HTML markers for news with media
+  const renderNewsMarkers = () => {
+    if (!chartRef.current || !markersReady) return null;
+
+    return news.map((event, index) => {
+      const hasMedia = event.media && event.media.length > 0;
+      const coordinate = chartRef.current?.timeScale().timeToCoordinate(event.time);
+      const price = data.find((d) => d.time === event.time);
+      
+      if (!coordinate || !price) return null;
+
+      const total = weights.mental + weights.physical + weights.moral + weights.financial;
+      const value =
+        (price.mental * weights.mental +
+          price.physical * weights.physical +
+          price.moral * weights.moral +
+          price.financial * weights.financial) /
+        total;
+
+      const priceCoordinate = seriesRef.current.aggregate?.priceToCoordinate(value);
+      
+      if (priceCoordinate === null || priceCoordinate === undefined) return null;
+
+      const isPositive = event.type === 'positive';
+      const yOffset = isPositive ? -40 : 40;
+
+      return (
+        <div
+          key={index}
+          className={`absolute cursor-pointer transition-transform hover:scale-110 ${
+            hasMedia ? 'w-8 h-8' : 'w-6 h-6'
+          }`}
+          style={{
+            left: `${coordinate}px`,
+            top: `${priceCoordinate + yOffset}px`,
+            transform: 'translate(-50%, -50%)',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedNews(event);
+            setPopupPosition({ x: e.clientX, y: e.clientY });
+          }}
+          data-testid={`marker-news-${index}`}
+        >
+          <div
+            className={`w-full h-full rounded-full flex items-center justify-center ${
+              isPositive ? 'bg-positive' : 'bg-negative'
+            } border-2 border-background shadow-lg`}
+          >
+            {hasMedia && (
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            )}
+          </div>
+        </div>
+      );
+    });
+  };
+
   return (
-    <div 
-      ref={chartContainerRef} 
-      className="w-full h-full"
-      data-testid="chart-container"
-    />
+    <div className="relative w-full h-full">
+      <div 
+        ref={chartContainerRef} 
+        className="w-full h-full"
+        data-testid="chart-container"
+      />
+      
+      {/* Custom HTML markers for news */}
+      {markersReady && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="relative w-full h-full pointer-events-auto">
+            {renderNewsMarkers()}
+          </div>
+        </div>
+      )}
+
+      {/* News popup */}
+      {selectedNews && (
+        <NewsPopup
+          event={selectedNews}
+          onClose={() => setSelectedNews(null)}
+          position={popupPosition}
+        />
+      )}
+    </div>
   );
 }
