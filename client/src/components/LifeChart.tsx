@@ -235,7 +235,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     chartRef.current?.timeScale().fitContent();
     
     // Trigger markers update after chart is ready
-    setTimeout(() => setMarkersReady(true), 100);
+    const timeoutId = setTimeout(() => setMarkersReady(true), 100);
+    return () => clearTimeout(timeoutId);
   }, [data, weights, chartType]);
 
   // Update visibility
@@ -262,7 +263,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     
     // Re-render HTML markers when news changes
     setMarkersReady(false);
-    setTimeout(() => setMarkersReady(true), 100);
+    const timeoutId = setTimeout(() => setMarkersReady(true), 100);
+    return () => clearTimeout(timeoutId);
   }, [news, chartType]);
 
   // Render custom HTML markers for news with media

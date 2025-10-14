@@ -7,13 +7,13 @@ import { Activity } from 'lucide-react';
 export default function Dashboard() {
   // Initial state data for last 30 days
   const [stateData, setStateData] = useState<StateData[]>(() => {
-    const now = Date.now() / 1000;
+    const now = Math.floor(Date.now() / 1000);
     const data: StateData[] = [];
     
     for (let i = 30; i >= 0; i--) {
-      const time = (now - i * 24 * 60 * 60) as any;
+      const time = now - i * 24 * 60 * 60;
       data.push({
-        time,
+        time: time as any, // lightweight-charts Time type
         mental: 50 + Math.sin(i / 5) * 10 + Math.random() * 3,
         physical: 55 + Math.cos(i / 4) * 8 + Math.random() * 3,
         moral: 48 + Math.sin(i / 6) * 12 + Math.random() * 3,

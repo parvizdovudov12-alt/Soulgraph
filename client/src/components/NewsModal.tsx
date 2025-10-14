@@ -41,7 +41,7 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
 
     onSubmit({
       text,
-      time: Date.now() / 1000,
+      time: Math.floor(Date.now() / 1000),
       impact,
       media: mediaFiles.length > 0 ? mediaFiles : undefined,
     });
@@ -58,11 +58,26 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
     if (!files) return;
 
     Array.from(files).forEach((file) => {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        console.warn(`File ${file.name} exceeds 10MB limit`);
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        console.warn(`File ${file.name} is not an image or video`);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const url = event.target?.result as string;
         const type = file.type.startsWith('image/') ? 'image' : 'video';
         setMediaFiles((prev) => [...prev, { type, url }]);
+      };
+      reader.onerror = () => {
+        console.error(`Failed to read file ${file.name}`);
       };
       reader.readAsDataURL(file);
     });
