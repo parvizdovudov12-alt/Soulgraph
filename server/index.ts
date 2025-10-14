@@ -61,11 +61,42 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
+  
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    const mode = app.get("env");
+    log(`Server started in ${mode} mode on port ${port}`);
+    
+    // Log critical environment info in production
+    if (mode === "production") {
+      log(`Static files: ${mode === "production" ? "serving from dist/public" : "using Vite dev server"}`);
+    }
   });
-})();
+
+  // Error handling for server startup issues
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.syscall !== 'listen') {
+      throw error;
+    }
+
+    const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+
+    switch (error.code) {
+      case 'EACCES':
+        console.error(`${bind} requires elevated privileges`);
+        process.exit(1);
+        break;
+      case 'EADDRINUSE':
+        console.error(`${bind} is already in use`);
+        process.exit(1);
+        break;
+      default:
+        throw error;
+    }
+  });
+})().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
