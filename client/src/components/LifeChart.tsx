@@ -62,7 +62,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     financial: null,
   });
   
-  const [selectedNews, setSelectedNews] = useState<NewsEvent | null>(null);
+  const [selectedNews, setSelectedNews] = useState<NewsEvent[]>([]);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [markersReady, setMarkersReady] = useState(false);
   const [tooltipEvent, setTooltipEvent] = useState<NewsEvent | null>(null);
@@ -194,6 +194,33 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         });
       } else {
         setTooltipEvent(null);
+      }
+    });
+
+    // Subscribe to click events on the chart
+    chart.subscribeClick((param) => {
+      if (!param.time || !chartContainerRef.current) return;
+
+      // Get the date (ignore time of day)
+      const clickTime = param.time as number;
+      const clickDate = new Date(clickTime * 1000);
+      clickDate.setHours(0, 0, 0, 0);
+
+      // Find all events on this date
+      const eventsOnDate = news.filter((event) => {
+        const eventTime = event.time as number;
+        const eventDate = new Date(eventTime * 1000);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate.getTime() === clickDate.getTime();
+      });
+
+      if (eventsOnDate.length > 0 && param.point) {
+        const rect = chartContainerRef.current.getBoundingClientRect();
+        setSelectedNews(eventsOnDate);
+        setPopupPosition({
+          x: rect.left + param.point.x,
+          y: rect.top + param.point.y,
+        });
       }
     });
 
@@ -343,7 +370,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
           }}
           onClick={(e) => {
             e.stopPropagation();
-            setSelectedNews(event);
+            setSelectedNews([event]);
             setPopupPosition({ x: e.clientX, y: e.clientY });
           }}
           data-testid={`marker-news-${index}`}
@@ -398,10 +425,10 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       />
 
       {/* News popup */}
-      {selectedNews && (
+      {selectedNews.length > 0 && (
         <NewsPopup
-          event={selectedNews}
-          onClose={() => setSelectedNews(null)}
+          events={selectedNews}
+          onClose={() => setSelectedNews([])}
           position={popupPosition}
         />
       )}
