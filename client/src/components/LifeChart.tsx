@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries, CandlestickSeries, IChartApi, LineData, CandlestickData, SeriesMarker, Time } from 'lightweight-charts';
 import NewsPopup from './NewsPopup';
+import ChartTooltip from './ChartTooltip';
 
 export interface StateData {
   time: Time;
@@ -64,6 +65,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
   const [selectedNews, setSelectedNews] = useState<NewsEvent | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [markersReady, setMarkersReady] = useState(false);
+  const [tooltipEvent, setTooltipEvent] = useState<NewsEvent | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -172,11 +175,33 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
 
     chart.timeScale().fitContent();
 
+    // Subscribe to crosshair move for tooltip
+    chart.subscribeCrosshairMove((param) => {
+      if (!param.time || !param.point) {
+        setTooltipEvent(null);
+        return;
+      }
+
+      // Find event at this time
+      const event = news.find((e) => e.time === param.time);
+      
+      if (event && chartContainerRef.current) {
+        const rect = chartContainerRef.current.getBoundingClientRect();
+        setTooltipEvent(event);
+        setTooltipPosition({
+          x: rect.left + param.point.x,
+          y: rect.top + param.point.y,
+        });
+      } else {
+        setTooltipEvent(null);
+      }
+    });
+
     return () => {
       resizeObserver.disconnect();
       chart.remove();
     };
-  }, [chartType]);
+  }, [chartType, news]);
 
   // Update data
   useEffect(() => {
@@ -249,17 +274,29 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
 
   // Update markers for news (only works with line charts)
   useEffect(() => {
-    if (!seriesRef.current.aggregate || news.length === 0 || chartType === 'candlestick') return;
+    if (!seriesRef.current.aggregate || news.length === 0) {
+      // Still need to trigger markers re-render even if no built-in markers
+      setMarkersReady(false);
+      const timeoutId = setTimeout(() => setMarkersReady(true), 100);
+      return () => clearTimeout(timeoutId);
+    }
 
-    const markers: SeriesMarker<Time>[] = news.map((event) => ({
-      time: event.time,
-      position: event.type === 'positive' ? 'aboveBar' : 'belowBar',
-      color: event.type === 'positive' ? '#10b981' : '#ef4444',
-      shape: event.type === 'positive' ? 'arrowUp' : 'arrowDown',
-      text: event.text.substring(0, 20),
-    }));
+    // setMarkers only works for LineSeries, not CandlestickSeries
+    if (chartType === 'line' && typeof (seriesRef.current.aggregate as any)?.setMarkers === 'function') {
+      const markers: SeriesMarker<Time>[] = news.map((event) => ({
+        time: event.time,
+        position: event.type === 'positive' ? 'aboveBar' : 'belowBar',
+        color: event.type === 'positive' ? '#10b981' : '#ef4444',
+        shape: event.type === 'positive' ? 'arrowUp' : 'arrowDown',
+        text: event.text.substring(0, 20),
+      }));
 
-    (seriesRef.current.aggregate as any).setMarkers(markers);
+      try {
+        (seriesRef.current.aggregate as any).setMarkers(markers);
+      } catch (error) {
+        console.warn('Failed to set markers:', error);
+      }
+    }
     
     // Re-render HTML markers when news changes
     setMarkersReady(false);
@@ -353,6 +390,12 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
           </div>
         </div>
       )}
+
+      {/* Chart tooltip */}
+      <ChartTooltip
+        event={tooltipEvent}
+        position={tooltipPosition}
+      />
 
       {/* News popup */}
       {selectedNews && (
