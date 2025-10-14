@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart,
 type StateKey = 'mental' | 'physical' | 'moral' | 'financial';
 
 interface ControlPanelProps {
-  aggregateIndex: number;
+  totalAssets: number;
   visibleStates: {
     mental: boolean;
     physical: boolean;
@@ -28,7 +28,7 @@ interface ControlPanelProps {
 }
 
 export default function ControlPanel({
-  aggregateIndex,
+  totalAssets,
   visibleStates,
   weights,
   onToggleState,
@@ -50,20 +50,20 @@ export default function ControlPanel({
       {/* Aggregate Index Display */}
       <div className="bg-background/50 rounded-lg p-4 border border-border">
         <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-          Агрегированный индекс
+          Общие активы
         </p>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-mono font-semibold text-primary">
-            {aggregateIndex.toFixed(1)}
+            {totalAssets.toFixed(1)}
           </span>
           <div className="flex items-center gap-1">
-            {aggregateIndex >= 50 ? (
+            {totalAssets >= 50 ? (
               <TrendingUp className="w-4 h-4 text-positive" />
             ) : (
               <TrendingDown className="w-4 h-4 text-negative" />
             )}
-            <span className={`text-sm font-mono ${aggregateIndex >= 50 ? 'text-positive' : 'text-negative'}`}>
-              {aggregateIndex >= 50 ? '+' : ''}{(aggregateIndex - 50).toFixed(1)}
+            <span className={`text-sm font-mono ${totalAssets >= 50 ? 'text-positive' : 'text-negative'}`}>
+              {totalAssets >= 50 ? '+' : ''}{(totalAssets - 50).toFixed(1)}
             </span>
           </div>
         </div>

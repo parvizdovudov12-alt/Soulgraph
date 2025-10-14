@@ -112,7 +112,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         borderVisible: false,
         wickUpColor: '#10b981',
         wickDownColor: '#ef4444',
-        title: 'Агрегированный индекс',
+        title: 'Общие активы',
         priceLineVisible: true,
         lastValueVisible: true,
       });
@@ -121,7 +121,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       const aggregateSeries = chart.addSeries(LineSeries, {
         color: '#60a5fa',
         lineWidth: 2,
-        title: 'Агрегированный индекс',
+        title: 'Общие активы',
         priceLineVisible: true,
         lastValueVisible: true,
       });

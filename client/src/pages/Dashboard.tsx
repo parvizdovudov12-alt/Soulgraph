@@ -41,8 +41,8 @@ export default function Dashboard() {
   const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
 
-  // Calculate aggregate index
-  const aggregateIndex = useMemo(() => {
+  // Calculate total assets
+  const totalAssets = useMemo(() => {
     if (stateData.length === 0) return 50;
     const lastPoint = stateData[stateData.length - 1];
     const total = weights.mental + weights.physical + weights.moral + weights.financial;
@@ -135,7 +135,7 @@ export default function Dashboard() {
 
         {/* Control Panel */}
         <ControlPanel
-          aggregateIndex={aggregateIndex}
+          totalAssets={totalAssets}
           visibleStates={visibleStates}
           weights={weights}
           onToggleState={handleToggleState}
