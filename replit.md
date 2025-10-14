@@ -49,6 +49,8 @@ Preferred communication style: Simple, everyday language.
 - Interactive features: zoom, scroll, hover tooltips, time-series annotations
 - Custom markers for news events with color-coded indicators
 - Multiple time series overlay for four life states
+- Fixed equal weights (0.25 each) for all states in aggregate calculation
+- Daily norm progress bars instead of adjustable weight sliders
 
 ### Backend Architecture
 
