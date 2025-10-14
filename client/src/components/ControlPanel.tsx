@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
+import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins } from 'lucide-react';
 import DailyBalance from './DailyBalance';
 import type { NewsEvent } from './LifeChart';
@@ -15,7 +14,7 @@ interface ControlPanelProps {
     moral: boolean;
     financial: boolean;
   };
-  weights: {
+  currentValues: {
     mental: number;
     physical: number;
     moral: number;
@@ -23,7 +22,6 @@ interface ControlPanelProps {
   };
   news: NewsEvent[];
   onToggleState: (state: StateKey) => void;
-  onWeightChange: (state: StateKey, value: number) => void;
   onAddPositiveNews: () => void;
   onAddNegativeNews: () => void;
   chartType: 'line' | 'candlestick';
@@ -33,10 +31,9 @@ interface ControlPanelProps {
 export default function ControlPanel({
   totalAssets,
   visibleStates,
-  weights,
+  currentValues,
   news,
   onToggleState,
-  onWeightChange,
   onAddPositiveNews,
   onAddNegativeNews,
   chartType,
@@ -142,30 +139,31 @@ export default function ControlPanel({
       {/* Daily Balance */}
       <DailyBalance news={news} />
 
-      {/* Weight Sliders */}
+      {/* Daily Norm Progress */}
       <div className="space-y-4">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Веса состояний
+          Суточная норма
         </p>
-        {states.map((state) => (
-          <div key={state.key} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className={`text-sm ${state.color}`}>{state.label}</Label>
-              <span className={`text-sm font-mono ${state.color}`}>
-                {(weights[state.key] * 100).toFixed(0)}%
-              </span>
+        {states.map((state) => {
+          const value = currentValues[state.key];
+          const percentage = Math.min(100, Math.max(0, value));
+          
+          return (
+            <div key={state.key} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-medium ${state.color}`}>{state.label}</span>
+                <span className={`text-sm font-mono ${state.color}`}>
+                  {value.toFixed(1)}%
+                </span>
+              </div>
+              <Progress 
+                value={percentage} 
+                className="h-2"
+                data-testid={`progress-${state.key}`}
+              />
             </div>
-            <Slider
-              value={[weights[state.key] * 100]}
-              onValueChange={([value]) => onWeightChange(state.key, value / 100)}
-              min={0}
-              max={100}
-              step={5}
-              className={`[&_[role=slider]]:bg-${state.key}`}
-              data-testid={`slider-weight-${state.key}`}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* News Actions */}
