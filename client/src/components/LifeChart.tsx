@@ -239,50 +239,79 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     
     if (chartType === 'candlestick') {
       const candleData: CandlestickData[] = data.map((point, index) => {
+        // Ensure all values are numbers, fallback to 0
+        const mental = Number(point.mental) || 0;
+        const physical = Number(point.physical) || 0;
+        const moral = Number(point.moral) || 0;
+        const financial = Number(point.financial) || 0;
+        
         const value =
-          (point.mental * weights.mental +
-            point.physical * weights.physical +
-            point.moral * weights.moral +
-            point.financial * weights.financial) /
+          (mental * weights.mental +
+            physical * weights.physical +
+            moral * weights.moral +
+            financial * weights.financial) /
           total;
         
-        const prevValue = index > 0 
-          ? (data[index - 1].mental * weights.mental +
-             data[index - 1].physical * weights.physical +
-             data[index - 1].moral * weights.moral +
-             data[index - 1].financial * weights.financial) / total
-          : value;
+        let prevValue = value;
+        if (index > 0) {
+          const prevMental = Number(data[index - 1].mental) || 0;
+          const prevPhysical = Number(data[index - 1].physical) || 0;
+          const prevMoral = Number(data[index - 1].moral) || 0;
+          const prevFinancial = Number(data[index - 1].financial) || 0;
+          
+          prevValue = (prevMental * weights.mental +
+                      prevPhysical * weights.physical +
+                      prevMoral * weights.moral +
+                      prevFinancial * weights.financial) / total;
+        }
         
         const volatility = Math.abs(value - prevValue) * 0.5;
         
         return {
           time: point.time,
-          open: prevValue,
-          high: Math.max(value, prevValue) + volatility,
-          low: Math.min(value, prevValue) - volatility,
-          close: value,
+          open: Number.isFinite(prevValue) ? prevValue : value,
+          high: Number.isFinite(Math.max(value, prevValue) + volatility) ? Math.max(value, prevValue) + volatility : value,
+          low: Number.isFinite(Math.min(value, prevValue) - volatility) ? Math.min(value, prevValue) - volatility : value,
+          close: Number.isFinite(value) ? value : 50,
         };
       });
       
       seriesRef.current.aggregate.setData(candleData);
     } else {
       const aggregateData: LineData[] = data.map((point) => {
+        const mental = Number(point.mental) || 0;
+        const physical = Number(point.physical) || 0;
+        const moral = Number(point.moral) || 0;
+        const financial = Number(point.financial) || 0;
+        
         const value =
-          (point.mental * weights.mental +
-            point.physical * weights.physical +
-            point.moral * weights.moral +
-            point.financial * weights.financial) /
+          (mental * weights.mental +
+            physical * weights.physical +
+            moral * weights.moral +
+            financial * weights.financial) /
           total;
-        return { time: point.time, value };
+        return { time: point.time, value: Number.isFinite(value) ? value : 50 };
       });
       
       seriesRef.current.aggregate.setData(aggregateData);
     }
 
-    seriesRef.current.mental?.setData(data.map((d) => ({ time: d.time, value: d.mental })));
-    seriesRef.current.physical?.setData(data.map((d) => ({ time: d.time, value: d.physical })));
-    seriesRef.current.moral?.setData(data.map((d) => ({ time: d.time, value: d.moral })));
-    seriesRef.current.financial?.setData(data.map((d) => ({ time: d.time, value: d.financial })));
+    seriesRef.current.mental?.setData(data.map((d) => ({ 
+      time: d.time, 
+      value: Number.isFinite(d.mental) ? d.mental : 50 
+    })));
+    seriesRef.current.physical?.setData(data.map((d) => ({ 
+      time: d.time, 
+      value: Number.isFinite(d.physical) ? d.physical : 50 
+    })));
+    seriesRef.current.moral?.setData(data.map((d) => ({ 
+      time: d.time, 
+      value: Number.isFinite(d.moral) ? d.moral : 50 
+    })));
+    seriesRef.current.financial?.setData(data.map((d) => ({ 
+      time: d.time, 
+      value: Number.isFinite(d.financial) ? d.financial : 50 
+    })));
 
     chartRef.current?.timeScale().fitContent();
     
