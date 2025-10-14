@@ -30,16 +30,18 @@ export default function Dashboard() {
     moral: true,
     financial: true,
   });
-  const [weights, setWeights] = useState({
-    mental: 0.25,
-    physical: 0.25,
-    moral: 0.25,
-    financial: 0.25,
-  });
 
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
+
+  // Fixed weights (equal for all states)
+  const weights = {
+    mental: 0.25,
+    physical: 0.25,
+    moral: 0.25,
+    financial: 0.25,
+  };
 
   // Calculate total assets
   const totalAssets = useMemo(() => {
@@ -53,14 +55,24 @@ export default function Dashboard() {
         lastPoint.financial * weights.financial) /
       total
     );
-  }, [stateData, weights]);
+  }, [stateData]);
+
+  // Get current values for daily norm display
+  const currentValues = useMemo(() => {
+    if (stateData.length === 0) {
+      return { mental: 50, physical: 50, moral: 50, financial: 50 };
+    }
+    const lastPoint = stateData[stateData.length - 1];
+    return {
+      mental: lastPoint.mental,
+      physical: lastPoint.physical,
+      moral: lastPoint.moral,
+      financial: lastPoint.financial,
+    };
+  }, [stateData]);
 
   const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
     setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
-  };
-
-  const handleWeightChange = (state: 'mental' | 'physical' | 'moral' | 'financial', value: number) => {
-    setWeights({ ...weights, [state]: value });
   };
 
   const handleAddNews = (data: {
@@ -137,10 +149,9 @@ export default function Dashboard() {
         <ControlPanel
           totalAssets={totalAssets}
           visibleStates={visibleStates}
-          weights={weights}
+          currentValues={currentValues}
           news={newsEvents}
           onToggleState={handleToggleState}
-          onWeightChange={handleWeightChange}
           onAddPositiveNews={() => {
             setNewsModalType('positive');
             setNewsModalOpen(true);
