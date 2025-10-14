@@ -2,6 +2,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins } from 'lucide-react';
+import DailyBalance from './DailyBalance';
+import type { NewsEvent } from './LifeChart';
 
 type StateKey = 'mental' | 'physical' | 'moral' | 'financial';
 
@@ -19,6 +21,7 @@ interface ControlPanelProps {
     moral: number;
     financial: number;
   };
+  news: NewsEvent[];
   onToggleState: (state: StateKey) => void;
   onWeightChange: (state: StateKey, value: number) => void;
   onAddPositiveNews: () => void;
@@ -31,6 +34,7 @@ export default function ControlPanel({
   totalAssets,
   visibleStates,
   weights,
+  news,
   onToggleState,
   onWeightChange,
   onAddPositiveNews,
@@ -134,6 +138,9 @@ export default function ControlPanel({
           })}
         </div>
       </div>
+
+      {/* Daily Balance */}
+      <DailyBalance news={news} />
 
       {/* Weight Sliders */}
       <div className="space-y-4">

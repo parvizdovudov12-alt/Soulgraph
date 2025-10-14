@@ -26,6 +26,8 @@ Preferred communication style: Simple, everyday language.
   - `ControlPanel`: Right-side panel for state toggles, weights, and actions
   - `NewsModal`: Modal dialog for adding positive/negative life events
   - `NewsPopup`: Popup displaying event details when clicking chart markers
+  - `ChartTooltip`: Hover tooltip showing event details on chart crosshair
+  - `DailyBalance`: Circular diagram displaying 24-hour impact aggregation
 
 **State Management:**
 - React hooks (useState, useMemo, useEffect) for local component state
@@ -147,3 +149,38 @@ Preferred communication style: Simple, everyday language.
 **Fonts:**
 - Google Fonts: Inter (primary UI font) and Roboto Mono (monospace for data)
 - Loaded via HTML link tags with preconnect optimization
+
+**Data Visualization:**
+- recharts: Composable charting library for React (used in DailyBalance circular diagram)
+
+## Key Features
+
+### Chart Tooltip System
+- Hover-activated tooltips display event details directly on chart
+- Triggered by lightweight-charts crosshair movement
+- Shows event text, media preview, and impact values
+- Auto-positioning relative to cursor with offset
+- Semi-transparent card design with backdrop blur
+
+### Daily Balance Visualization
+- **Component**: `DailyBalance` - Circular diagram showing 24-hour impact aggregation
+- **Location**: Control panel, between indicators and weight sliders
+- **Functionality**:
+  - Filters all news events from last 24 hours
+  - Calculates signed totals for each life state (Mental, Physical, Moral, Financial)
+  - Displays donut chart with state-colored segments (using recharts PieChart)
+  - Shows net balance in center with appropriate color coding:
+    - Positive balance: Green text with "+" prefix
+    - Negative balance: Red text with "-" sign
+    - Zero balance: Neutral display
+- **Data Presentation**:
+  - Pie segments use absolute values for visualization (chart requirement)
+  - State breakdown and total use signed values for accuracy
+  - Event count with Russian pluralization
+  - Interactive tooltip on hover showing signed impact values
+  - Empty state message when no events in timeframe
+- **Color Scheme**:
+  - Mental: Purple (280, 65%, 65%)
+  - Physical: Cyan (200, 85%, 55%)
+  - Moral: Amber (45, 90%, 60%)
+  - Financial: Green (142, 76%, 36%)

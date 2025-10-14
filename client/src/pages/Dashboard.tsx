@@ -138,6 +138,7 @@ export default function Dashboard() {
           totalAssets={totalAssets}
           visibleStates={visibleStates}
           weights={weights}
+          news={newsEvents}
           onToggleState={handleToggleState}
           onWeightChange={handleWeightChange}
           onAddPositiveNews={() => {
