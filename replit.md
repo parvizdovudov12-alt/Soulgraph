@@ -22,8 +22,9 @@ Preferred communication style: Simple, everyday language.
 - Reusable UI components built on Radix UI primitives (located in `client/src/components/ui/`)
 - shadcn/ui design system with "new-york" style variant configured in `components.json`
 - Custom components for application features:
-  - `LifeChart`: Main chart visualization using lightweight-charts library
+  - `LifeChart`: Main chart visualization using lightweight-charts library with custom token name display
   - `ControlPanel`: Right-side panel for state toggles, weights, and actions
+  - `TokenNameEditor`: Modal dialog for editing custom token name (authenticated users only)
   - `NewsModal`: Modal dialog for adding positive/negative life events
   - `NewsPopup`: Popup displaying event details when clicking chart markers
   - `ChartTooltip`: Hover tooltip showing event details on chart crosshair
@@ -51,6 +52,8 @@ Preferred communication style: Simple, everyday language.
 - Multiple time series overlay for four life states
 - Fixed equal weights (0.25 each) for all states in aggregate calculation
 - Daily norm progress bars instead of adjustable weight sliders
+- **Custom token name**: Users can set their own token name (default "SOUL") which replaces "Общие активы" in chart legend and control panel
+- Token name editable via pencil icon in control panel (authenticated users only)
 
 ### Backend Architecture
 
@@ -87,7 +90,7 @@ Preferred communication style: Simple, everyday language.
 - Database URL from environment variable `DATABASE_URL`
 
 **Current Schema:**
-- **Users table**: UUID primary key, walletAddress (Solana address), createdAt timestamp
+- **Users table**: UUID primary key, walletAddress (Solana address), tokenName (custom token display name, default "SOUL"), createdAt timestamp
 - **News events table**: Stores life events with media attachments (images/video as data URLs in JSONB)
   - Fields: id, time, type, text, impact values (mental, physical, moral, financial), media array, createdAt
 - **State data table**: Stores time-series state values for chart visualization
@@ -106,6 +109,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/news-events` - Create new event with media attachments
 - `GET /api/state-data` - Retrieve all state data points
 - `POST /api/state-data` - Create new state data point
+- `PATCH /api/auth/token-name` - Update user's custom token name (requires authentication)
 
 ### Authentication and Authorization
 
@@ -130,6 +134,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/auth/verify` - Verify signature and create session
 - `GET /api/auth/me` - Get current authenticated user
 - `POST /api/auth/logout` - Destroy session and logout
+- `PATCH /api/auth/token-name` - Update custom token name (max 20 characters)
 
 **Frontend Components:**
 - `ConnectWallet` - Button to connect/disconnect Phantom wallet
