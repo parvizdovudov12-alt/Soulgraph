@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import LifeChart, { StateData, NewsEvent } from '@/components/LifeChart';
@@ -10,7 +10,15 @@ import { Activity } from 'lucide-react';
 import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
 
 export default function Dashboard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const [tokenName, setTokenName] = useState(user?.tokenName || 'SOUL');
+
+  // Update token name when user changes
+  useEffect(() => {
+    if (user?.tokenName) {
+      setTokenName(user.tokenName);
+    }
+  }, [user?.tokenName]);
 
   // Initial state data for last 30 days
   const [stateData, setStateData] = useState<StateData[]>(() => {
@@ -186,6 +194,7 @@ export default function Dashboard() {
             weights={weights}
             news={newsEvents}
             chartType={chartType}
+            tokenName={tokenName}
           />
         </div>
 
@@ -206,6 +215,9 @@ export default function Dashboard() {
           }}
           chartType={chartType}
           onChartTypeChange={setChartType}
+          tokenName={tokenName}
+          onTokenNameUpdate={setTokenName}
+          isAuthenticated={isAuthenticated}
         />
       </div>
 

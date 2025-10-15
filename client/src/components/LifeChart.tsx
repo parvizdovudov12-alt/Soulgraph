@@ -43,9 +43,10 @@ interface LifeChartProps {
   };
   news: NewsEvent[];
   chartType?: 'line' | 'candlestick';
+  tokenName: string;
 }
 
-export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line' }: LifeChartProps) {
+export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName }: LifeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<{
@@ -115,7 +116,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         borderVisible: false,
         wickUpColor: '#10b981',
         wickDownColor: '#ef4444',
-        title: 'Общие активы',
+        title: tokenName,
         priceLineVisible: true,
         lastValueVisible: true,
       });
@@ -124,7 +125,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       const aggregateSeries = chart.addSeries(LineSeries, {
         color: '#60a5fa',
         lineWidth: 2,
-        title: 'Общие активы',
+        title: tokenName,
         priceLineVisible: true,
         lastValueVisible: true,
       });

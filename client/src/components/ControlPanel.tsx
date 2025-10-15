@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins } from 'lucide-react';
 import DailyBalance from './DailyBalance';
+import TokenNameEditor from './TokenNameEditor';
 import type { NewsEvent } from './LifeChart';
 
 type StateKey = 'mental' | 'physical' | 'moral' | 'financial';
@@ -26,6 +27,9 @@ interface ControlPanelProps {
   onAddNegativeNews: () => void;
   chartType: 'line' | 'candlestick';
   onChartTypeChange: (type: 'line' | 'candlestick') => void;
+  tokenName: string;
+  onTokenNameUpdate: (newName: string) => void;
+  isAuthenticated: boolean;
 }
 
 export default function ControlPanel({
@@ -38,6 +42,9 @@ export default function ControlPanel({
   onAddNegativeNews,
   chartType,
   onChartTypeChange,
+  tokenName,
+  onTokenNameUpdate,
+  isAuthenticated,
 }: ControlPanelProps) {
   const states: Array<{ key: StateKey; label: string; color: string; bgColor: string; icon: any }> = [
     { key: 'mental', label: 'Душевное', color: 'text-mental', bgColor: 'bg-mental/10', icon: Sparkles },
@@ -50,9 +57,17 @@ export default function ControlPanel({
     <div className="w-80 bg-card border-l border-card-border p-6 space-y-6 overflow-y-auto">
       {/* Aggregate Index Display */}
       <div className="bg-background/50 rounded-lg p-4 border border-border">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-          Общие активы
-        </p>
+        <div className="flex items-center mb-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide" data-testid="text-token-name">
+            {tokenName}
+          </p>
+          {isAuthenticated && (
+            <TokenNameEditor
+              currentTokenName={tokenName}
+              onUpdate={onTokenNameUpdate}
+            />
+          )}
+        </div>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-mono font-semibold text-primary">
             {totalAssets.toFixed(1)}
