@@ -67,11 +67,20 @@ export default function ConnectWallet() {
       });
     } catch (error: any) {
       console.error('Connection error:', error);
-      toast({
-        title: 'Ошибка подключения',
-        description: error.message || 'Не удалось подключить кошелек',
-        variant: 'destructive',
-      });
+      
+      // Handle user rejection gracefully
+      if (error.code === 4001 || error.message?.includes('User rejected')) {
+        toast({
+          title: 'Подключение отменено',
+          description: 'Вы отклонили запрос на подключение кошелька',
+        });
+      } else {
+        toast({
+          title: 'Ошибка подключения',
+          description: error.message || 'Не удалось подключить кошелек',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsConnecting(false);
     }
