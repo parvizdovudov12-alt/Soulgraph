@@ -87,7 +87,7 @@ Preferred communication style: Simple, everyday language.
 - Database URL from environment variable `DATABASE_URL`
 
 **Current Schema:**
-- **Users table**: UUID primary key, username, password fields
+- **Users table**: UUID primary key, walletAddress (Solana address), createdAt timestamp
 - **News events table**: Stores life events with media attachments (images/video as data URLs in JSONB)
   - Fields: id, time, type, text, impact values (mental, physical, moral, financial), media array, createdAt
 - **State data table**: Stores time-series state values for chart visualization
@@ -109,16 +109,38 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 
-**Current State:**
-- Basic user schema defined with username/password fields
-- No authentication middleware currently implemented
-- Storage interface includes user lookup by username and ID
-- Session management dependencies installed (connect-pg-simple) but not configured
+**Current Implementation:**
+- **Wallet-based authentication** using Phantom (Solana wallet)
+- User schema stores Solana wallet addresses (walletAddress field)
+- Session-based authentication using express-session
+- No passwords - authentication via cryptographic signature verification
 
-**Planned Approach:**
-- Session-based authentication pattern (connect-pg-simple for PostgreSQL sessions)
-- Password hashing (bcrypt/argon2) to be implemented
-- Protected route middleware for authenticated endpoints
+**Authentication Flow:**
+1. User clicks "Connect Wallet" button in header
+2. Frontend requests nonce from server (`POST /api/auth/nonce`)
+3. User signs message with Phantom wallet containing nonce
+4. Frontend sends signature to server (`POST /api/auth/verify`)
+5. Server verifies signature using @solana/web3.js and tweetnacl
+6. Server creates or finds user by wallet address
+7. Server creates session with userId and walletAddress
+8. User is authenticated and can access protected features
+
+**API Endpoints:**
+- `POST /api/auth/nonce` - Generate nonce for wallet signature
+- `POST /api/auth/verify` - Verify signature and create session
+- `GET /api/auth/me` - Get current authenticated user
+- `POST /api/auth/logout` - Destroy session and logout
+
+**Frontend Components:**
+- `ConnectWallet` - Button to connect/disconnect Phantom wallet
+- `useAuth` hook - React hook for authentication state management
+- Session persists for 7 days with httpOnly cookies
+
+**Security:**
+- Nonces expire after 5 minutes and can only be used once
+- Signatures verified using Ed25519 cryptography
+- Sessions use SESSION_SECRET environment variable
+- HTTPS-only cookies in production
 
 ## External Dependencies
 
