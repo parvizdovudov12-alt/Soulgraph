@@ -86,14 +86,25 @@ Preferred communication style: Simple, everyday language.
 - Database URL from environment variable `DATABASE_URL`
 
 **Current Schema:**
-- Users table with UUID primary key (auto-generated)
-- Username and password fields for authentication
+- **Users table**: UUID primary key, username, password fields
+- **News events table**: Stores life events with media attachments (images/video as data URLs in JSONB)
+  - Fields: id, time, type, text, impact values (mental, physical, moral, financial), media array, createdAt
+- **State data table**: Stores time-series state values for chart visualization
+  - Fields: id, time, mental, physical, moral, financial values, createdAt
 - Zod schema validation using drizzle-zod integration
 
 **Storage Strategy:**
 - Current implementation uses in-memory Map structure for rapid prototyping
+- News events and state data persisted in memory with API endpoints
+- Media files stored as data URLs (base64) in JSONB column
 - Architecture supports switching to PostgreSQL by implementing IStorage interface with Drizzle ORM
 - Shared TypeScript types between client and server via `@shared/*` path alias
+
+**API Endpoints:**
+- `GET /api/news-events` - Retrieve all news events with media
+- `POST /api/news-events` - Create new event with media attachments
+- `GET /api/state-data` - Retrieve all state data points
+- `POST /api/state-data` - Create new state data point
 
 ### Authentication and Authorization
 
@@ -157,12 +168,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Key Features
 
+### Media Persistence
+- **Photo and video attachments**: Events support uploading images and videos (max 10MB per file)
+- **Data URL storage**: Media files converted to base64 data URLs and stored in database
+- **Persistent storage**: All events with media saved to server via API
+- **Auto-reload**: Events and media automatically loaded from server on page refresh
+- **Display in UI**: Media previews shown in event popups, tooltips, and modal dialogs
+
 ### Clickable Candlesticks
 - **Click on candlestick**: Opens popup showing all events from that day
 - **Click on event marker**: Opens popup showing that specific event
 - **Implementation**: Uses lightweight-charts `subscribeClick` API
 - **Date matching**: Groups events by calendar date (ignores time of day)
-- **Popup displays**: Multiple events in scrollable list with individual timestamps
+- **Popup displays**: Multiple events in scrollable list with individual timestamps, including media previews
 
 ### Chart Tooltip System
 - Hover-activated tooltips display event details directly on chart
