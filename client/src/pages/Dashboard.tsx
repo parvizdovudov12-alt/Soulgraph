@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import LifeChart, { StateData, NewsEvent } from '@/components/LifeChart';
 import ControlPanel from '@/components/ControlPanel';
 import NewsModal from '@/components/NewsModal';
 import { Activity } from 'lucide-react';
+import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
 
 export default function Dashboard() {
   // Initial state data for last 30 days
@@ -23,7 +26,26 @@ export default function Dashboard() {
     return data;
   });
 
-  const [newsEvents, setNewsEvents] = useState<NewsEvent[]>([]);
+  // Load news events from server
+  const { data: newsEventsData = [] } = useQuery<DBNewsEvent[]>({
+    queryKey: ['/api/news-events'],
+  });
+
+  // Convert DB news events to frontend format
+  const newsEvents = useMemo((): NewsEvent[] => {
+    return newsEventsData.map(event => ({
+      time: event.time as any,
+      type: event.type as 'positive' | 'negative',
+      text: event.text,
+      impact: {
+        mental: event.impactMental,
+        physical: event.impactPhysical,
+        moral: event.impactMoral,
+        financial: event.impactFinancial,
+      },
+      media: event.media || undefined,
+    }));
+  }, [newsEventsData]);
   const [visibleStates, setVisibleStates] = useState({
     mental: true,
     physical: true,
@@ -71,6 +93,30 @@ export default function Dashboard() {
     };
   }, [stateData]);
 
+  // Mutation for creating news events
+  const createNewsEventMutation = useMutation({
+    mutationFn: async (data: {
+      text: string;
+      time: number;
+      impact: { mental: number; physical: number; moral: number; financial: number };
+      media?: { type: 'image' | 'video'; url: string }[];
+    }) => {
+      return apiRequest('POST', '/api/news-events', {
+        type: newsModalType,
+        time: data.time,
+        text: data.text,
+        impactMental: data.impact.mental,
+        impactPhysical: data.impact.physical,
+        impactMoral: data.impact.moral,
+        impactFinancial: data.impact.financial,
+        media: data.media || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
+    },
+  });
+
   const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
     setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
   };
@@ -81,15 +127,8 @@ export default function Dashboard() {
     impact: { mental: number; physical: number; moral: number; financial: number };
     media?: { type: 'image' | 'video'; url: string }[];
   }) => {
-    // Add news event
-    const newsEvent: NewsEvent = {
-      time: data.time as any,
-      type: newsModalType,
-      text: data.text,
-      impact: data.impact,
-      media: data.media,
-    };
-    setNewsEvents([...newsEvents, newsEvent]);
+    // Save to server
+    createNewsEventMutation.mutate(data);
 
     // Update state data - add impact to current values
     setStateData((prev) => {

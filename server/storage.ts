@@ -68,7 +68,7 @@ export class MemStorage implements IStorage {
       impactPhysical: insertEvent.impactPhysical ?? 0,
       impactMoral: insertEvent.impactMoral ?? 0,
       impactFinancial: insertEvent.impactFinancial ?? 0,
-      media: insertEvent.media ?? null,
+      media: (insertEvent.media as { type: 'image' | 'video'; url: string }[] | null) ?? null,
       createdAt: new Date()
     };
     this.newsEvents.set(id, event);
