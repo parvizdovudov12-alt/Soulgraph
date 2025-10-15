@@ -15,6 +15,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserTokenName(userId: string, tokenName: string): Promise<User | undefined>;
   
   // News events
   getAllNewsEvents(): Promise<DBNewsEvent[]>;
@@ -51,10 +52,20 @@ export class MemStorage implements IStorage {
     const user: User = { 
       id, 
       walletAddress: insertUser.walletAddress,
+      tokenName: "SOUL",
       createdAt: new Date()
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserTokenName(userId: string, tokenName: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser: User = { ...user, tokenName };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   async getAllNewsEvents(): Promise<DBNewsEvent[]> {
