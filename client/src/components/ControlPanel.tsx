@@ -114,6 +114,33 @@ export default function ControlPanel({
         </div>
       </div>
 
+      {/* News Actions */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          События
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={onAddPositiveNews}
+            className="bg-positive hover:bg-positive/90 text-white flex-1"
+            size="sm"
+            data-testid="button-add-positive-news"
+          >
+            <TrendingUp className="w-4 h-4 mr-1" />
+            Позитив
+          </Button>
+          <Button
+            onClick={onAddNegativeNews}
+            className="bg-negative hover:bg-negative/90 text-white flex-1"
+            size="sm"
+            data-testid="button-add-negative-news"
+          >
+            <TrendingDown className="w-4 h-4 mr-1" />
+            Негатив
+          </Button>
+        </div>
+      </div>
+
       {/* State Indicators */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -179,33 +206,6 @@ export default function ControlPanel({
             </div>
           );
         })}
-      </div>
-
-      {/* News Actions */}
-      <div className="space-y-3 pt-4 border-t border-border">
-        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          События
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={onAddPositiveNews}
-            className="bg-positive hover:bg-positive/90 text-white flex-1"
-            size="sm"
-            data-testid="button-add-positive-news"
-          >
-            <TrendingUp className="w-4 h-4 mr-1" />
-            Позитив
-          </Button>
-          <Button
-            onClick={onAddNegativeNews}
-            className="bg-negative hover:bg-negative/90 text-white flex-1"
-            size="sm"
-            data-testid="button-add-negative-news"
-          >
-            <TrendingDown className="w-4 h-4 mr-1" />
-            Негатив
-          </Button>
-        </div>
       </div>
     </div>
   );

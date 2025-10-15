@@ -23,7 +23,7 @@ Preferred communication style: Simple, everyday language.
 - shadcn/ui design system with "new-york" style variant configured in `components.json`
 - Custom components for application features:
   - `LifeChart`: Main chart visualization using lightweight-charts library with custom token name display
-  - `ControlPanel`: Right-side panel for state toggles, weights, and actions
+  - `ControlPanel`: Right-side panel with sections in order - token display, chart type toggle, event buttons (Позитив/Негатив), state indicators, daily balance, and daily norm progress
   - `TokenNameEditor`: Modal dialog for editing custom token name (authenticated users only)
   - `NewsModal`: Modal dialog for adding positive/negative life events
   - `NewsPopup`: Popup displaying event details when clicking chart markers
