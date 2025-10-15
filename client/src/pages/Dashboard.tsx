@@ -4,10 +4,14 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import LifeChart, { StateData, NewsEvent } from '@/components/LifeChart';
 import ControlPanel from '@/components/ControlPanel';
 import NewsModal from '@/components/NewsModal';
+import ConnectWallet from '@/components/ConnectWallet';
+import { useAuth } from '@/hooks/useAuth';
 import { Activity } from 'lucide-react';
 import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
 
 export default function Dashboard() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   // Initial state data for last 30 days
   const [stateData, setStateData] = useState<StateData[]>(() => {
     const now = Math.floor(Date.now() / 1000);
@@ -168,6 +172,7 @@ export default function Dashboard() {
               day: 'numeric' 
             })}
           </div>
+          <ConnectWallet />
         </div>
       </header>
 

@@ -13,7 +13,7 @@ const nonces = new Map<string, { nonce: string; timestamp: number }>();
 // Clean up old nonces (older than 5 minutes)
 setInterval(() => {
   const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-  for (const [address, data] of nonces.entries()) {
+  for (const [address, data] of Array.from(nonces.entries())) {
     if (data.timestamp < fiveMinutesAgo) {
       nonces.delete(address);
     }
