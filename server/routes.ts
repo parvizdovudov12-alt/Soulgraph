@@ -123,6 +123,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auth: Update token name
+  app.patch("/api/auth/token-name", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { tokenName } = req.body;
+      if (!tokenName || typeof tokenName !== 'string') {
+        return res.status(400).json({ message: "Token name is required" });
+      }
+
+      if (tokenName.length > 20) {
+        return res.status(400).json({ message: "Token name must be 20 characters or less" });
+      }
+
+      const user = await storage.updateUserTokenName(req.session.userId, tokenName);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ user });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update token name" });
+    }
+  });
+
   // Get all news events
   app.get("/api/news-events", async (req, res) => {
     try {
