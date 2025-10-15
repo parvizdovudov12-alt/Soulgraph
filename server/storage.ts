@@ -60,8 +60,15 @@ export class MemStorage implements IStorage {
   async createNewsEvent(insertEvent: InsertNewsEvent): Promise<DBNewsEvent> {
     const id = randomUUID();
     const event: DBNewsEvent = { 
-      ...insertEvent, 
       id,
+      type: insertEvent.type,
+      time: insertEvent.time,
+      text: insertEvent.text,
+      impactMental: insertEvent.impactMental ?? 0,
+      impactPhysical: insertEvent.impactPhysical ?? 0,
+      impactMoral: insertEvent.impactMoral ?? 0,
+      impactFinancial: insertEvent.impactFinancial ?? 0,
+      media: insertEvent.media ?? null,
       createdAt: new Date()
     };
     this.newsEvents.set(id, event);
