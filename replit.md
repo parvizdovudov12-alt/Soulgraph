@@ -64,6 +64,7 @@ Preferred communication style: Simple, everyday language.
 - Vite middleware integration in development mode for HMR
 - Custom logging middleware for API request/response tracking
 - Static file serving in production mode
+- Request size limit: 50MB for JSON and URL-encoded payloads (supports large media uploads)
 
 **API Design:**
 - RESTful API pattern with `/api` prefix for all endpoints
