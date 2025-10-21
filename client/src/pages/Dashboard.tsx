@@ -56,44 +56,52 @@ export default function Dashboard() {
   // Apply loaded events to state data
   useEffect(() => {
     if (newsEvents.length > 0) {
-      setStateData((prev) => {
-        // Get initial baseline point (first point)
-        const baseline = prev[0] || { time: Math.floor(Date.now() / 1000) as any, mental: 0, physical: 0, moral: 0, financial: 0 };
-        
-        // Sort events by time
-        const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
-        
-        // Build new data array starting from baseline
-        const newData: StateData[] = [baseline];
-        
-        sortedEvents.forEach((event) => {
-          const lastPoint = newData[newData.length - 1];
-          newData.push({
-            time: event.time,
-            mental: Math.max(0, Math.min(100, lastPoint.mental + event.impact.mental)),
-            physical: Math.max(0, Math.min(100, lastPoint.physical + event.impact.physical)),
-            moral: Math.max(0, Math.min(100, lastPoint.moral + event.impact.moral)),
-            financial: Math.max(0, Math.min(100, lastPoint.financial + event.impact.financial)),
-          });
+      // Get initial baseline point
+      const baseline = { time: Math.floor(Date.now() / 1000) as any, mental: 0, physical: 0, moral: 0, financial: 0 };
+      
+      // Sort events by time
+      const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
+      
+      // Build new data array starting from baseline
+      const newData: StateData[] = [baseline];
+      
+      sortedEvents.forEach((event) => {
+        const lastPoint = newData[newData.length - 1];
+        newData.push({
+          time: event.time,
+          mental: Math.max(0, Math.min(100, lastPoint.mental + event.impact.mental)),
+          physical: Math.max(0, Math.min(100, lastPoint.physical + event.impact.physical)),
+          moral: Math.max(0, Math.min(100, lastPoint.moral + event.impact.moral)),
+          financial: Math.max(0, Math.min(100, lastPoint.financial + event.impact.financial)),
         });
-        
-        // Sort entire array by time and deduplicate (keep last value for each timestamp)
-        const sortedData = newData.sort((a, b) => (a.time as number) - (b.time as number));
-        const deduplicated = sortedData.reduce<StateData[]>((acc, point) => {
-          const lastInAcc = acc[acc.length - 1];
-          if (!lastInAcc || (lastInAcc.time as number) !== (point.time as number)) {
-            acc.push(point);
-          } else {
-            // Replace with newer data if timestamp is duplicate
-            acc[acc.length - 1] = point;
-          }
-          return acc;
-        }, []);
-        
-        return deduplicated;
       });
+      
+      // Sort entire array by time and deduplicate (keep last value for each timestamp)
+      const sortedData = newData.sort((a, b) => (a.time as number) - (b.time as number));
+      const deduplicated = sortedData.reduce<StateData[]>((acc, point) => {
+        const lastInAcc = acc[acc.length - 1];
+        if (!lastInAcc || (lastInAcc.time as number) !== (point.time as number)) {
+          acc.push(point);
+        } else {
+          // Replace with newer data if timestamp is duplicate
+          acc[acc.length - 1] = point;
+        }
+        return acc;
+      }, []);
+      
+      setStateData(deduplicated);
+    } else if (newsEvents.length === 0) {
+      // Reset to baseline when no events
+      const now = Math.floor(Date.now() / 1000);
+      setStateData([{
+        time: now as any,
+        mental: 0,
+        physical: 0,
+        moral: 0,
+        financial: 0,
+      }]);
     }
-  }, [newsEvents.length]); // Only re-run when number of events changes
+  }, [newsEvents]); // Re-run when events change
 
   const [visibleStates, setVisibleStates] = useState({
     mental: true,
