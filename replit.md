@@ -4,6 +4,9 @@
 
 Soulgraph is an interactive life tracking web application that visualizes life metrics through a trading platform-inspired interface. The application uses interactive charts similar to Bybit/TradingView to display an aggregated "life index" based on four core states: Mental (Душевное), Physical (Физическое), Moral (Моральное), and Financial (Финансовое). Users can add positive or negative life events as news markers on the chart, which dynamically affect the visualized metrics with smooth animations and real-time updates.
 
+**Initial State:** All metrics start from 0 (baseline), and grow/decline based on user events.
+**Timezone:** All timestamps displayed in Moscow time (UTC+3).
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

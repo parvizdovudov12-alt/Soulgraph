@@ -1,5 +1,6 @@
 import { X, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { NewsEvent } from './LifeChart';
+import { formatMoscowDateTime, formatMoscowTime } from '@/lib/dateUtils';
 
 interface NewsPopupProps {
   events: NewsEvent[];
@@ -9,8 +10,6 @@ interface NewsPopupProps {
 
 export default function NewsPopup({ events, onClose, position }: NewsPopupProps) {
   if (!events || events.length === 0) return null;
-
-  const date = new Date((events[0].time as number) * 1000);
 
   return (
     <div
@@ -43,12 +42,11 @@ export default function NewsPopup({ events, onClose, position }: NewsPopupProps)
       <div className="p-4 space-y-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="w-3 h-3" />
-          {date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {formatMoscowDateTime(events[0].time as number)}
         </div>
 
         {events.map((event, eventIndex) => {
           const isPositive = event.type === 'positive';
-          const eventTime = new Date((event.time as number) * 1000);
           
           return (
             <div 
@@ -66,7 +64,7 @@ export default function NewsPopup({ events, onClose, position }: NewsPopupProps)
                   {isPositive ? 'Позитивное' : 'Негативное'}
                 </h4>
                 <span className="text-xs text-muted-foreground">
-                  {eventTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  {formatMoscowTime(event.time as number)} МСК
                 </span>
               </div>
 
