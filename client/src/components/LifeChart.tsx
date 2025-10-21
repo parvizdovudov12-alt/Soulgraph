@@ -231,15 +231,27 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     };
   }, [chartType, news]);
 
+  // Deduplicate data by time (keep last value for each timestamp)
+  const deduplicateData = <T extends { time: Time }>(data: T[]): T[] => {
+    const seen = new Map<number, T>();
+    data.forEach(point => {
+      seen.set(point.time as number, point);
+    });
+    return Array.from(seen.values()).sort((a, b) => (a.time as number) - (b.time as number));
+  };
+
   // Update data
   useEffect(() => {
     if (!seriesRef.current.aggregate || data.length === 0) return;
+
+    // Deduplicate input data to prevent assertion errors
+    const dedupedData = deduplicateData(data);
 
     // Calculate aggregate data
     const total = weights.mental + weights.physical + weights.moral + weights.financial;
     
     if (chartType === 'candlestick') {
-      const candleData: CandlestickData[] = data.map((point, index) => {
+      const candleData: CandlestickData[] = dedupedData.map((point, index) => {
         // Ensure all values are numbers, fallback to 0
         const mental = Number(point.mental) || 0;
         const physical = Number(point.physical) || 0;
@@ -255,10 +267,10 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         
         let prevValue = value;
         if (index > 0) {
-          const prevMental = Number(data[index - 1].mental) || 0;
-          const prevPhysical = Number(data[index - 1].physical) || 0;
-          const prevMoral = Number(data[index - 1].moral) || 0;
-          const prevFinancial = Number(data[index - 1].financial) || 0;
+          const prevMental = Number(dedupedData[index - 1].mental) || 0;
+          const prevPhysical = Number(dedupedData[index - 1].physical) || 0;
+          const prevMoral = Number(dedupedData[index - 1].moral) || 0;
+          const prevFinancial = Number(dedupedData[index - 1].financial) || 0;
           
           prevValue = (prevMental * weights.mental +
                       prevPhysical * weights.physical +
@@ -279,7 +291,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       
       seriesRef.current.aggregate.setData(candleData);
     } else {
-      const aggregateData: LineData[] = data.map((point) => {
+      const aggregateData: LineData[] = dedupedData.map((point) => {
         const mental = Number(point.mental) || 0;
         const physical = Number(point.physical) || 0;
         const moral = Number(point.moral) || 0;
@@ -297,19 +309,19 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       seriesRef.current.aggregate.setData(aggregateData);
     }
 
-    seriesRef.current.mental?.setData(data.map((d) => ({ 
+    seriesRef.current.mental?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
       value: Number.isFinite(d.mental) ? d.mental : 50 
     })));
-    seriesRef.current.physical?.setData(data.map((d) => ({ 
+    seriesRef.current.physical?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
       value: Number.isFinite(d.physical) ? d.physical : 50 
     })));
-    seriesRef.current.moral?.setData(data.map((d) => ({ 
+    seriesRef.current.moral?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
       value: Number.isFinite(d.moral) ? d.moral : 50 
     })));
-    seriesRef.current.financial?.setData(data.map((d) => ({ 
+    seriesRef.current.financial?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
       value: Number.isFinite(d.financial) ? d.financial : 50 
     })));

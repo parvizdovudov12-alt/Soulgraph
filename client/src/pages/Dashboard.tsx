@@ -58,6 +58,49 @@ export default function Dashboard() {
       media: event.media || undefined,
     }));
   }, [newsEventsData]);
+
+  // Apply loaded events to state data
+  useEffect(() => {
+    if (newsEvents.length > 0) {
+      setStateData((prev) => {
+        // Get initial baseline data (first 31 points without events)
+        const baseline = prev.slice(0, 31);
+        
+        // Sort events by time
+        const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
+        
+        // Build new data array with events applied
+        const newData = [...baseline];
+        
+        sortedEvents.forEach((event) => {
+          const lastPoint = newData[newData.length - 1];
+          newData.push({
+            time: event.time,
+            mental: Math.max(0, Math.min(100, lastPoint.mental + event.impact.mental)),
+            physical: Math.max(0, Math.min(100, lastPoint.physical + event.impact.physical)),
+            moral: Math.max(0, Math.min(100, lastPoint.moral + event.impact.moral)),
+            financial: Math.max(0, Math.min(100, lastPoint.financial + event.impact.financial)),
+          });
+        });
+        
+        // Sort entire array by time and deduplicate (keep last value for each timestamp)
+        const sortedData = newData.sort((a, b) => (a.time as number) - (b.time as number));
+        const deduplicated = sortedData.reduce<StateData[]>((acc, point) => {
+          const lastInAcc = acc[acc.length - 1];
+          if (!lastInAcc || (lastInAcc.time as number) !== (point.time as number)) {
+            acc.push(point);
+          } else {
+            // Replace with newer data if timestamp is duplicate
+            acc[acc.length - 1] = point;
+          }
+          return acc;
+        }, []);
+        
+        return deduplicated;
+      });
+    }
+  }, [newsEvents.length]); // Only re-run when number of events changes
+
   const [visibleStates, setVisibleStates] = useState({
     mental: true,
     physical: true,
@@ -139,24 +182,8 @@ export default function Dashboard() {
     impact: { mental: number; physical: number; moral: number; financial: number };
     media?: { type: 'image' | 'video'; url: string }[];
   }) => {
-    // Save to server
+    // Save to server - the useEffect will handle updating the chart
     createNewsEventMutation.mutate(data);
-
-    // Update state data - add impact to current values
-    setStateData((prev) => {
-      const newData = [...prev];
-      const lastPoint = newData[newData.length - 1];
-      
-      newData.push({
-        time: data.time as any,
-        mental: Math.max(0, Math.min(100, lastPoint.mental + data.impact.mental)),
-        physical: Math.max(0, Math.min(100, lastPoint.physical + data.impact.physical)),
-        moral: Math.max(0, Math.min(100, lastPoint.moral + data.impact.moral)),
-        financial: Math.max(0, Math.min(100, lastPoint.financial + data.impact.financial)),
-      });
-
-      return newData;
-    });
   };
 
   return (
