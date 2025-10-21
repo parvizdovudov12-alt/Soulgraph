@@ -117,8 +117,17 @@ export class PostgresStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
 
   constructor() {
-    const connection = neon(process.env.DATABASE_URL!);
-    this.db = drizzle({ client: connection });
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL environment variable is not defined. Please configure your database connection.");
+    }
+
+    try {
+      const connection = neon(databaseUrl);
+      this.db = drizzle({ client: connection });
+    } catch (error) {
+      throw new Error(`Failed to connect to database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -152,6 +161,27 @@ export class PostgresStorage implements IStorage {
   }
 
   async createNewsEvent(insertEvent: InsertNewsEvent): Promise<DBNewsEvent> {
+    // Validate and serialize media data
+    let mediaData: { type: 'image' | 'video'; url: string }[] | null = null;
+    if (insertEvent.media && Array.isArray(insertEvent.media)) {
+      // Ensure media is an array of valid objects
+      const validated = (insertEvent.media as unknown[]).filter((item): item is { type: 'image' | 'video'; url: string } => {
+        return (
+          item !== null &&
+          typeof item === 'object' &&
+          'type' in item &&
+          'url' in item &&
+          ((item as any).type === 'image' || (item as any).type === 'video') &&
+          typeof (item as any).url === 'string'
+        );
+      });
+      
+      // Only set if there are valid items
+      if (validated.length > 0) {
+        mediaData = validated;
+      }
+    }
+
     const result = await this.db.insert(newsEvents).values({
       type: insertEvent.type,
       time: insertEvent.time,
@@ -160,7 +190,7 @@ export class PostgresStorage implements IStorage {
       impactPhysical: insertEvent.impactPhysical ?? 0,
       impactMoral: insertEvent.impactMoral ?? 0,
       impactFinancial: insertEvent.impactFinancial ?? 0,
-      media: insertEvent.media as any ?? null,
+      media: mediaData,
     }).returning();
     return result[0];
   }

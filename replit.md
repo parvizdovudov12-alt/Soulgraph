@@ -98,10 +98,11 @@ Preferred communication style: Simple, everyday language.
 - Zod schema validation using drizzle-zod integration
 
 **Storage Strategy:**
-- Current implementation uses in-memory Map structure for rapid prototyping
-- News events and state data persisted in memory with API endpoints
+- **PostgreSQL database** with Drizzle ORM for permanent data persistence
+- News events and state data stored in PostgreSQL database
 - Media files stored as data URLs (base64) in JSONB column
-- Architecture supports switching to PostgreSQL by implementing IStorage interface with Drizzle ORM
+- `PostgresStorage` class implements `IStorage` interface using Drizzle ORM
+- Neon serverless PostgreSQL with HTTP driver for optimal performance
 - Shared TypeScript types between client and server via `@shared/*` path alias
 
 **API Endpoints:**
