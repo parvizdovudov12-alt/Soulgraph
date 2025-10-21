@@ -51,6 +51,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    mode: 'onBlur',
     defaultValues: {
       email: '',
       password: '',
@@ -61,11 +62,23 @@ export default function AuthPage() {
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onBlur',
     defaultValues: {
       email: '',
       password: '',
     },
   });
+
+  // Reset forms when switching between login and register
+  const handleToggleAuthMode = () => {
+    const newMode = authMode === 'login' ? 'register' : 'login';
+    setAuthMode(newMode);
+    if (newMode === 'login') {
+      loginForm.reset();
+    } else {
+      registerForm.reset();
+    }
+  };
 
   const handleRegister = async (data: RegisterFormData) => {
     try {
@@ -204,7 +217,7 @@ export default function AuthPage() {
             <TabsContent value="email" className="space-y-4 mt-6">
               {authMode === 'register' ? (
                 <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                  <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4" key="register-form">
                     <FormField
                       control={registerForm.control}
                       name="email"
@@ -288,7 +301,7 @@ export default function AuthPage() {
                 </Form>
               ) : (
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4" key="login-form">
                     <FormField
                       control={loginForm.control}
                       name="email"
@@ -340,7 +353,7 @@ export default function AuthPage() {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                  onClick={handleToggleAuthMode}
                   className="text-sm text-primary hover:underline"
                   data-testid="button-toggle-auth-mode"
                 >
