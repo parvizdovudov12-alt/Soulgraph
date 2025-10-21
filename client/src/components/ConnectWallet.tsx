@@ -102,15 +102,20 @@ export default function ConnectWallet() {
   };
 
   if (isAuthenticated && user) {
-    const address = user.walletAddress;
-    const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
+    // Display wallet address for wallet users, email for email users
+    let displayText = '';
+    if (user.walletAddress) {
+      displayText = `${user.walletAddress.slice(0, 4)}...${user.walletAddress.slice(-4)}`;
+    } else if (user.email) {
+      displayText = user.email.split('@')[0];
+    }
 
     return (
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border">
           <Wallet className="w-4 h-4 text-primary" />
-          <span className="text-sm font-mono text-foreground" data-testid="text-wallet-address">
-            {shortAddress}
+          <span className="text-sm font-mono text-foreground" data-testid="text-user-display">
+            {displayText}
           </span>
         </div>
         <Button
