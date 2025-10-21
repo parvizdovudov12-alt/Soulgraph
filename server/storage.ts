@@ -4,9 +4,15 @@ import {
   type NewsEvent as DBNewsEvent,
   type InsertNewsEvent,
   type StateData as DBStateData,
-  type InsertStateData
+  type InsertStateData,
+  users,
+  newsEvents,
+  stateData
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
+import { eq } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -106,4 +112,67 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// PostgreSQL storage implementation using Drizzle ORM
+export class PostgresStorage implements IStorage {
+  private db: ReturnType<typeof drizzle>;
+
+  constructor() {
+    const connection = neon(process.env.DATABASE_URL!);
+    this.db = drizzle({ client: connection });
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.walletAddress, walletAddress));
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const result = await this.db.insert(users).values({
+      walletAddress: insertUser.walletAddress,
+      tokenName: "SOUL",
+    }).returning();
+    return result[0];
+  }
+
+  async updateUserTokenName(userId: string, tokenName: string): Promise<User | undefined> {
+    const result = await this.db.update(users)
+      .set({ tokenName })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async getAllNewsEvents(): Promise<DBNewsEvent[]> {
+    return await this.db.select().from(newsEvents).orderBy(newsEvents.time);
+  }
+
+  async createNewsEvent(insertEvent: InsertNewsEvent): Promise<DBNewsEvent> {
+    const result = await this.db.insert(newsEvents).values({
+      type: insertEvent.type,
+      time: insertEvent.time,
+      text: insertEvent.text,
+      impactMental: insertEvent.impactMental ?? 0,
+      impactPhysical: insertEvent.impactPhysical ?? 0,
+      impactMoral: insertEvent.impactMoral ?? 0,
+      impactFinancial: insertEvent.impactFinancial ?? 0,
+      media: insertEvent.media as any ?? null,
+    }).returning();
+    return result[0];
+  }
+
+  async getAllStateData(): Promise<DBStateData[]> {
+    return await this.db.select().from(stateData).orderBy(stateData.time);
+  }
+
+  async createStateData(insertData: InsertStateData): Promise<DBStateData> {
+    const result = await this.db.insert(stateData).values(insertData).returning();
+    return result[0];
+  }
+}
+
+export const storage = new PostgresStorage();
