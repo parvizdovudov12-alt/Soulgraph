@@ -20,15 +20,15 @@ export default function Dashboard() {
     }
   }, [user?.tokenName]);
 
-  // Initial state data - start with one baseline point
+  // Initial state data - start with one baseline point at zero
   const [stateData, setStateData] = useState<StateData[]>(() => {
     const now = Math.floor(Date.now() / 1000);
     return [{
       time: now as any,
-      mental: 50,
-      physical: 50,
-      moral: 50,
-      financial: 50,
+      mental: 0,
+      physical: 0,
+      moral: 0,
+      financial: 0,
     }];
   });
 
@@ -58,7 +58,7 @@ export default function Dashboard() {
     if (newsEvents.length > 0) {
       setStateData((prev) => {
         // Get initial baseline point (first point)
-        const baseline = prev[0] || { time: Math.floor(Date.now() / 1000) as any, mental: 50, physical: 50, moral: 50, financial: 50 };
+        const baseline = prev[0] || { time: Math.floor(Date.now() / 1000) as any, mental: 0, physical: 0, moral: 0, financial: 0 };
         
         // Sort events by time
         const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));

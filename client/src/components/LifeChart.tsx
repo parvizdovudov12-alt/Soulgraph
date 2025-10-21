@@ -100,6 +100,19 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         borderColor: 'rgba(255, 255, 255, 0.1)',
         timeVisible: true,
         secondsVisible: false,
+        shiftVisibleRangeOnNewBar: true,
+      },
+      localization: {
+        timeFormatter: (timestamp: number) => {
+          const date = new Date(timestamp * 1000);
+          // Convert to Moscow time (UTC+3)
+          const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+          const hours = moscowTime.getUTCHours().toString().padStart(2, '0');
+          const minutes = moscowTime.getUTCMinutes().toString().padStart(2, '0');
+          const day = moscowTime.getUTCDate().toString().padStart(2, '0');
+          const month = (moscowTime.getUTCMonth() + 1).toString().padStart(2, '0');
+          return `${day}.${month} ${hours}:${minutes}`;
+        },
       },
       rightPriceScale: {
         borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -285,7 +298,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
           open: Number.isFinite(prevValue) ? prevValue : value,
           high: Number.isFinite(Math.max(value, prevValue) + volatility) ? Math.max(value, prevValue) + volatility : value,
           low: Number.isFinite(Math.min(value, prevValue) - volatility) ? Math.min(value, prevValue) - volatility : value,
-          close: Number.isFinite(value) ? value : 50,
+          close: Number.isFinite(value) ? value : 0,
         };
       });
       
@@ -303,7 +316,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
             moral * weights.moral +
             financial * weights.financial) /
           total;
-        return { time: point.time, value: Number.isFinite(value) ? value : 50 };
+        return { time: point.time, value: Number.isFinite(value) ? value : 0 };
       });
       
       seriesRef.current.aggregate.setData(aggregateData);
@@ -311,19 +324,19 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
 
     seriesRef.current.mental?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
-      value: Number.isFinite(d.mental) ? d.mental : 50 
+      value: Number.isFinite(d.mental) ? d.mental : 0 
     })));
     seriesRef.current.physical?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
-      value: Number.isFinite(d.physical) ? d.physical : 50 
+      value: Number.isFinite(d.physical) ? d.physical : 0 
     })));
     seriesRef.current.moral?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
-      value: Number.isFinite(d.moral) ? d.moral : 50 
+      value: Number.isFinite(d.moral) ? d.moral : 0 
     })));
     seriesRef.current.financial?.setData(dedupedData.map((d) => ({ 
       time: d.time, 
-      value: Number.isFinite(d.financial) ? d.financial : 50 
+      value: Number.isFinite(d.financial) ? d.financial : 0 
     })));
 
     chartRef.current?.timeScale().fitContent();
