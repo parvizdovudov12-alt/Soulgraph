@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertNewsEventSchema, insertStateDataSchema } from "@shared/schema";
+import { insertNewsEventSchema, insertStateDataSchema, registerUserSchema, loginUserSchema } from "@shared/schema";
 import { PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
+import bcrypt from "bcryptjs";
 import "./types";
 
 // Temporary storage for nonces (in production, use Redis or database)
@@ -21,6 +22,69 @@ setInterval(() => {
 }, 60 * 1000); // Run every minute
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth: Register with email/password
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validatedData = registerUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+
+      // Create user
+      const user = await storage.createUser({
+        email: validatedData.email,
+        password: hashedPassword,
+        tokenName: validatedData.tokenName || "SOUL",
+        walletAddress: null,
+      });
+
+      // Create session
+      req.session.userId = user.id;
+
+      // Return user without password
+      const { password, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(400).json({ message: "Failed to register" });
+    }
+  });
+
+  // Auth: Login with email/password
+  app.post("/api/auth/login-email", async (req, res) => {
+    try {
+      const validatedData = loginUserSchema.parse(req.body);
+
+      // Find user by email
+      const user = await storage.getUserByEmail(validatedData.email);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Create session
+      req.session.userId = user.id;
+
+      // Return user without password
+      const { password, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(400).json({ message: "Failed to login" });
+    }
+  });
+
   // Auth: Generate nonce for wallet signature
   app.post("/api/auth/nonce", async (req, res) => {
     try {
@@ -77,14 +141,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find or create user
       let user = await storage.getUserByWalletAddress(walletAddress);
       if (!user) {
-        user = await storage.createUser({ walletAddress });
+        user = await storage.createUser({
+          walletAddress,
+          email: null,
+          password: null,
+          tokenName: "SOUL",
+        });
       }
 
       // Create session
       req.session.userId = user.id;
-      req.session.walletAddress = user.walletAddress;
 
-      res.json({ user });
+      // Return user without password
+      const { password, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
     } catch (error) {
       console.error("Verification error:", error);
       res.status(500).json({ message: "Failed to verify signature" });
@@ -103,7 +173,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({ user });
+      // Return user without password
+      const { password, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
     } catch (error) {
       res.status(500).json({ message: "Failed to get current user" });
     }
@@ -150,10 +222,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all news events
+  // Get user's news events
   app.get("/api/news-events", async (req, res) => {
     try {
-      const events = await storage.getAllNewsEvents();
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const events = await storage.getUserNewsEvents(req.session.userId);
       res.json(events);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch news events" });
@@ -163,18 +239,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a news event
   app.post("/api/news-events", async (req, res) => {
     try {
-      const validatedData = insertNewsEventSchema.parse(req.body);
-      const event = await storage.createNewsEvent(validatedData);
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validatedData = insertNewsEventSchema.omit({ userId: true }).parse(req.body);
+      const event = await storage.createNewsEvent(req.session.userId, validatedData);
       res.json(event);
     } catch (error) {
+      console.error("Failed to create news event:", error);
       res.status(400).json({ message: "Invalid news event data" });
     }
   });
 
-  // Get all state data
+  // Get user's state data
   app.get("/api/state-data", async (req, res) => {
     try {
-      const data = await storage.getAllStateData();
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const data = await storage.getUserStateData(req.session.userId);
       res.json(data);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch state data" });
@@ -184,10 +269,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create state data
   app.post("/api/state-data", async (req, res) => {
     try {
-      const validatedData = insertStateDataSchema.parse(req.body);
-      const data = await storage.createStateData(validatedData);
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validatedData = insertStateDataSchema.omit({ userId: true }).parse(req.body);
+      const data = await storage.createStateData(req.session.userId, validatedData);
       res.json(data);
     } catch (error) {
+      console.error("Failed to create state data:", error);
       res.status(400).json({ message: "Invalid state data" });
     }
   });

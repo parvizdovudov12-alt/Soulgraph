@@ -19,17 +19,18 @@ import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTokenName(userId: string, tokenName: string): Promise<User | undefined>;
   
-  // News events
-  getAllNewsEvents(): Promise<DBNewsEvent[]>;
-  createNewsEvent(event: InsertNewsEvent): Promise<DBNewsEvent>;
+  // News events - now user-specific
+  getUserNewsEvents(userId: string): Promise<DBNewsEvent[]>;
+  createNewsEvent(userId: string, event: Omit<InsertNewsEvent, 'userId'>): Promise<DBNewsEvent>;
   
-  // State data
-  getAllStateData(): Promise<DBStateData[]>;
-  createStateData(data: InsertStateData): Promise<DBStateData>;
+  // State data - now user-specific
+  getUserStateData(userId: string): Promise<DBStateData[]>;
+  createStateData(userId: string, data: Omit<InsertStateData, 'userId'>): Promise<DBStateData>;
 }
 
 export class MemStorage implements IStorage {
@@ -47,6 +48,12 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+  }
+
   async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.walletAddress === walletAddress,
@@ -57,8 +64,10 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const user: User = { 
       id, 
-      walletAddress: insertUser.walletAddress,
-      tokenName: "SOUL",
+      email: insertUser.email ?? null,
+      password: insertUser.password ?? null,
+      walletAddress: insertUser.walletAddress ?? null,
+      tokenName: insertUser.tokenName ?? "SOUL",
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -74,14 +83,17 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
-  async getAllNewsEvents(): Promise<DBNewsEvent[]> {
-    return Array.from(this.newsEvents.values()).sort((a, b) => a.time - b.time);
+  async getUserNewsEvents(userId: string): Promise<DBNewsEvent[]> {
+    return Array.from(this.newsEvents.values())
+      .filter(event => event.userId === userId)
+      .sort((a, b) => a.time - b.time);
   }
 
-  async createNewsEvent(insertEvent: InsertNewsEvent): Promise<DBNewsEvent> {
+  async createNewsEvent(userId: string, insertEvent: Omit<InsertNewsEvent, 'userId'>): Promise<DBNewsEvent> {
     const id = randomUUID();
     const event: DBNewsEvent = { 
       id,
+      userId,
       type: insertEvent.type,
       time: insertEvent.time,
       text: insertEvent.text,
@@ -96,15 +108,18 @@ export class MemStorage implements IStorage {
     return event;
   }
 
-  async getAllStateData(): Promise<DBStateData[]> {
-    return Array.from(this.stateData.values()).sort((a, b) => a.time - b.time);
+  async getUserStateData(userId: string): Promise<DBStateData[]> {
+    return Array.from(this.stateData.values())
+      .filter(data => data.userId === userId)
+      .sort((a, b) => a.time - b.time);
   }
 
-  async createStateData(insertData: InsertStateData): Promise<DBStateData> {
+  async createStateData(userId: string, insertData: Omit<InsertStateData, 'userId'>): Promise<DBStateData> {
     const id = randomUUID();
     const data: DBStateData = { 
-      ...insertData, 
+      ...insertData,
       id,
+      userId,
       createdAt: new Date()
     };
     this.stateData.set(id, data);
@@ -135,16 +150,18 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
   async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
     const result = await this.db.select().from(users).where(eq(users.walletAddress, walletAddress));
     return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await this.db.insert(users).values({
-      walletAddress: insertUser.walletAddress,
-      tokenName: "SOUL",
-    }).returning();
+    const result = await this.db.insert(users).values(insertUser).returning();
     return result[0];
   }
 
@@ -156,11 +173,13 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async getAllNewsEvents(): Promise<DBNewsEvent[]> {
-    return await this.db.select().from(newsEvents).orderBy(newsEvents.time);
+  async getUserNewsEvents(userId: string): Promise<DBNewsEvent[]> {
+    return await this.db.select().from(newsEvents)
+      .where(eq(newsEvents.userId, userId))
+      .orderBy(newsEvents.time);
   }
 
-  async createNewsEvent(insertEvent: InsertNewsEvent): Promise<DBNewsEvent> {
+  async createNewsEvent(userId: string, insertEvent: Omit<InsertNewsEvent, 'userId'>): Promise<DBNewsEvent> {
     // Validate and serialize media data
     let mediaData: { type: 'image' | 'video'; url: string }[] | null = null;
     if (insertEvent.media && Array.isArray(insertEvent.media)) {
@@ -183,6 +202,7 @@ export class PostgresStorage implements IStorage {
     }
 
     const result = await this.db.insert(newsEvents).values({
+      userId,
       type: insertEvent.type,
       time: insertEvent.time,
       text: insertEvent.text,
@@ -195,12 +215,17 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async getAllStateData(): Promise<DBStateData[]> {
-    return await this.db.select().from(stateData).orderBy(stateData.time);
+  async getUserStateData(userId: string): Promise<DBStateData[]> {
+    return await this.db.select().from(stateData)
+      .where(eq(stateData.userId, userId))
+      .orderBy(stateData.time);
   }
 
-  async createStateData(insertData: InsertStateData): Promise<DBStateData> {
-    const result = await this.db.insert(stateData).values(insertData).returning();
+  async createStateData(userId: string, insertData: Omit<InsertStateData, 'userId'>): Promise<DBStateData> {
+    const result = await this.db.insert(stateData).values({
+      ...insertData,
+      userId
+    }).returning();
     return result[0];
   }
 }
