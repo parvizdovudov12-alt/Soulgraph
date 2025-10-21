@@ -27,6 +27,7 @@ export interface IStorage {
   // News events - now user-specific
   getUserNewsEvents(userId: string): Promise<DBNewsEvent[]>;
   createNewsEvent(userId: string, event: Omit<InsertNewsEvent, 'userId'>): Promise<DBNewsEvent>;
+  deleteAllUserNewsEvents(userId: string): Promise<void>;
   
   // State data - now user-specific
   getUserStateData(userId: string): Promise<DBStateData[]>;
@@ -106,6 +107,14 @@ export class MemStorage implements IStorage {
     };
     this.newsEvents.set(id, event);
     return event;
+  }
+
+  async deleteAllUserNewsEvents(userId: string): Promise<void> {
+    const eventIds = Array.from(this.newsEvents.entries())
+      .filter(([, event]) => event.userId === userId)
+      .map(([id]) => id);
+    
+    eventIds.forEach(id => this.newsEvents.delete(id));
   }
 
   async getUserStateData(userId: string): Promise<DBStateData[]> {
@@ -213,6 +222,10 @@ export class PostgresStorage implements IStorage {
       media: mediaData,
     }).returning();
     return result[0];
+  }
+
+  async deleteAllUserNewsEvents(userId: string): Promise<void> {
+    await this.db.delete(newsEvents).where(eq(newsEvents.userId, userId));
   }
 
   async getUserStateData(userId: string): Promise<DBStateData[]> {

@@ -252,6 +252,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all user's news events
+  app.delete("/api/news-events", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.deleteAllUserNewsEvents(req.session.userId);
+      res.json({ success: true, message: "All events deleted" });
+    } catch (error) {
+      console.error("Failed to delete news events:", error);
+      res.status(500).json({ message: "Failed to delete events" });
+    }
+  });
+
   // Get user's state data
   app.get("/api/state-data", async (req, res) => {
     try {

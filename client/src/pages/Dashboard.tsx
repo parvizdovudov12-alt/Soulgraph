@@ -166,6 +166,25 @@ export default function Dashboard() {
     },
   });
 
+  // Mutation for deleting all events
+  const deleteAllEventsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('DELETE', '/api/news-events', {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
+      // Reset to baseline
+      const now = Math.floor(Date.now() / 1000);
+      setStateData([{
+        time: now as any,
+        mental: 0,
+        physical: 0,
+        moral: 0,
+        financial: 0,
+      }]);
+    },
+  });
+
   const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
     setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
   };
@@ -178,6 +197,10 @@ export default function Dashboard() {
   }) => {
     // Save to server - the useEffect will handle updating the chart
     createNewsEventMutation.mutate(data);
+  };
+
+  const handleClearAllEvents = () => {
+    deleteAllEventsMutation.mutate();
   };
 
   return (
@@ -234,6 +257,7 @@ export default function Dashboard() {
             setNewsModalType('negative');
             setNewsModalOpen(true);
           }}
+          onClearAllEvents={handleClearAllEvents}
           chartType={chartType}
           onChartTypeChange={setChartType}
           tokenName={tokenName}
