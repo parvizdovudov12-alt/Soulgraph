@@ -20,22 +20,16 @@ export default function Dashboard() {
     }
   }, [user?.tokenName]);
 
-  // Initial state data for last 30 days
+  // Initial state data - start with one baseline point
   const [stateData, setStateData] = useState<StateData[]>(() => {
     const now = Math.floor(Date.now() / 1000);
-    const data: StateData[] = [];
-    
-    for (let i = 30; i >= 0; i--) {
-      const time = now - i * 24 * 60 * 60;
-      data.push({
-        time: time as any, // lightweight-charts Time type
-        mental: 50 + Math.sin(i / 5) * 10 + Math.random() * 3,
-        physical: 55 + Math.cos(i / 4) * 8 + Math.random() * 3,
-        moral: 48 + Math.sin(i / 6) * 12 + Math.random() * 3,
-        financial: 52 + Math.cos(i / 7) * 9 + Math.random() * 3,
-      });
-    }
-    return data;
+    return [{
+      time: now as any,
+      mental: 50,
+      physical: 50,
+      moral: 50,
+      financial: 50,
+    }];
   });
 
   // Load news events from server
@@ -63,14 +57,14 @@ export default function Dashboard() {
   useEffect(() => {
     if (newsEvents.length > 0) {
       setStateData((prev) => {
-        // Get initial baseline data (first 31 points without events)
-        const baseline = prev.slice(0, 31);
+        // Get initial baseline point (first point)
+        const baseline = prev[0] || { time: Math.floor(Date.now() / 1000) as any, mental: 50, physical: 50, moral: 50, financial: 50 };
         
         // Sort events by time
         const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
         
-        // Build new data array with events applied
-        const newData = [...baseline];
+        // Build new data array starting from baseline
+        const newData: StateData[] = [baseline];
         
         sortedEvents.forEach((event) => {
           const lastPoint = newData[newData.length - 1];
