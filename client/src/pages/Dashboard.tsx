@@ -56,11 +56,18 @@ export default function Dashboard() {
   // Apply loaded events to state data
   useEffect(() => {
     if (newsEvents.length > 0) {
-      // Get initial baseline point
-      const baseline = { time: Math.floor(Date.now() / 1000) as any, mental: 0, physical: 0, moral: 0, financial: 0 };
-      
-      // Sort events by time
+      // Sort events by time first
       const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
+      
+      // Get initial baseline point - 1 second before first event
+      const firstEventTime = sortedEvents[0].time as number;
+      const baseline = { 
+        time: (firstEventTime - 1) as any, 
+        mental: 0, 
+        physical: 0, 
+        moral: 0, 
+        financial: 0 
+      };
       
       // Build new data array starting from baseline
       const newData: StateData[] = [baseline];
@@ -76,20 +83,7 @@ export default function Dashboard() {
         });
       });
       
-      // Sort entire array by time and deduplicate (keep last value for each timestamp)
-      const sortedData = newData.sort((a, b) => (a.time as number) - (b.time as number));
-      const deduplicated = sortedData.reduce<StateData[]>((acc, point) => {
-        const lastInAcc = acc[acc.length - 1];
-        if (!lastInAcc || (lastInAcc.time as number) !== (point.time as number)) {
-          acc.push(point);
-        } else {
-          // Replace with newer data if timestamp is duplicate
-          acc[acc.length - 1] = point;
-        }
-        return acc;
-      }, []);
-      
-      setStateData(deduplicated);
+      setStateData(newData);
     } else if (newsEvents.length === 0) {
       // Reset to baseline when no events
       const now = Math.floor(Date.now() / 1000);
