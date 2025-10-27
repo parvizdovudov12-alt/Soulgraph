@@ -44,6 +44,21 @@ Preferred communication style: Simple, everyday language.
 -   **Clickable Candlesticks**: Clicking a candlestick or event marker opens a popup displaying all associated events for that day, including media previews.
 -   **Chart Tooltip System**: Interactive tooltips displaying event details (text, media, impact values) on crosshair hover.
 -   **Daily Balance Visualization**: A circular diagram (`DailyBalance`) in the control panel that aggregates the signed impact of all news events from the last 24 hours across the four life states, showing net balance and individual state contributions.
+-   **Clear All Events**: Destructive action with confirmation dialog that deletes all user events and resets graph to baseline (0 for all states). Includes event count display and cancellation option.
+
+## Recent Fixes & Technical Details
+
+### Event Display System (October 2025)
+-   **Baseline Timing Fix**: Baseline point now created 1 second BEFORE first event (previously used `Date.now()` which appeared after historical events, causing false red candlesticks)
+-   **Event Loading Fix**: Changed useEffect dependency from `newsEvents.length` to `newsEvents` array to ensure events display immediately on page load
+-   **NewsModal Form Reset**: Added useEffect to reset form state (text, impact sliders, media) when modal opens, preventing stale data between uses
+-   **Impact Values**: Slider ranges -20 to +20 per state, with proper state management to ensure values persist to database
+
+### Chart Rendering Logic
+-   **Candlestick Colors**: Green (bullish) when close > open, Red (bearish) when close < open
+-   **Aggregate Calculation**: Weighted average of 4 states with equal weights (0.25 each)
+-   **Data Flow**: Events → State Data Points → Chart Series → Visual Candlesticks/Lines
+-   **Marker Display**: Line charts use built-in `setMarkers()`, Candlestick charts use custom HTML markers positioned via `timeToCoordinate()` and `priceToCoordinate()`
 
 ## External Dependencies
 

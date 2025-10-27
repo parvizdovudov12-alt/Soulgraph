@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,15 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
     financial: 0,
   });
   const [mediaFiles, setMediaFiles] = useState<{ type: 'image' | 'video'; url: string }[]>([]);
+
+  // Reset form when modal opens or type changes
+  useEffect(() => {
+    if (open) {
+      setText('');
+      setImpact({ mental: 0, physical: 0, moral: 0, financial: 0 });
+      setMediaFiles([]);
+    }
+  }, [open, type]);
 
   const handleSubmit = () => {
     if (!text.trim()) return;
