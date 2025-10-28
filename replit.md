@@ -55,6 +55,8 @@ Preferred communication style: Simple, everyday language.
 -   **Impact Values**: Slider ranges -20 to +20 per state, with proper state management to ensure values persist to database
 -   **Chart Display Fix**: Hidden individual state lines by default (mental, physical, moral, financial all set to `false`), showing only aggregate candlestick/line chart for clean visualization
 -   **Candlestick Logic Simplification**: Replaced complex volatility-based calculation with simple open/close logic where `open = previous aggregate value` and `close = current aggregate value`
+-   **Negative Values Support**: Changed value range from 0-100 to -1000 to +1000, allowing negative states to display correctly on chart with red candlesticks
+-   **NewsModal State Persistence**: Removed 'type' dependency from useEffect to prevent form reset while modal is open, ensuring slider values persist during user interaction
 
 ### Chart Rendering Logic
 -   **Candlestick Colors**: Green (bullish) when close > open, Red (bearish) when close < open

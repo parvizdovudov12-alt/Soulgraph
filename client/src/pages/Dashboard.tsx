@@ -76,10 +76,10 @@ export default function Dashboard() {
         const lastPoint = newData[newData.length - 1];
         newData.push({
           time: event.time,
-          mental: Math.max(0, Math.min(100, lastPoint.mental + event.impact.mental)),
-          physical: Math.max(0, Math.min(100, lastPoint.physical + event.impact.physical)),
-          moral: Math.max(0, Math.min(100, lastPoint.moral + event.impact.moral)),
-          financial: Math.max(0, Math.min(100, lastPoint.financial + event.impact.financial)),
+          mental: Math.max(-1000, Math.min(1000, lastPoint.mental + event.impact.mental)),
+          physical: Math.max(-1000, Math.min(1000, lastPoint.physical + event.impact.physical)),
+          moral: Math.max(-1000, Math.min(1000, lastPoint.moral + event.impact.moral)),
+          financial: Math.max(-1000, Math.min(1000, lastPoint.financial + event.impact.financial)),
         });
       });
       

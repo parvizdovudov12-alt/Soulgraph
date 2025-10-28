@@ -36,14 +36,14 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
   });
   const [mediaFiles, setMediaFiles] = useState<{ type: 'image' | 'video'; url: string }[]>([]);
 
-  // Reset form when modal opens or type changes
+  // Reset form when modal opens (not when it's already open)
   useEffect(() => {
     if (open) {
       setText('');
       setImpact({ mental: 0, physical: 0, moral: 0, financial: 0 });
       setMediaFiles([]);
     }
-  }, [open, type]);
+  }, [open]); // Removed 'type' dependency to avoid resetting while modal is open
 
   const handleSubmit = () => {
     if (!text.trim()) return;
