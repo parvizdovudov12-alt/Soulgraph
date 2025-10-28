@@ -53,6 +53,8 @@ Preferred communication style: Simple, everyday language.
 -   **Event Loading Fix**: Changed useEffect dependency from `newsEvents.length` to `newsEvents` array to ensure events display immediately on page load
 -   **NewsModal Form Reset**: Added useEffect to reset form state (text, impact sliders, media) when modal opens, preventing stale data between uses
 -   **Impact Values**: Slider ranges -20 to +20 per state, with proper state management to ensure values persist to database
+-   **Chart Display Fix**: Hidden individual state lines by default (mental, physical, moral, financial all set to `false`), showing only aggregate candlestick/line chart for clean visualization
+-   **Candlestick Logic Simplification**: Replaced complex volatility-based calculation with simple open/close logic where `open = previous aggregate value` and `close = current aggregate value`
 
 ### Chart Rendering Logic
 -   **Candlestick Colors**: Green (bullish) when close > open, Red (bearish) when close < open

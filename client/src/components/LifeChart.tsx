@@ -265,40 +265,40 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     
     if (chartType === 'candlestick') {
       const candleData: CandlestickData[] = dedupedData.map((point, index) => {
-        // Ensure all values are numbers, fallback to 0
+        // Calculate current aggregate value
         const mental = Number(point.mental) || 0;
         const physical = Number(point.physical) || 0;
         const moral = Number(point.moral) || 0;
         const financial = Number(point.financial) || 0;
         
-        const value =
+        const currentValue =
           (mental * weights.mental +
             physical * weights.physical +
             moral * weights.moral +
             financial * weights.financial) /
           total;
         
-        let prevValue = value;
+        // Get previous value (open)
+        let openValue = currentValue;
         if (index > 0) {
           const prevMental = Number(dedupedData[index - 1].mental) || 0;
           const prevPhysical = Number(dedupedData[index - 1].physical) || 0;
           const prevMoral = Number(dedupedData[index - 1].moral) || 0;
           const prevFinancial = Number(dedupedData[index - 1].financial) || 0;
           
-          prevValue = (prevMental * weights.mental +
+          openValue = (prevMental * weights.mental +
                       prevPhysical * weights.physical +
                       prevMoral * weights.moral +
                       prevFinancial * weights.financial) / total;
         }
         
-        const volatility = Math.abs(value - prevValue) * 0.5;
-        
+        // Simple candlestick: open=prev, close=current, high/low=max/min
         return {
           time: point.time,
-          open: Number.isFinite(prevValue) ? prevValue : value,
-          high: Number.isFinite(Math.max(value, prevValue) + volatility) ? Math.max(value, prevValue) + volatility : value,
-          low: Number.isFinite(Math.min(value, prevValue) - volatility) ? Math.min(value, prevValue) - volatility : value,
-          close: Number.isFinite(value) ? value : 0,
+          open: openValue,
+          high: Math.max(openValue, currentValue),
+          low: Math.min(openValue, currentValue),
+          close: currentValue,
         };
       });
       

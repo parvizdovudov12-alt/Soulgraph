@@ -98,10 +98,10 @@ export default function Dashboard() {
   }, [newsEvents]); // Re-run when events change
 
   const [visibleStates, setVisibleStates] = useState({
-    mental: true,
-    physical: true,
-    moral: true,
-    financial: true,
+    mental: false,
+    physical: false,
+    moral: false,
+    financial: false,
   });
 
   const [newsModalOpen, setNewsModalOpen] = useState(false);
