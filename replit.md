@@ -48,6 +48,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Fixes & Technical Details
 
+### Multiple Timeframe Support (November 2025)
+-   **Timeframe Aggregation**: Implemented client-side aggregation for monthly and yearly views using Moscow time (UTC+3) period bucketing
+-   **UI Selector**: Added День/Месяц/Год buttons in ControlPanel with active state highlighting
+-   **Data Aggregation**: `aggregatedData` groups StateData by period, `aggregatedNews` creates summary events with total impact counts
+-   **Grouped Events**: Monthly/yearly markers contain `groupedEvents` array with all original events in that period, displayed in popup
+-   **Summary Text**: Aggregated markers show "N событий (+X -Y)" format with positive/negative event counts
+-   **Chart Type Restriction**: Candlestick mode restricted to daily view only; monthly/yearly use line charts to avoid OHLC complexity
+-   **Infinite Loop Fix**: Removed `news` from chart creation dependencies, using `newsRef.current` in event handlers to prevent stale closures
+-   **Separate Timeframe Update**: Dedicated useEffect updates chart localization when timeframe changes without recreating entire chart
+-   **Stable References**: All chart event handlers (click, crosshair) use refs to access latest data without triggering rerenders
+-   **Date Utilities**: Created `dateUtils.ts` with `getPeriodBucket()` and `formatPeriodLabel()` for consistent period handling
+
 ### Event Display System (October 2025)
 -   **Baseline Timing Fix**: Baseline point now created 1 second BEFORE first event (previously used `Date.now()` which appeared after historical events, causing false red candlesticks)
 -   **Event Loading Fix**: Changed useEffect dependency from `newsEvents.length` to `newsEvents` array to ensure events display immediately on page load
