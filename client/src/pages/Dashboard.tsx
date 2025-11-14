@@ -343,7 +343,7 @@ export default function Dashboard() {
             visibleStates={visibleStates}
             weights={weights}
             news={aggregatedNews}
-            chartType={chartType}
+            chartType={timeframe === 'day' ? chartType : 'line'}
             tokenName={tokenName}
             timeframe={timeframe}
           />

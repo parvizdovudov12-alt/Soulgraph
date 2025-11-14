@@ -217,22 +217,35 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     chart.subscribeClick((param) => {
       if (!param.time || !chartContainerRef.current) return;
 
-      // Get the date (ignore time of day)
       const clickTime = param.time as number;
-      const clickDate = new Date(clickTime * 1000);
-      clickDate.setHours(0, 0, 0, 0);
 
-      // Find all events on this date (use ref to avoid stale closure)
-      const eventsOnDate = newsRef.current.filter((event) => {
-        const eventTime = event.time as number;
-        const eventDate = new Date(eventTime * 1000);
-        eventDate.setHours(0, 0, 0, 0);
-        return eventDate.getTime() === clickDate.getTime();
-      });
+      // Find matching news event(s)
+      let eventsToShow: NewsEvent[] = [];
 
-      if (eventsOnDate.length > 0 && param.point) {
+      // First check if clicked event has groupedEvents (aggregated timeframe)
+      const clickedEvent = newsRef.current.find(e => (e.time as number) === clickTime);
+      if (clickedEvent?.groupedEvents) {
+        // Show all grouped events
+        eventsToShow = clickedEvent.groupedEvents;
+      } else {
+        // Daily timeframe - find all events on this date
+        const clickDate = new Date(clickTime * 1000);
+        clickDate.setHours(0, 0, 0, 0);
+
+        eventsToShow = newsRef.current.filter((event) => {
+          // Skip aggregated summary events
+          if (event.groupedEvents) return false;
+          
+          const eventTime = event.time as number;
+          const eventDate = new Date(eventTime * 1000);
+          eventDate.setHours(0, 0, 0, 0);
+          return eventDate.getTime() === clickDate.getTime();
+        });
+      }
+
+      if (eventsToShow.length > 0 && param.point) {
         const rect = chartContainerRef.current.getBoundingClientRect();
-        setSelectedNews(eventsOnDate);
+        setSelectedNews(eventsToShow);
         setPopupPosition({
           x: rect.left + param.point.x,
           y: rect.top + param.point.y,
