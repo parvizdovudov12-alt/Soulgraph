@@ -198,8 +198,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         return;
       }
 
-      // Find event at this time
-      const event = news.find((e) => e.time === param.time);
+      // Find event at this time (use ref to avoid stale closure)
+      const event = newsRef.current.find((e) => e.time === param.time);
       
       if (event && chartContainerRef.current) {
         const rect = chartContainerRef.current.getBoundingClientRect();
