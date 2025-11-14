@@ -66,6 +66,12 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     financial: null,
   });
   
+  // Use refs to avoid stale closures in chart event handlers
+  const newsRef = useRef(news);
+  useEffect(() => {
+    newsRef.current = news;
+  }, [news]);
+  
   const [selectedNews, setSelectedNews] = useState<NewsEvent[]>([]);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [markersReady, setMarkersReady] = useState(false);
@@ -107,7 +113,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       },
       localization: {
         timeFormatter: (timestamp: number) => {
-          return formatPeriodLabel(timestamp, timeframe);
+          return formatPeriodLabel(timestamp, 'day');
         },
       },
       rightPriceScale: {
@@ -216,8 +222,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       const clickDate = new Date(clickTime * 1000);
       clickDate.setHours(0, 0, 0, 0);
 
-      // Find all events on this date
-      const eventsOnDate = news.filter((event) => {
+      // Find all events on this date (use ref to avoid stale closure)
+      const eventsOnDate = newsRef.current.filter((event) => {
         const eventTime = event.time as number;
         const eventDate = new Date(eventTime * 1000);
         eventDate.setHours(0, 0, 0, 0);
@@ -238,7 +244,20 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       resizeObserver.disconnect();
       chart.remove();
     };
-  }, [chartType, news]);
+  }, [chartType]);
+
+  // Update timeFormatter when timeframe changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+    
+    chartRef.current.applyOptions({
+      localization: {
+        timeFormatter: (timestamp: number) => {
+          return formatPeriodLabel(timestamp, timeframe);
+        },
+      },
+    });
+  }, [timeframe]);
 
   // Deduplicate data by time (keep last value for each timestamp)
   const deduplicateData = <T extends { time: Time }>(data: T[]): T[] => {
