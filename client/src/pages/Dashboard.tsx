@@ -8,6 +8,7 @@ import ConnectWallet from '@/components/ConnectWallet';
 import { useAuth } from '@/hooks/useAuth';
 import { Activity } from 'lucide-react';
 import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
+import { getPeriodBucket } from '@/lib/dateUtils';
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -107,6 +108,7 @@ export default function Dashboard() {
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
+  const [timeframe, setTimeframe] = useState<'day' | 'month' | 'year'>('day');
 
   // Fixed weights (equal for all states)
   const weights = {
@@ -115,6 +117,108 @@ export default function Dashboard() {
     moral: 0.25,
     financial: 0.25,
   };
+
+  // Aggregate data based on timeframe
+  const aggregatedData = useMemo(() => {
+    if (timeframe === 'day') {
+      return stateData; // No aggregation for daily view
+    }
+
+    if (stateData.length === 0) return stateData;
+
+    // Group data points by period
+    const buckets = new Map<number, StateData[]>();
+    
+    stateData.forEach(point => {
+      const bucket = getPeriodBucket(point.time as number, timeframe);
+      if (!buckets.has(bucket)) {
+        buckets.set(bucket, []);
+      }
+      buckets.get(bucket)!.push(point);
+    });
+
+    // Calculate period end values for each bucket
+    const aggregated: StateData[] = [];
+    const sortedBuckets = Array.from(buckets.keys()).sort((a, b) => a - b);
+
+    sortedBuckets.forEach(bucketTime => {
+      const points = buckets.get(bucketTime)!;
+      if (points.length === 0) return;
+
+      // Use the last point of the period (period close value)
+      const last = points[points.length - 1];
+
+      aggregated.push({
+        time: bucketTime as any,
+        mental: last.mental,
+        physical: last.physical,
+        moral: last.moral,
+        financial: last.financial,
+      });
+    });
+
+    return aggregated;
+  }, [stateData, timeframe]);
+
+  // Aggregate news events by period
+  const aggregatedNews = useMemo(() => {
+    if (timeframe === 'day') {
+      return newsEvents; // No aggregation for daily view
+    }
+
+    if (newsEvents.length === 0) return newsEvents;
+
+    // Group events by period
+    const buckets = new Map<number, NewsEvent[]>();
+    
+    newsEvents.forEach(event => {
+      const bucket = getPeriodBucket(event.time as number, timeframe);
+      if (!buckets.has(bucket)) {
+        buckets.set(bucket, []);
+      }
+      buckets.get(bucket)!.push(event);
+    });
+
+    // Create summary event for each period
+    const aggregated: NewsEvent[] = [];
+    const sortedBuckets = Array.from(buckets.keys()).sort((a, b) => a - b);
+
+    sortedBuckets.forEach(bucketTime => {
+      const events = buckets.get(bucketTime)!;
+      if (events.length === 0) return;
+
+      // Calculate total impact for the period
+      const totalImpact = events.reduce(
+        (acc, event) => ({
+          mental: acc.mental + event.impact.mental,
+          physical: acc.physical + event.impact.physical,
+          moral: acc.moral + event.impact.moral,
+          financial: acc.financial + event.impact.financial,
+        }),
+        { mental: 0, physical: 0, moral: 0, financial: 0 }
+      );
+
+      // Determine overall type based on total impact
+      const totalValue = totalImpact.mental + totalImpact.physical + totalImpact.moral + totalImpact.financial;
+      const type = totalValue >= 0 ? 'positive' : 'negative';
+
+      // Create summary text
+      const positiveCount = events.filter(e => e.type === 'positive').length;
+      const negativeCount = events.filter(e => e.type === 'negative').length;
+      const summaryText = `${events.length} событий (${positiveCount > 0 ? `+${positiveCount}` : ''} ${negativeCount > 0 ? `-${negativeCount}` : ''})`;
+
+      aggregated.push({
+        time: bucketTime as any,
+        type,
+        text: summaryText,
+        impact: totalImpact,
+        // Store original events for popup display
+        groupedEvents: events,
+      } as any);
+    });
+
+    return aggregated;
+  }, [newsEvents, timeframe]);
 
   // Calculate total assets
   const totalAssets = useMemo(() => {
@@ -235,12 +339,13 @@ export default function Dashboard() {
         {/* Chart Area */}
         <div className="flex-1 p-4">
           <LifeChart
-            data={stateData}
+            data={aggregatedData}
             visibleStates={visibleStates}
             weights={weights}
-            news={newsEvents}
+            news={aggregatedNews}
             chartType={chartType}
             tokenName={tokenName}
+            timeframe={timeframe}
           />
         </div>
 
@@ -265,6 +370,8 @@ export default function Dashboard() {
           tokenName={tokenName}
           onTokenNameUpdate={setTokenName}
           isAuthenticated={isAuthenticated}
+          timeframe={timeframe}
+          onTimeframeChange={setTimeframe}
         />
       </div>
 

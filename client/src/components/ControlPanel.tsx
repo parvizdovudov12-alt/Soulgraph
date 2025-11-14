@@ -42,6 +42,8 @@ interface ControlPanelProps {
   tokenName: string;
   onTokenNameUpdate: (newName: string) => void;
   isAuthenticated: boolean;
+  timeframe?: 'day' | 'month' | 'year';
+  onTimeframeChange?: (timeframe: 'day' | 'month' | 'year') => void;
 }
 
 export default function ControlPanel({
@@ -58,6 +60,8 @@ export default function ControlPanel({
   tokenName,
   onTokenNameUpdate,
   isAuthenticated,
+  timeframe = 'day',
+  onTimeframeChange,
 }: ControlPanelProps) {
   const states: Array<{ key: StateKey; label: string; color: string; bgColor: string; icon: any }> = [
     { key: 'mental', label: 'Душевное', color: 'text-mental', bgColor: 'bg-mental/10', icon: Sparkles },
@@ -97,6 +101,44 @@ export default function ControlPanel({
           </div>
         </div>
       </div>
+
+      {/* Timeframe Selector */}
+      {onTimeframeChange && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            Период
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              variant={timeframe === 'day' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onTimeframeChange('day')}
+              className="flex-1"
+              data-testid="button-timeframe-day"
+            >
+              День
+            </Button>
+            <Button
+              variant={timeframe === 'month' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onTimeframeChange('month')}
+              className="flex-1"
+              data-testid="button-timeframe-month"
+            >
+              Месяц
+            </Button>
+            <Button
+              variant={timeframe === 'year' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onTimeframeChange('year')}
+              className="flex-1"
+              data-testid="button-timeframe-year"
+            >
+              Год
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Chart Type Toggle */}
       <div className="space-y-3">

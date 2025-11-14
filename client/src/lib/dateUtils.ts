@@ -31,3 +31,58 @@ export function formatMoscowDateTime(timestamp: number): string {
   const year = moscowDate.getUTCFullYear();
   return `${day} ${month} ${year}`;
 }
+
+// Get the start of day in Moscow time for a given Unix timestamp
+export function getStartOfDay(unixSeconds: number): number {
+  const moscowDate = toMoscowTime(unixSeconds);
+  const startOfDay = new Date(moscowDate.getUTCFullYear(), moscowDate.getUTCMonth(), moscowDate.getUTCDate());
+  return Math.floor((startOfDay.getTime() - (3 * 60 * 60 * 1000)) / 1000);
+}
+
+// Get the start of month in Moscow time for a given Unix timestamp
+export function getStartOfMonth(unixSeconds: number): number {
+  const moscowDate = toMoscowTime(unixSeconds);
+  const startOfMonth = new Date(moscowDate.getUTCFullYear(), moscowDate.getUTCMonth(), 1);
+  return Math.floor((startOfMonth.getTime() - (3 * 60 * 60 * 1000)) / 1000);
+}
+
+// Get the start of year in Moscow time for a given Unix timestamp
+export function getStartOfYear(unixSeconds: number): number {
+  const moscowDate = toMoscowTime(unixSeconds);
+  const startOfYear = new Date(moscowDate.getUTCFullYear(), 0, 1);
+  return Math.floor((startOfYear.getTime() - (3 * 60 * 60 * 1000)) / 1000);
+}
+
+// Format period label for display
+export function formatPeriodLabel(unixSeconds: number, timeframe: 'day' | 'month' | 'year'): string {
+  const moscowDate = toMoscowTime(unixSeconds);
+  
+  if (timeframe === 'year') {
+    return moscowDate.getUTCFullYear().toString();
+  }
+  
+  if (timeframe === 'month') {
+    const monthNames = [
+      'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+      'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'
+    ];
+    return `${monthNames[moscowDate.getUTCMonth()]} ${moscowDate.getUTCFullYear()}`;
+  }
+  
+  // Day
+  const day = moscowDate.getUTCDate().toString().padStart(2, '0');
+  const month = (moscowDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  return `${day}.${month}.${moscowDate.getUTCFullYear()}`;
+}
+
+// Get the period bucket key for grouping
+export function getPeriodBucket(unixSeconds: number, timeframe: 'day' | 'month' | 'year'): number {
+  switch (timeframe) {
+    case 'day':
+      return getStartOfDay(unixSeconds);
+    case 'month':
+      return getStartOfMonth(unixSeconds);
+    case 'year':
+      return getStartOfYear(unixSeconds);
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries, CandlestickSeries, IChartApi, LineData, CandlestickData, SeriesMarker, Time } from 'lightweight-charts';
 import NewsPopup from './NewsPopup';
 import ChartTooltip from './ChartTooltip';
+import { formatPeriodLabel } from '@/lib/dateUtils';
 
 export interface StateData {
   time: Time;
@@ -25,6 +26,7 @@ export interface NewsEvent {
     type: 'image' | 'video';
     url: string;
   }[];
+  groupedEvents?: NewsEvent[]; // For aggregated timeframes
 }
 
 interface LifeChartProps {
@@ -44,9 +46,10 @@ interface LifeChartProps {
   news: NewsEvent[];
   chartType?: 'line' | 'candlestick';
   tokenName: string;
+  timeframe?: 'day' | 'month' | 'year';
 }
 
-export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName }: LifeChartProps) {
+export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = 'day' }: LifeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<{
@@ -104,14 +107,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       },
       localization: {
         timeFormatter: (timestamp: number) => {
-          const date = new Date(timestamp * 1000);
-          // Convert to Moscow time (UTC+3)
-          const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-          const hours = moscowTime.getUTCHours().toString().padStart(2, '0');
-          const minutes = moscowTime.getUTCMinutes().toString().padStart(2, '0');
-          const day = moscowTime.getUTCDate().toString().padStart(2, '0');
-          const month = (moscowTime.getUTCMonth() + 1).toString().padStart(2, '0');
-          return `${day}.${month} ${hours}:${minutes}`;
+          return formatPeriodLabel(timestamp, timeframe);
         },
       },
       rightPriceScale: {
