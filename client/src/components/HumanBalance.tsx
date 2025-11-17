@@ -34,23 +34,27 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
     return totals;
   }, [newsEvents]);
 
-  // Convert balance to opacity (0 to 1)
+  // Convert balance to opacity (with visual distinction for negative values)
   const getOpacity = (value: number) => {
-    // Map -20 to +20 range to 0.1 to 1.0 opacity
-    const normalized = Math.abs(value) / 20;
-    return Math.min(Math.max(0.1 + normalized * 0.9, 0.1), 1);
+    const absValue = Math.abs(value);
+    const normalized = Math.min(absValue / 20, 1); // 0 to 1
+    
+    if (value === 0) return 0.05; // Nearly invisible for zero
+    
+    // Positive values: scale from 0.1 to 1.0 (full brightness)
+    if (value > 0) {
+      return 0.1 + normalized * 0.9;
+    }
+    
+    // Negative values: scale from 0.1 to 0.6 (dimmer to distinguish from positive)
+    return 0.1 + normalized * 0.5;
   };
 
-  // Get color based on positive/negative
-  const getColor = (value: number, baseColor: string) => {
-    if (value === 0) return `${baseColor}20`; // Very transparent if neutral
-    return value > 0 ? baseColor : '#ef4444'; // Base color if positive, red if negative
-  };
-
-  const mentalColor = getColor(balance.mental, '#c084fc'); // Purple
-  const physicalColor = getColor(balance.physical, '#06b6d4'); // Cyan
-  const moralColor = getColor(balance.moral, '#eab308'); // Yellow
-  const financialColor = getColor(balance.financial, '#10b981'); // Green
+  // Base colors for each state (always consistent)
+  const mentalColor = '#c084fc'; // Purple
+  const physicalColor = '#06b6d4'; // Cyan
+  const moralColor = '#eab308'; // Yellow
+  const financialColor = '#10b981'; // Green
 
   return (
     <div className="flex flex-col items-center gap-3" data-testid="human-balance">
@@ -93,6 +97,8 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
           r="25"
           fill={mentalColor}
           opacity={getOpacity(balance.mental)}
+          stroke={balance.mental < 0 ? '#ef4444' : 'none'}
+          strokeWidth={balance.mental < 0 ? '3' : '0'}
           data-testid="region-mental"
         />
 
@@ -104,6 +110,8 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
           ry="25"
           fill={moralColor}
           opacity={getOpacity(balance.moral)}
+          stroke={balance.moral < 0 ? '#ef4444' : 'none'}
+          strokeWidth={balance.moral < 0 ? '3' : '0'}
           data-testid="region-moral"
         />
 
@@ -115,6 +123,8 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
           ry="35"
           fill={physicalColor}
           opacity={getOpacity(balance.physical)}
+          stroke={balance.physical < 0 ? '#ef4444' : 'none'}
+          strokeWidth={balance.physical < 0 ? '3' : '0'}
           data-testid="region-physical"
         />
 
@@ -122,6 +132,8 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
         <g
           fill={financialColor}
           opacity={getOpacity(balance.financial)}
+          stroke={balance.financial < 0 ? '#ef4444' : 'none'}
+          strokeWidth={balance.financial < 0 ? '3' : '0'}
           data-testid="region-financial"
         >
           {/* Left leg */}
