@@ -15,7 +15,9 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
       (event) => {
         // Skip aggregated summary events
         if (event.groupedEvents) return false;
-        return (event.time as number) >= oneDayAgo;
+        
+        const eventTime = typeof event.time === 'number' ? event.time : parseInt(event.time as string);
+        return eventTime >= oneDayAgo;
       }
     );
 
