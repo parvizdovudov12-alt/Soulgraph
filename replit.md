@@ -43,10 +43,18 @@ Preferred communication style: Simple, everyday language.
 -   **Media Persistence**: Support for photo/video attachments (up to 10MB) in events, stored as base64 data URLs in the database, with persistent display.
 -   **Clickable Candlesticks**: Clicking a candlestick or event marker opens a popup displaying all associated events for that day, including media previews.
 -   **Chart Tooltip System**: Interactive tooltips displaying event details (text, media, impact values) on crosshair hover.
--   **Daily Balance Visualization**: A human figure SVG (`HumanBalance`) in the control panel that aggregates the signed impact of all news events from the last 24 hours. Body regions (head=Mental, chest=Moral, torso=Physical, legs=Financial) fill with state-specific colors (purple/yellow/cyan/green) where opacity indicates magnitude and red stroke borders mark negative balances. Positive values scale to full opacity (1.0), while negative values are dimmer (max 0.6) for clear visual distinction.
+-   **Daily Balance Visualization**: A detailed tactical/military-style human figure SVG (`HumanBalance`) in the control panel that aggregates the signed impact of all news events from the last 24 hours. Features helmet, tactical vest, belt, knee pads, and boots with extended legs (400px height). Body regions (head=Mental, chest/vest=Moral, torso=Physical, legs=Financial) fill with state-specific colors (purple/yellow/cyan/green) where opacity indicates magnitude and red stroke borders mark negative balances. Positive values scale to full opacity (1.0), while negative values are dimmer (max 0.6) for clear visual distinction.
 -   **Clear All Events**: Destructive action with confirmation dialog that deletes all user events and resets graph to baseline (0 for all states). Includes event count display and cancellation option.
 
 ## Recent Fixes & Technical Details
+
+### Tactical Human Figure Design (November 2025)
+-   **Visual Redesign**: Upgraded HumanBalance from simple shapes to detailed tactical/military-style silhouette with realistic proportions
+-   **Extended Height**: Increased SVG from 300px to 400px for longer, more proportional legs as requested
+-   **Tactical Details**: Added helmet, tactical vest with pockets, utility belt, knee pads, combat boots, and forearm guards
+-   **Region Mapping Preserved**: Head (helmet)=Mental, Chest (vest)=Moral, Torso (core)=Physical, Legs (full)=Financial
+-   **Color Semantics Fix**: Changed negative value indication from red color to red stroke border while preserving base state colors (purple/cyan/yellow/green)
+-   **Opacity Distinction**: Positive values scale 0.1→1.0 opacity (bright), negative values scale 0.1→0.6 opacity (dimmer) for clear visual distinction
 
 ### Multiple Timeframe Support (November 2025)
 -   **Timeframe Aggregation**: Implemented client-side aggregation for monthly and yearly views using Moscow time (UTC+3) period bucketing
