@@ -17,8 +17,8 @@ Preferred communication style: Simple, everyday language.
 -   **UI Components**: Radix UI primitives and shadcn/ui ("new-york" style) for a consistent design system.
 -   **Styling**: Tailwind CSS configured for a dark mode, trading platform aesthetic, using HSL color values and custom design tokens for backgrounds and semantic/state-specific colors.
 -   **State Management**: React hooks for local state; TanStack Query for server state management and caching.
--   **Data Visualization**: `lightweight-charts` for interactive candlestick and line charts, supporting custom markers for news events and multiple time series overlays. Custom token name display is supported. `recharts` is used for the Daily Balance circular diagram.
--   **Core Components**: `LifeChart`, `ControlPanel`, `TokenNameEditor`, `NewsModal`, `NewsPopup`, `ChartTooltip`, `DailyBalance`.
+-   **Data Visualization**: `lightweight-charts` for interactive candlestick and line charts, supporting custom markers for news events and multiple time series overlays. Custom token name display is supported. Custom SVG rendering for the Daily Balance human figure visualization.
+-   **Core Components**: `LifeChart`, `ControlPanel`, `TokenNameEditor`, `NewsModal`, `NewsPopup`, `ChartTooltip`, `HumanBalance`.
 
 ### Backend
 
@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 -   **Media Persistence**: Support for photo/video attachments (up to 10MB) in events, stored as base64 data URLs in the database, with persistent display.
 -   **Clickable Candlesticks**: Clicking a candlestick or event marker opens a popup displaying all associated events for that day, including media previews.
 -   **Chart Tooltip System**: Interactive tooltips displaying event details (text, media, impact values) on crosshair hover.
--   **Daily Balance Visualization**: A circular diagram (`DailyBalance`) in the control panel that aggregates the signed impact of all news events from the last 24 hours across the four life states, showing net balance and individual state contributions.
+-   **Daily Balance Visualization**: A human figure SVG (`HumanBalance`) in the control panel that aggregates the signed impact of all news events from the last 24 hours. Body regions (head=Mental, chest=Moral, torso=Physical, legs=Financial) fill with state-specific colors (purple/yellow/cyan/green) where opacity indicates magnitude and red stroke borders mark negative balances. Positive values scale to full opacity (1.0), while negative values are dimmer (max 0.6) for clear visual distinction.
 -   **Clear All Events**: Destructive action with confirmation dialog that deletes all user events and resets graph to baseline (0 for all states). Includes event count display and cancellation option.
 
 ## Recent Fixes & Technical Details
