@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins, Trash2 } from 'lucide-react';
-import DailyBalance from './DailyBalance';
+import { HumanBalance } from './HumanBalance';
 import TokenNameEditor from './TokenNameEditor';
 import type { NewsEvent } from './LifeChart';
 import {
@@ -267,7 +267,7 @@ export default function ControlPanel({
       </div>
 
       {/* Daily Balance */}
-      <DailyBalance news={news} />
+      <HumanBalance newsEvents={news} />
 
       {/* Daily Norm Progress */}
       <div className="space-y-4">
