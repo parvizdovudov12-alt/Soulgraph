@@ -113,7 +113,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       },
       localization: {
         timeFormatter: (timestamp: number) => {
-          return formatPeriodLabel(timestamp, 'day');
+          return formatPeriodLabel(timestamp, timeframe);
         },
       },
       rightPriceScale: {
