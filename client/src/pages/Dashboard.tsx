@@ -108,7 +108,7 @@ export default function Dashboard() {
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
-  const [timeframe, setTimeframe] = useState<'day' | 'month' | 'year'>('day');
+  const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('day');
 
   // Fixed weights (equal for all states)
   const weights = {

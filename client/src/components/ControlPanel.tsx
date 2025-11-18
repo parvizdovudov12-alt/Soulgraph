@@ -42,8 +42,8 @@ interface ControlPanelProps {
   tokenName: string;
   onTokenNameUpdate: (newName: string) => void;
   isAuthenticated: boolean;
-  timeframe?: 'day' | 'month' | 'year';
-  onTimeframeChange?: (timeframe: 'day' | 'month' | 'year') => void;
+  timeframe?: 'day' | 'week' | 'month' | 'year';
+  onTimeframeChange?: (timeframe: 'day' | 'week' | 'month' | 'year') => void;
 }
 
 export default function ControlPanel({
@@ -108,7 +108,7 @@ export default function ControlPanel({
           <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             Период
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant={timeframe === 'day' ? 'default' : 'outline'}
               size="sm"
@@ -117,6 +117,15 @@ export default function ControlPanel({
               data-testid="button-timeframe-day"
             >
               День
+            </Button>
+            <Button
+              variant={timeframe === 'week' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onTimeframeChange('week')}
+              className="flex-1"
+              data-testid="button-timeframe-week"
+            >
+              Неделя
             </Button>
             <Button
               variant={timeframe === 'month' ? 'default' : 'outline'}

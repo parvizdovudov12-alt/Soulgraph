@@ -46,7 +46,7 @@ interface LifeChartProps {
   news: NewsEvent[];
   chartType?: 'line' | 'candlestick';
   tokenName: string;
-  timeframe?: 'day' | 'month' | 'year';
+  timeframe?: 'day' | 'week' | 'month' | 'year';
 }
 
 export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = 'day' }: LifeChartProps) {
