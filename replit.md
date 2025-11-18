@@ -58,14 +58,16 @@ Preferred communication style: Simple, everyday language.
 -   **Performance**: Lightweight CSS overlays blend seamlessly with base image without rendering issues
 
 ### Multiple Timeframe Support (November 2025)
--   **Timeframe Aggregation**: Implemented client-side aggregation for monthly and yearly views using Moscow time (UTC+3) period bucketing
--   **UI Selector**: Added День/Месяц/Год buttons in ControlPanel with active state highlighting
+-   **Timeframe Aggregation**: Implemented client-side aggregation for weekly, monthly and yearly views using Moscow time (UTC+3) period bucketing
+-   **UI Selector**: Added День/Неделя/Месяц/Год buttons in ControlPanel (2x2 grid) with active state highlighting
+-   **Week Calculation**: Week starts on Monday in Moscow time; labels display as "DD-DD.MM" (same month) or "DD.MM-DD.MM" (spanning months)
 -   **Data Aggregation**: `aggregatedData` groups StateData by period, `aggregatedNews` creates summary events with total impact counts
--   **Grouped Events**: Monthly/yearly markers contain `groupedEvents` array with all original events in that period, displayed in popup
+-   **Grouped Events**: Weekly/monthly/yearly markers contain `groupedEvents` array with all original events in that period, displayed in popup
 -   **Summary Text**: Aggregated markers show "N событий (+X -Y)" format with positive/negative event counts
--   **Chart Type Restriction**: Candlestick mode restricted to daily view only; monthly/yearly use line charts to avoid OHLC complexity
+-   **Chart Type Restriction**: Candlestick mode restricted to daily view only; weekly/monthly/yearly use line charts to avoid OHLC complexity
 -   **Infinite Loop Fix**: Removed `news` from chart creation dependencies, using `newsRef.current` in event handlers to prevent stale closures
 -   **Separate Timeframe Update**: Dedicated useEffect updates chart localization when timeframe changes without recreating entire chart
+-   **Dynamic Label Formatting**: Chart timeFormatter uses active timeframe variable to display correct period labels (day/week/month/year formats)
 -   **Stable References**: All chart event handlers (click, crosshair) use refs to access latest data without triggering rerenders
 -   **Date Utilities**: Created `dateUtils.ts` with `getPeriodBucket()` and `formatPeriodLabel()` for consistent period handling
 
