@@ -63,54 +63,109 @@ export function getStartOfYear(unixSeconds: number): number {
   return Math.floor((startOfYear.getTime() - (3 * 60 * 60 * 1000)) / 1000);
 }
 
-// Format period label for display
-export function formatPeriodLabel(unixSeconds: number, timeframe: 'day' | 'week' | 'month' | 'year'): string {
-  const moscowDate = toMoscowTime(unixSeconds);
-  
-  if (timeframe === 'year') {
-    return moscowDate.getUTCFullYear().toString();
+// New timeframe type for trading view
+export type Timeframe = '1D' | '7D' | '30D' | '90D';
+
+// Convert timeframe to days
+export function timeframeToDays(timeframe: Timeframe): number {
+  switch (timeframe) {
+    case '1D': return 1;
+    case '7D': return 7;
+    case '30D': return 30;
+    case '90D': return 90;
   }
-  
-  if (timeframe === 'month') {
-    const monthNames = [
-      'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
-      'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'
-    ];
-    return `${monthNames[moscowDate.getUTCMonth()]} ${moscowDate.getUTCFullYear()}`;
-  }
-  
-  if (timeframe === 'week') {
-    // Show week as range: "01.11 - 07.11"
-    const weekStart = toMoscowTime(getStartOfWeek(unixSeconds));
-    const weekEnd = new Date(weekStart.getTime() + (6 * 24 * 60 * 60 * 1000));
-    
-    const startDay = weekStart.getUTCDate().toString().padStart(2, '0');
-    const startMonth = (weekStart.getUTCMonth() + 1).toString().padStart(2, '0');
-    const endDay = weekEnd.getUTCDate().toString().padStart(2, '0');
-    const endMonth = (weekEnd.getUTCMonth() + 1).toString().padStart(2, '0');
-    
-    if (startMonth === endMonth) {
-      return `${startDay}-${endDay}.${startMonth}`;
-    }
-    return `${startDay}.${startMonth}-${endDay}.${endMonth}`;
-  }
-  
-  // Day
-  const day = moscowDate.getUTCDate().toString().padStart(2, '0');
-  const month = (moscowDate.getUTCMonth() + 1).toString().padStart(2, '0');
-  return `${day}.${month}.${moscowDate.getUTCFullYear()}`;
 }
 
-// Get the period bucket key for grouping
-export function getPeriodBucket(unixSeconds: number, timeframe: 'day' | 'week' | 'month' | 'year'): number {
-  switch (timeframe) {
-    case 'day':
-      return getStartOfDay(unixSeconds);
-    case 'week':
-      return getStartOfWeek(unixSeconds);
-    case 'month':
-      return getStartOfMonth(unixSeconds);
-    case 'year':
-      return getStartOfYear(unixSeconds);
+// Aggregate daily candles into larger periods
+export interface AggregatedCandle {
+  dateStart: number;
+  dateEnd: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  // Individual state close values
+  mental: number;
+  physical: number;
+  moral: number;
+  financial: number;
+}
+
+export function aggregateCandles(
+  dailyData: Array<{ time: number; mental: number; physical: number; moral: number; financial: number }>,
+  days: number
+): AggregatedCandle[] {
+  if (dailyData.length === 0) return [];
+  
+  // Sort by time
+  const sorted = [...dailyData].sort((a, b) => a.time - b.time);
+  
+  // Group into periods
+  const candles: AggregatedCandle[] = [];
+  let currentGroup: typeof sorted = [];
+  let groupStartTime = sorted[0].time;
+  
+  for (let i = 0; i < sorted.length; i++) {
+    const point = sorted[i];
+    const daysSinceStart = Math.floor((point.time - groupStartTime) / (24 * 60 * 60));
+    
+    if (daysSinceStart >= days) {
+      // Finish current group and start new one
+      if (currentGroup.length > 0) {
+        candles.push(createCandleFromGroup(currentGroup));
+      }
+      currentGroup = [point];
+      groupStartTime = point.time;
+    } else {
+      currentGroup.push(point);
+    }
   }
+  
+  // Add last group
+  if (currentGroup.length > 0) {
+    candles.push(createCandleFromGroup(currentGroup));
+  }
+  
+  return candles;
+}
+
+function createCandleFromGroup(
+  group: Array<{ time: number; mental: number; physical: number; moral: number; financial: number }>
+): AggregatedCandle {
+  // Calculate aggregate values for main candle
+  const values = group.map(p => {
+    return (p.mental + p.physical + p.moral + p.financial) / 4;
+  });
+  
+  // Get last (close) values for each state
+  const last = group[group.length - 1];
+  
+  return {
+    dateStart: group[0].time,
+    dateEnd: group[group.length - 1].time,
+    open: values[0],
+    high: Math.max(...values),
+    low: Math.min(...values),
+    close: values[values.length - 1],
+    // Preserve individual state values
+    mental: last.mental,
+    physical: last.physical,
+    moral: last.moral,
+    financial: last.financial,
+  };
+}
+
+// Format period label for display
+export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe): string {
+  const moscowDate = toMoscowTime(unixSeconds);
+  const day = moscowDate.getUTCDate().toString().padStart(2, '0');
+  const month = (moscowDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  const year = moscowDate.getUTCFullYear();
+  
+  return `${day}.${month}.${year}`;
+}
+
+// Legacy function - kept for backwards compatibility (no longer used)
+export function getPeriodBucket(unixSeconds: number, timeframe: string): number {
+  return getStartOfDay(unixSeconds);
 }

@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart,
 import { HumanBalance } from './HumanBalance';
 import TokenNameEditor from './TokenNameEditor';
 import type { NewsEvent } from './LifeChart';
+import type { Timeframe } from '@/lib/dateUtils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,8 +43,8 @@ interface ControlPanelProps {
   tokenName: string;
   onTokenNameUpdate: (newName: string) => void;
   isAuthenticated: boolean;
-  timeframe?: 'day' | 'week' | 'month' | 'year';
-  onTimeframeChange?: (timeframe: 'day' | 'week' | 'month' | 'year') => void;
+  timeframe?: Timeframe;
+  onTimeframeChange?: (timeframe: Timeframe) => void;
 }
 
 export default function ControlPanel({
@@ -60,7 +61,7 @@ export default function ControlPanel({
   tokenName,
   onTokenNameUpdate,
   isAuthenticated,
-  timeframe = 'day',
+  timeframe = '1D',
   onTimeframeChange,
 }: ControlPanelProps) {
   const states: Array<{ key: StateKey; label: string; color: string; bgColor: string; icon: any }> = [
@@ -106,44 +107,44 @@ export default function ControlPanel({
       {onTimeframeChange && (
         <div className="space-y-2 md:space-y-3">
           <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Период
+            Таймфрейм
           </p>
           <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
             <Button
-              variant={timeframe === 'day' ? 'default' : 'outline'}
+              variant={timeframe === '1D' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onTimeframeChange('day')}
-              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
-              data-testid="button-timeframe-day"
+              onClick={() => onTimeframeChange('1D')}
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto font-mono"
+              data-testid="button-timeframe-1d"
             >
-              День
+              1D
             </Button>
             <Button
-              variant={timeframe === 'week' ? 'default' : 'outline'}
+              variant={timeframe === '7D' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onTimeframeChange('week')}
-              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
-              data-testid="button-timeframe-week"
+              onClick={() => onTimeframeChange('7D')}
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto font-mono"
+              data-testid="button-timeframe-7d"
             >
-              Неделя
+              7D
             </Button>
             <Button
-              variant={timeframe === 'month' ? 'default' : 'outline'}
+              variant={timeframe === '30D' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onTimeframeChange('month')}
-              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
-              data-testid="button-timeframe-month"
+              onClick={() => onTimeframeChange('30D')}
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto font-mono"
+              data-testid="button-timeframe-30d"
             >
-              Месяц
+              30D
             </Button>
             <Button
-              variant={timeframe === 'year' ? 'default' : 'outline'}
+              variant={timeframe === '90D' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onTimeframeChange('year')}
-              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
-              data-testid="button-timeframe-year"
+              onClick={() => onTimeframeChange('90D')}
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto font-mono"
+              data-testid="button-timeframe-90d"
             >
-              Год
+              90D
             </Button>
           </div>
         </div>

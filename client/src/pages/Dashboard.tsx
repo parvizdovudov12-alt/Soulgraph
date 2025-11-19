@@ -8,7 +8,7 @@ import ConnectWallet from '@/components/ConnectWallet';
 import { useAuth } from '@/hooks/useAuth';
 import { Activity } from 'lucide-react';
 import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
-import { getPeriodBucket } from '@/lib/dateUtils';
+import { aggregateCandles, timeframeToDays, type Timeframe } from '@/lib/dateUtils';
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -108,7 +108,7 @@ export default function Dashboard() {
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
-  const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('day');
+  const [timeframe, setTimeframe] = useState<Timeframe>('1D');
 
   // Fixed weights (equal for all states)
   const weights = {
@@ -120,73 +120,75 @@ export default function Dashboard() {
 
   // Aggregate data based on timeframe
   const aggregatedData = useMemo(() => {
-    if (timeframe === 'day') {
-      return stateData; // No aggregation for daily view
+    if (timeframe === '1D') {
+      return stateData; // No aggregation for 1D view
     }
 
     if (stateData.length === 0) return stateData;
 
-    // Group data points by period
-    const buckets = new Map<number, StateData[]>();
+    const days = timeframeToDays(timeframe);
     
-    stateData.forEach(point => {
-      const bucket = getPeriodBucket(point.time as number, timeframe);
-      if (!buckets.has(bucket)) {
-        buckets.set(bucket, []);
-      }
-      buckets.get(bucket)!.push(point);
-    });
+    // Convert StateData to format expected by aggregateCandles
+    const dailyData = stateData.map(d => ({
+      time: d.time as number,
+      mental: d.mental,
+      physical: d.physical,
+      moral: d.moral,
+      financial: d.financial,
+    }));
+    
+    const candles = aggregateCandles(dailyData, days);
 
-    // Calculate period end values for each bucket
-    const aggregated: StateData[] = [];
-    const sortedBuckets = Array.from(buckets.keys()).sort((a, b) => a - b);
-
-    sortedBuckets.forEach(bucketTime => {
-      const points = buckets.get(bucketTime)!;
-      if (points.length === 0) return;
-
-      // Use the last point of the period (period close value)
-      const last = points[points.length - 1];
-
-      aggregated.push({
-        time: bucketTime as any,
-        mental: last.mental,
-        physical: last.physical,
-        moral: last.moral,
-        financial: last.financial,
-      });
-    });
-
-    return aggregated;
+    // Convert aggregated candles back to StateData format for chart
+    // Use dateEnd to align with closing values
+    return candles.map(candle => ({
+      time: candle.dateEnd as any,
+      mental: candle.mental,
+      physical: candle.physical,
+      moral: candle.moral,
+      financial: candle.financial,
+    }));
   }, [stateData, timeframe]);
 
   // Aggregate news events by period
   const aggregatedNews = useMemo(() => {
-    if (timeframe === 'day') {
-      return newsEvents; // No aggregation for daily view
+    if (timeframe === '1D') {
+      return newsEvents; // No aggregation for 1D view
     }
 
     if (newsEvents.length === 0) return newsEvents;
 
-    // Group events by period
-    const buckets = new Map<number, NewsEvent[]>();
+    const days = timeframeToDays(timeframe);
     
-    newsEvents.forEach(event => {
-      const bucket = getPeriodBucket(event.time as number, timeframe);
-      if (!buckets.has(bucket)) {
-        buckets.set(bucket, []);
+    // Sort events by time
+    const sorted = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
+    
+    // Group events into periods
+    const periods: NewsEvent[][] = [];
+    let currentPeriod: NewsEvent[] = [];
+    let periodStartTime = sorted[0].time as number;
+    
+    for (let i = 0; i < sorted.length; i++) {
+      const event = sorted[i];
+      const daysSinceStart = Math.floor(((event.time as number) - periodStartTime) / (24 * 60 * 60));
+      
+      if (daysSinceStart >= days) {
+        if (currentPeriod.length > 0) {
+          periods.push(currentPeriod);
+        }
+        currentPeriod = [event];
+        periodStartTime = event.time as number;
+      } else {
+        currentPeriod.push(event);
       }
-      buckets.get(bucket)!.push(event);
-    });
+    }
+    
+    if (currentPeriod.length > 0) {
+      periods.push(currentPeriod);
+    }
 
     // Create summary event for each period
-    const aggregated: NewsEvent[] = [];
-    const sortedBuckets = Array.from(buckets.keys()).sort((a, b) => a - b);
-
-    sortedBuckets.forEach(bucketTime => {
-      const events = buckets.get(bucketTime)!;
-      if (events.length === 0) return;
-
+    const aggregated: NewsEvent[] = periods.map(events => {
       // Calculate total impact for the period
       const totalImpact = events.reduce(
         (acc, event) => ({
@@ -205,16 +207,15 @@ export default function Dashboard() {
       // Create summary text
       const positiveCount = events.filter(e => e.type === 'positive').length;
       const negativeCount = events.filter(e => e.type === 'negative').length;
-      const summaryText = `${events.length} событий (${positiveCount > 0 ? `+${positiveCount}` : ''} ${negativeCount > 0 ? `-${negativeCount}` : ''})`;
+      const summaryText = `${events.length} событий (+${positiveCount} -${negativeCount})`;
 
-      aggregated.push({
-        time: bucketTime as any,
+      return {
+        time: events[0].time,
         type,
         text: summaryText,
         impact: totalImpact,
-        // Store original events for popup display
         groupedEvents: events,
-      } as any);
+      } as any;
     });
 
     return aggregated;
@@ -343,7 +344,7 @@ export default function Dashboard() {
             visibleStates={visibleStates}
             weights={weights}
             news={aggregatedNews}
-            chartType={timeframe === 'day' ? chartType : 'line'}
+            chartType={timeframe === '1D' ? chartType : 'line'}
             tokenName={tokenName}
             timeframe={timeframe}
           />
@@ -365,7 +366,7 @@ export default function Dashboard() {
             setNewsModalOpen(true);
           }}
           onClearAllEvents={handleClearAllEvents}
-          chartType={chartType}
+          chartType={timeframe === '1D' ? chartType : 'line'}
           onChartTypeChange={setChartType}
           tokenName={tokenName}
           onTokenNameUpdate={setTokenName}

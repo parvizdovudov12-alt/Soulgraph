@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries, CandlestickSeries, IChartApi, LineData, CandlestickData, SeriesMarker, Time } from 'lightweight-charts';
 import NewsPopup from './NewsPopup';
 import ChartTooltip from './ChartTooltip';
-import { formatPeriodLabel } from '@/lib/dateUtils';
+import { formatPeriodLabel, type Timeframe } from '@/lib/dateUtils';
 
 export interface StateData {
   time: Time;
@@ -46,10 +46,10 @@ interface LifeChartProps {
   news: NewsEvent[];
   chartType?: 'line' | 'candlestick';
   tokenName: string;
-  timeframe?: 'day' | 'week' | 'month' | 'year';
+  timeframe?: Timeframe;
 }
 
-export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = 'day' }: LifeChartProps) {
+export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = '1D' }: LifeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<{
