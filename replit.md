@@ -68,19 +68,18 @@ Preferred communication style: Simple, everyday language.
 -   **Image Optimization**: Renamed from Cyrillic filename to anatomy_muscles.png for better Vite compatibility
 -   **Performance**: Lightweight CSS overlays blend seamlessly with base image without rendering issues
 
-### Multiple Timeframe Support (November 2025)
--   **Timeframe Aggregation**: Implemented client-side aggregation for weekly, monthly and yearly views using Moscow time (UTC+3) period bucketing
--   **UI Selector**: Added День/Неделя/Месяц/Год buttons in ControlPanel (2x2 grid) with active state highlighting
--   **Week Calculation**: Week starts on Monday in Moscow time; labels display as "DD-DD.MM" (same month) or "DD.MM-DD.MM" (spanning months)
--   **Data Aggregation**: `aggregatedData` groups StateData by period, `aggregatedNews` creates summary events with total impact counts
--   **Grouped Events**: Weekly/monthly/yearly markers contain `groupedEvents` array with all original events in that period, displayed in popup
--   **Summary Text**: Aggregated markers show "N событий (+X -Y)" format with positive/negative event counts
--   **Chart Type Restriction**: Candlestick mode restricted to daily view only; weekly/monthly/yearly use line charts to avoid OHLC complexity
--   **Infinite Loop Fix**: Removed `news` from chart creation dependencies, using `newsRef.current` in event handlers to prevent stale closures
--   **Separate Timeframe Update**: Dedicated useEffect updates chart localization when timeframe changes without recreating entire chart
--   **Dynamic Label Formatting**: Chart timeFormatter uses active timeframe variable to display correct period labels (day/week/month/year formats)
--   **Stable References**: All chart event handlers (click, crosshair) use refs to access latest data without triggering rerenders
--   **Date Utilities**: Created `dateUtils.ts` with `getPeriodBucket()` and `formatPeriodLabel()` for consistent period handling
+### Exchange-Style Timeframe System (November 2025)
+-   **Timeframe Options**: Implemented 1D, 7D, 30D, 90D buttons matching Bybit/Binance UX with monospace font
+-   **aggregateCandles Function**: Created in `dateUtils.ts` to group daily StateData into period candles with OHLC values, preserving individual state closes (mental, physical, moral, financial)
+-   **Intentional Design Choice**: Candlestick mode **restricted to 1D only**; aggregated timeframes (7D/30D/90D) auto-switch to line mode because StateData stores cumulative closes (not intraday OHLC), making aggregated candlesticks visually flat with no meaningful high/low variation
+-   **Period Bucketing**: Candles group by calendar days (7/30/90 consecutive days), using dateEnd for time alignment with closing values
+-   **State Preservation**: Each aggregated candle preserves per-state close values for accurate overlay display in line mode
+-   **UI Updates**: ControlPanel shows 4 monospace buttons (1D/7D/30D/90D) in 2x2 grid with active state highlighting, maintaining 44px iOS touch targets
+-   **Chart Auto-Switching**: Dashboard computes `effectiveChartType` to ensure line mode displays for aggregated timeframes regardless of user's candlestick preference
+-   **Async Query Flow**: TanStack Query refetch after news event creation requires 3-5 seconds for stateData rebuild and currentValues update
+-   **Standard Practice**: Matches major exchanges (Bybit, Binance) which use lines for multi-day periods and reserve candlesticks for native intraday resolutions
+-   **Performance**: No infinite loops; removed duplicate setMarkersReady calls, stable refs for chart event handlers
+-   **Date Utilities**: `timeframeToDays()` maps Timeframe to day counts, `aggregateCandles()` computes OHLC with per-state granularity
 
 ### Event Display System (October 2025)
 -   **Baseline Timing Fix**: Baseline point now created 1 second BEFORE first event (previously used `Date.now()` which appeared after historical events, causing false red candlesticks)
