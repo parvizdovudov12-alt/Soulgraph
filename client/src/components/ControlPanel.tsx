@@ -71,9 +71,9 @@ export default function ControlPanel({
   ];
 
   return (
-    <div className="w-80 bg-card border-l border-card-border p-6 space-y-6 overflow-y-auto">
+    <div className="w-full lg:w-80 bg-card border-t lg:border-t-0 lg:border-l border-card-border p-3 md:p-6 space-y-4 md:space-y-6 overflow-y-auto max-h-[50vh] lg:max-h-none">
       {/* Aggregate Index Display */}
-      <div className="bg-background/50 rounded-lg p-4 border border-border">
+      <div className="bg-background/50 rounded-lg p-3 md:p-4 border border-border">
         <div className="flex items-center mb-2">
           <p className="text-xs text-muted-foreground uppercase tracking-wide" data-testid="text-token-name">
             {tokenName}
@@ -104,16 +104,16 @@ export default function ControlPanel({
 
       {/* Timeframe Selector */}
       {onTimeframeChange && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+        <div className="space-y-2 md:space-y-3">
+          <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
             Период
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
             <Button
               variant={timeframe === 'day' ? 'default' : 'outline'}
               size="sm"
               onClick={() => onTimeframeChange('day')}
-              className="flex-1"
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
               data-testid="button-timeframe-day"
             >
               День
@@ -122,7 +122,7 @@ export default function ControlPanel({
               variant={timeframe === 'week' ? 'default' : 'outline'}
               size="sm"
               onClick={() => onTimeframeChange('week')}
-              className="flex-1"
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
               data-testid="button-timeframe-week"
             >
               Неделя
@@ -131,7 +131,7 @@ export default function ControlPanel({
               variant={timeframe === 'month' ? 'default' : 'outline'}
               size="sm"
               onClick={() => onTimeframeChange('month')}
-              className="flex-1"
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
               data-testid="button-timeframe-month"
             >
               Месяц
@@ -140,7 +140,7 @@ export default function ControlPanel({
               variant={timeframe === 'year' ? 'default' : 'outline'}
               size="sm"
               onClick={() => onTimeframeChange('year')}
-              className="flex-1"
+              className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
               data-testid="button-timeframe-year"
             >
               Год
@@ -150,56 +150,56 @@ export default function ControlPanel({
       )}
 
       {/* Chart Type Toggle */}
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-2 md:space-y-3">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
           График
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 md:gap-2">
           <Button
             variant={chartType === 'line' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onChartTypeChange('line')}
-            className="flex-1"
+            className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
             data-testid="button-chart-line"
           >
-            <LineChart className="w-4 h-4 mr-1" />
+            <LineChart className="w-3 h-3 md:w-4 md:h-4 mr-1" />
             Линии
           </Button>
           <Button
             variant={chartType === 'candlestick' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onChartTypeChange('candlestick')}
-            className="flex-1"
+            className="flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
             data-testid="button-chart-candlestick"
           >
-            <CandlestickChart className="w-4 h-4 mr-1" />
+            <CandlestickChart className="w-3 h-3 md:w-4 md:h-4 mr-1" />
             Свечи
           </Button>
         </div>
       </div>
 
       {/* News Actions */}
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-2 md:space-y-3">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
           События
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 md:gap-2">
           <Button
             onClick={onAddPositiveNews}
-            className="bg-positive hover:bg-positive/90 text-white flex-1"
+            className="bg-positive hover:bg-positive/90 text-white flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
             size="sm"
             data-testid="button-add-positive-news"
           >
-            <TrendingUp className="w-4 h-4 mr-1" />
+            <TrendingUp className="w-3 h-3 md:w-4 md:h-4 mr-1" />
             Позитив
           </Button>
           <Button
             onClick={onAddNegativeNews}
-            className="bg-negative hover:bg-negative/90 text-white flex-1"
+            className="bg-negative hover:bg-negative/90 text-white flex-1 text-xs md:text-sm min-h-[44px] md:h-auto"
             size="sm"
             data-testid="button-add-negative-news"
           >
-            <TrendingDown className="w-4 h-4 mr-1" />
+            <TrendingDown className="w-3 h-3 md:w-4 md:h-4 mr-1" />
             Негатив
           </Button>
         </div>
@@ -209,10 +209,10 @@ export default function ControlPanel({
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full text-destructive hover:text-destructive"
+                className="w-full text-destructive hover:text-destructive text-xs md:text-sm min-h-[44px] md:h-auto"
                 data-testid="button-clear-all-events"
               >
-                <Trash2 className="w-4 h-4 mr-1" />
+                <Trash2 className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                 Очистить все события
               </Button>
             </AlertDialogTrigger>
@@ -239,11 +239,11 @@ export default function ControlPanel({
       </div>
 
       {/* State Indicators */}
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-2 md:space-y-3 hidden md:block">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
           Индикаторы
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 md:gap-2">
           {states.map((state) => {
             const Icon = state.icon;
             const isActive = visibleStates[state.key];
@@ -276,11 +276,13 @@ export default function ControlPanel({
       </div>
 
       {/* Daily Balance */}
-      <HumanBalance newsEvents={news} />
+      <div className="hidden lg:block">
+        <HumanBalance newsEvents={news} />
+      </div>
 
       {/* Daily Norm Progress */}
-      <div className="space-y-4">
-        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-3 md:space-y-4 hidden md:block">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
           Суточная норма
         </p>
         {states.map((state) => {

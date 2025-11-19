@@ -312,18 +312,18 @@ export default function Dashboard() {
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="h-16 border-b border-border flex items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
-            <Activity className="w-5 h-5 text-primary" strokeWidth={2} />
+      <header className="h-14 md:h-16 border-b border-border flex items-center justify-between px-3 md:px-6">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <Activity className="w-4 h-4 md:w-5 md:h-5 text-primary" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground tracking-tight">Soulgraph</h1>
-            <p className="text-xs text-muted-foreground">Трекер жизни</p>
+            <h1 className="text-lg md:text-xl font-semibold text-foreground tracking-tight">Soulgraph</h1>
+            <p className="text-xs text-muted-foreground hidden sm:block">Трекер жизни</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground font-medium">
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="text-xs md:text-sm text-muted-foreground font-medium hidden lg:block">
             {new Date().toLocaleDateString('ru-RU', { 
               year: 'numeric', 
               month: 'long', 
@@ -335,9 +335,9 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Chart Area */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-2 md:p-4 min-h-0">
           <LifeChart
             data={aggregatedData}
             visibleStates={visibleStates}

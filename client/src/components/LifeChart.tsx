@@ -368,10 +368,6 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     })));
 
     chartRef.current?.timeScale().fitContent();
-    
-    // Trigger markers update after chart is ready
-    const timeoutId = setTimeout(() => setMarkersReady(true), 100);
-    return () => clearTimeout(timeoutId);
   }, [data, weights, chartType]);
 
   // Update visibility

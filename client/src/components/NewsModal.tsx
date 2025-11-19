@@ -100,9 +100,9 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-card border-card-border" data-testid="modal-news">
+      <DialogContent className="max-w-md w-[95vw] md:w-full bg-card border-card-border max-h-[90vh] overflow-y-auto" data-testid="modal-news">
         <DialogHeader>
-          <DialogTitle className={`text-xl font-semibold ${isPositive ? 'text-positive' : 'text-negative'}`}>
+          <DialogTitle className={`text-lg md:text-xl font-semibold ${isPositive ? 'text-positive' : 'text-negative'}`}>
             {isPositive ? 'Положительная новость' : 'Отрицательная новость'}
           </DialogTitle>
           <DialogDescription>
@@ -110,9 +110,9 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="news-text" className="text-sm text-muted-foreground">
+            <Label htmlFor="news-text" className="text-xs md:text-sm text-muted-foreground">
               Текст новости
             </Label>
             <Input
@@ -120,21 +120,21 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Что произошло?"
-              className="bg-background border-border"
+              className="bg-background border-border text-sm md:text-base"
               data-testid="input-news-text"
             />
           </div>
 
-          <div className="space-y-4">
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="space-y-3 md:space-y-4">
+            <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Влияние на состояния
             </p>
 
             {/* Mental */}
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm text-mental">Душевное</Label>
-                <span className="text-sm font-mono text-mental">{impact.mental > 0 ? '+' : ''}{impact.mental}</span>
+                <Label className="text-xs md:text-sm text-mental">Душевное</Label>
+                <span className="text-xs md:text-sm font-mono text-mental">{impact.mental > 0 ? '+' : ''}{impact.mental}</span>
               </div>
               <Slider
                 value={[impact.mental]}
@@ -148,10 +148,10 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
             </div>
 
             {/* Physical */}
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm text-physical">Физическое</Label>
-                <span className="text-sm font-mono text-physical">{impact.physical > 0 ? '+' : ''}{impact.physical}</span>
+                <Label className="text-xs md:text-sm text-physical">Физическое</Label>
+                <span className="text-xs md:text-sm font-mono text-physical">{impact.physical > 0 ? '+' : ''}{impact.physical}</span>
               </div>
               <Slider
                 value={[impact.physical]}
@@ -165,10 +165,10 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
             </div>
 
             {/* Moral */}
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm text-moral">Моральное</Label>
-                <span className="text-sm font-mono text-moral">{impact.moral > 0 ? '+' : ''}{impact.moral}</span>
+                <Label className="text-xs md:text-sm text-moral">Моральное</Label>
+                <span className="text-xs md:text-sm font-mono text-moral">{impact.moral > 0 ? '+' : ''}{impact.moral}</span>
               </div>
               <Slider
                 value={[impact.moral]}
@@ -182,10 +182,10 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
             </div>
 
             {/* Financial */}
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm text-financial">Финансовое</Label>
-                <span className="text-sm font-mono text-financial">{impact.financial > 0 ? '+' : ''}{impact.financial}</span>
+                <Label className="text-xs md:text-sm text-financial">Финансовое</Label>
+                <span className="text-xs md:text-sm font-mono text-financial">{impact.financial > 0 ? '+' : ''}{impact.financial}</span>
               </div>
               <Slider
                 value={[impact.financial]}
@@ -200,8 +200,8 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
           </div>
 
           {/* Media Upload */}
-          <div className="space-y-3 pt-4 border-t border-border">
-            <Label className="text-sm text-muted-foreground">Медиа файлы (опционально)</Label>
+          <div className="space-y-2 md:space-y-3 pt-3 md:pt-4 border-t border-border">
+            <Label className="text-xs md:text-sm text-muted-foreground">Медиа файлы (опционально)</Label>
             
             <div className="flex items-center gap-2">
               <input
@@ -218,23 +218,23 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('media-upload')?.click()}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm min-h-[44px] md:h-auto"
                 data-testid="button-upload-media"
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="w-3 h-3 md:w-4 md:h-4" />
                 Загрузить фото/видео
               </Button>
             </div>
 
             {/* Media Preview */}
             {mediaFiles.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5 md:gap-2">
                 {mediaFiles.map((media, index) => (
                   <div key={index} className="relative group rounded-md overflow-hidden bg-background border border-border">
                     {media.type === 'image' ? (
-                      <img src={media.url} alt={`Media ${index + 1}`} className="w-full h-24 object-cover" />
+                      <img src={media.url} alt={`Media ${index + 1}`} className="w-full h-20 md:h-24 object-cover" />
                     ) : (
-                      <video src={media.url} className="w-full h-24 object-cover" />
+                      <video src={media.url} className="w-full h-20 md:h-24 object-cover" />
                     )}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       {media.type === 'image' ? <ImageIcon className="w-6 h-6 text-white" /> : <Video className="w-6 h-6 text-white" />}
@@ -252,10 +252,11 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
             )}
           </div>
 
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex gap-2 md:gap-3 justify-end pt-3 md:pt-4">
             <Button 
               variant="outline" 
               onClick={onClose}
+              className="text-xs md:text-sm min-h-[44px] md:h-auto"
               data-testid="button-cancel"
             >
               Отмена
@@ -263,7 +264,7 @@ export default function NewsModal({ open, onClose, type, onSubmit }: NewsModalPr
             <Button
               onClick={handleSubmit}
               disabled={!text.trim()}
-              className={isPositive ? 'bg-positive hover:bg-positive/90' : 'bg-negative hover:bg-negative/90'}
+              className={`${isPositive ? 'bg-positive hover:bg-positive/90' : 'bg-negative hover:bg-negative/90'} text-xs md:text-sm min-h-[44px] md:h-auto`}
               data-testid="button-submit-news"
             >
               Добавить
