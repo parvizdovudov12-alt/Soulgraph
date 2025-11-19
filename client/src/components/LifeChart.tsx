@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createChart, LineSeries, CandlestickSeries, IChartApi, LineData, CandlestickData, SeriesMarker, Time } from 'lightweight-charts';
 import NewsPopup from './NewsPopup';
 import ChartTooltip from './ChartTooltip';
-import { formatPeriodLabel, type Timeframe, type AggregatedCandle } from '@/lib/dateUtils';
+import { formatPeriodLabel, type Timeframe } from '@/lib/dateUtils';
 
 export interface StateData {
   time: Time;
@@ -30,7 +30,7 @@ export interface NewsEvent {
 }
 
 interface LifeChartProps {
-  data: StateData[] | AggregatedCandle[];
+  data: StateData[];
   visibleStates: {
     mental: boolean;
     physical: boolean;
@@ -272,11 +272,6 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
     });
   }, [timeframe]);
 
-  // Helper to check if data is AggregatedCandle[]
-  const isAggregatedData = (data: StateData[] | AggregatedCandle[]): data is AggregatedCandle[] => {
-    return data.length > 0 && 'dateStart' in data[0];
-  };
-
   // Deduplicate data by time (keep last value for each timestamp)
   const deduplicateData = <T extends { time: Time }>(data: T[]): T[] => {
     const seen = new Map<number, T>();
@@ -290,86 +285,63 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
   useEffect(() => {
     if (!seriesRef.current.aggregate || data.length === 0) return;
 
+    // Deduplicate input data to prevent assertion errors
+    const dedupedData = deduplicateData(data);
+
     // Calculate aggregate data
     const total = weights.mental + weights.physical + weights.moral + weights.financial;
     
     if (chartType === 'candlestick') {
-      let candleData: CandlestickData[] = [];
-      
-      if (isAggregatedData(data)) {
-        // For aggregated data, use existing OHLC values
-        candleData = data.map((candle) => ({
-          time: candle.dateEnd as Time,
-          open: candle.open,
-          high: candle.high,
-          low: candle.low,
-          close: candle.close,
-        }));
-      } else {
-        // For StateData, calculate OHLC from individual state values
-        const dedupedData = deduplicateData(data);
-        candleData = dedupedData.map((point, index) => {
-          // Calculate current aggregate value
-          const mental = Number(point.mental) || 0;
-          const physical = Number(point.physical) || 0;
-          const moral = Number(point.moral) || 0;
-          const financial = Number(point.financial) || 0;
+      const candleData: CandlestickData[] = dedupedData.map((point, index) => {
+        // Calculate current aggregate value
+        const mental = Number(point.mental) || 0;
+        const physical = Number(point.physical) || 0;
+        const moral = Number(point.moral) || 0;
+        const financial = Number(point.financial) || 0;
+        
+        const currentValue =
+          (mental * weights.mental +
+            physical * weights.physical +
+            moral * weights.moral +
+            financial * weights.financial) /
+          total;
+        
+        // Get previous value (open)
+        let openValue = currentValue;
+        if (index > 0) {
+          const prevMental = Number(dedupedData[index - 1].mental) || 0;
+          const prevPhysical = Number(dedupedData[index - 1].physical) || 0;
+          const prevMoral = Number(dedupedData[index - 1].moral) || 0;
+          const prevFinancial = Number(dedupedData[index - 1].financial) || 0;
           
-          const currentValue =
-            (mental * weights.mental +
-              physical * weights.physical +
-              moral * weights.moral +
-              financial * weights.financial) /
-            total;
-          
-          // Get previous value (open)
-          let openValue = currentValue;
-          if (index > 0) {
-            const prevMental = Number(dedupedData[index - 1].mental) || 0;
-            const prevPhysical = Number(dedupedData[index - 1].physical) || 0;
-            const prevMoral = Number(dedupedData[index - 1].moral) || 0;
-            const prevFinancial = Number(dedupedData[index - 1].financial) || 0;
-            
-            openValue = (prevMental * weights.mental +
-                        prevPhysical * weights.physical +
-                        prevMoral * weights.moral +
-                        prevFinancial * weights.financial) / total;
-          }
-          
-          // Simple candlestick: open=prev, close=current, high/low=max/min
-          return {
-            time: point.time,
-            open: openValue,
-            high: Math.max(openValue, currentValue),
-            low: Math.min(openValue, currentValue),
-            close: currentValue,
-          };
-        });
-      }
+          openValue = (prevMental * weights.mental +
+                      prevPhysical * weights.physical +
+                      prevMoral * weights.moral +
+                      prevFinancial * weights.financial) / total;
+        }
+        
+        // Simple candlestick: open=prev, close=current, high/low=max/min
+        return {
+          time: point.time,
+          open: openValue,
+          high: Math.max(openValue, currentValue),
+          low: Math.min(openValue, currentValue),
+          close: currentValue,
+        };
+      });
       
       seriesRef.current.aggregate.setData(candleData);
     } else {
-      let aggregateData: LineData[] = [];
-      
-      if (isAggregatedData(data)) {
-        // For aggregated data, use close values
-        aggregateData = data.map((candle) => ({
-          time: candle.dateEnd as Time,
-          value: candle.close,
-        }));
-      } else {
-        // For StateData, calculate aggregate value
-        const dedupedData = deduplicateData(data);
-        aggregateData = dedupedData.map((point) => {
-          const mental = Number(point.mental) || 0;
-          const physical = Number(point.physical) || 0;
-          const moral = Number(point.moral) || 0;
-          const financial = Number(point.financial) || 0;
-          
-          const value =
-            (mental * weights.mental +
-              physical * weights.physical +
-              moral * weights.moral +
+      const aggregateData: LineData[] = dedupedData.map((point) => {
+        const mental = Number(point.mental) || 0;
+        const physical = Number(point.physical) || 0;
+        const moral = Number(point.moral) || 0;
+        const financial = Number(point.financial) || 0;
+        
+        const value =
+          (mental * weights.mental +
+            physical * weights.physical +
+            moral * weights.moral +
             financial * weights.financial) /
           total;
         return { time: point.time, value: Number.isFinite(value) ? value : 0 };
