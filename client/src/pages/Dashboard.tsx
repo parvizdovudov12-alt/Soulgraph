@@ -344,7 +344,7 @@ export default function Dashboard() {
             visibleStates={visibleStates}
             weights={weights}
             news={aggregatedNews}
-            chartType={timeframe === '1D' ? chartType : 'line'}
+            chartType={chartType}
             tokenName={tokenName}
             timeframe={timeframe}
           />
@@ -366,7 +366,7 @@ export default function Dashboard() {
             setNewsModalOpen(true);
           }}
           onClearAllEvents={handleClearAllEvents}
-          chartType={timeframe === '1D' ? chartType : 'line'}
+          chartType={chartType}
           onChartTypeChange={setChartType}
           tokenName={tokenName}
           onTokenNameUpdate={setTokenName}

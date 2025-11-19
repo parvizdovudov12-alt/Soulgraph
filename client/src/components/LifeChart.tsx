@@ -380,15 +380,10 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
 
   // Update markers for news (only works with line charts)
   useEffect(() => {
-    if (!seriesRef.current.aggregate || news.length === 0) {
-      // Still need to trigger markers re-render even if no built-in markers
-      setMarkersReady(false);
-      const timeoutId = setTimeout(() => setMarkersReady(true), 100);
-      return () => clearTimeout(timeoutId);
-    }
+    if (!seriesRef.current.aggregate) return;
 
     // setMarkers only works for LineSeries, not CandlestickSeries
-    if (chartType === 'line' && typeof (seriesRef.current.aggregate as any)?.setMarkers === 'function') {
+    if (chartType === 'line' && news.length > 0 && typeof (seriesRef.current.aggregate as any)?.setMarkers === 'function') {
       const markers: SeriesMarker<Time>[] = news.map((event) => ({
         time: event.time,
         position: event.type === 'positive' ? 'aboveBar' : 'belowBar',
@@ -404,7 +399,7 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       }
     }
     
-    // Re-render HTML markers when news changes
+    // Re-render HTML markers when news changes (only once)
     setMarkersReady(false);
     const timeoutId = setTimeout(() => setMarkersReady(true), 100);
     return () => clearTimeout(timeoutId);
