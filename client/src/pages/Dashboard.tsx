@@ -119,12 +119,13 @@ export default function Dashboard() {
   };
 
   // Aggregate data based on timeframe
+  // Returns either StateData[] for 1D or AggregatedCandle[] for other timeframes
   const aggregatedData = useMemo(() => {
     if (timeframe === '1D') {
       return stateData; // No aggregation for 1D view
     }
 
-    if (stateData.length === 0) return stateData;
+    if (stateData.length === 0) return [];
 
     const days = timeframeToDays(timeframe);
     
@@ -137,17 +138,8 @@ export default function Dashboard() {
       financial: d.financial,
     }));
     
-    const candles = aggregateCandles(dailyData, days);
-
-    // Convert aggregated candles back to StateData format for chart
-    // Use dateEnd to align with closing values
-    return candles.map(candle => ({
-      time: candle.dateEnd as any,
-      mental: candle.mental,
-      physical: candle.physical,
-      moral: candle.moral,
-      financial: candle.financial,
-    }));
+    // Return full AggregatedCandle[] with OHLC data
+    return aggregateCandles(dailyData, days);
   }, [stateData, timeframe]);
 
   // Aggregate news events by period
@@ -344,7 +336,7 @@ export default function Dashboard() {
             visibleStates={visibleStates}
             weights={weights}
             news={aggregatedNews}
-            chartType={timeframe === '1D' ? chartType : 'line'}
+            chartType={chartType}
             tokenName={tokenName}
             timeframe={timeframe}
           />
@@ -366,7 +358,7 @@ export default function Dashboard() {
             setNewsModalOpen(true);
           }}
           onClearAllEvents={handleClearAllEvents}
-          chartType={timeframe === '1D' ? chartType : 'line'}
+          chartType={chartType}
           onChartTypeChange={setChartType}
           tokenName={tokenName}
           onTokenNameUpdate={setTokenName}
