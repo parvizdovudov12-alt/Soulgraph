@@ -48,6 +48,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Fixes & Technical Details
 
+### Mobile Version Implementation (November 2025)
+-   **iOS Touch Targets**: All interactive buttons enforce minimum 44px height (`min-h-[44px]`) to comply with Apple Human Interface Guidelines
+-   **Responsive Layout**: Dashboard switches from vertical stack (mobile) to horizontal layout (desktop ≥lg breakpoint)
+-   **ControlPanel Adaptation**: Full-width (`w-full`) on mobile with max-height 50vh, fixed 320px (`w-80`) on desktop; timeframe buttons in 4-column grid on mobile (2-column on desktop)
+-   **NewsModal Optimization**: Near-fullscreen (95vw width) on mobile with compact spacing and proper touch target sizing
+-   **HumanBalance Visibility**: Hidden on mobile/tablet (`hidden lg:block`) to save screen space, visible only on desktop
+-   **PWA Meta Tags**: Added viewport-fit=cover for iPhone notch, apple-mobile-web-app-capable, status-bar-style, theme-color for native app experience
+-   **Viewport Settings**: width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes for accessibility
+-   **Critical Performance Fix**: Removed duplicate `setMarkersReady` call from data update useEffect to prevent infinite render loops
+-   **Mobile Testing**: E2E tests verify responsive layout, news creation, timeframe switching on iPhone 14 Pro viewport (393x852)
+
 ### Anatomical Model Implementation (November 2025)
 -   **Real Anatomy Image**: Replaced programmatic SVG with real muscle anatomy photograph (anatomy_muscles.png, 220×400px)
 -   **CSS Clip-Path Overlays**: Implemented 4 colored overlay layers using polygon clip-paths to highlight body regions
