@@ -12,7 +12,7 @@ import {
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -27,6 +27,7 @@ export interface IStorage {
   // News events - now user-specific
   getUserNewsEvents(userId: string): Promise<DBNewsEvent[]>;
   createNewsEvent(userId: string, event: Omit<InsertNewsEvent, 'userId'>): Promise<DBNewsEvent>;
+  deleteNewsEvent(userId: string, eventId: string): Promise<void>;
   deleteAllUserNewsEvents(userId: string): Promise<void>;
   
   // State data - now user-specific
@@ -107,6 +108,13 @@ export class MemStorage implements IStorage {
     };
     this.newsEvents.set(id, event);
     return event;
+  }
+
+  async deleteNewsEvent(userId: string, eventId: string): Promise<void> {
+    const event = this.newsEvents.get(eventId);
+    if (event && event.userId === userId) {
+      this.newsEvents.delete(eventId);
+    }
   }
 
   async deleteAllUserNewsEvents(userId: string): Promise<void> {
@@ -222,6 +230,14 @@ export class PostgresStorage implements IStorage {
       media: mediaData,
     }).returning();
     return result[0];
+  }
+
+  async deleteNewsEvent(userId: string, eventId: string): Promise<void> {
+    await this.db.delete(newsEvents)
+      .where(and(
+        eq(newsEvents.id, eventId),
+        eq(newsEvents.userId, userId)
+      ));
   }
 
   async deleteAllUserNewsEvents(userId: string): Promise<void> {

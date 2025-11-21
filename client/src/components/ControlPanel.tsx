@@ -1,21 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins } from 'lucide-react';
 import { HumanBalance } from './HumanBalance';
 import TokenNameEditor from './TokenNameEditor';
 import type { NewsEvent } from './LifeChart';
 import type { Timeframe } from '@/lib/dateUtils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 type StateKey = 'mental' | 'physical' | 'moral' | 'financial';
 
@@ -37,7 +26,6 @@ interface ControlPanelProps {
   onToggleState: (state: StateKey) => void;
   onAddPositiveNews: () => void;
   onAddNegativeNews: () => void;
-  onClearAllEvents: () => void;
   chartType: 'line' | 'candlestick';
   onChartTypeChange: (type: 'line' | 'candlestick') => void;
   tokenName: string;
@@ -55,7 +43,6 @@ export default function ControlPanel({
   onToggleState,
   onAddPositiveNews,
   onAddNegativeNews,
-  onClearAllEvents,
   chartType,
   onChartTypeChange,
   tokenName,
@@ -204,39 +191,6 @@ export default function ControlPanel({
             Негатив
           </Button>
         </div>
-        {news.length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full text-destructive hover:text-destructive text-xs md:text-sm min-h-[44px] md:h-auto"
-                data-testid="button-clear-all-events"
-              >
-                <Trash2 className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                Очистить все события
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Удалить все события?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Это действие нельзя отменить. Все ваши события ({news.length}) и данные графика будут удалены.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel data-testid="button-cancel-clear">Отмена</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={onClearAllEvents}
-                  className="bg-destructive hover:bg-destructive/90"
-                  data-testid="button-confirm-clear"
-                >
-                  Удалить всё
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
 
       {/* State Indicators */}

@@ -41,6 +41,7 @@ export default function Dashboard() {
   // Convert DB news events to frontend format
   const newsEvents = useMemo((): NewsEvent[] => {
     return newsEventsData.map(event => ({
+      id: event.id,
       time: event.time as any,
       type: event.type as 'positive' | 'negative',
       text: event.text,
@@ -210,6 +211,7 @@ export default function Dashboard() {
       const summaryText = `${events.length} событий (+${positiveCount} -${negativeCount})`;
 
       return {
+        id: events[0].id, // Use first event's id for aggregated event
         time: events[0].time,
         type,
         text: summaryText,
@@ -273,6 +275,16 @@ export default function Dashboard() {
     },
   });
 
+  // Mutation for deleting a single event
+  const deleteNewsEventMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      return apiRequest('DELETE', `/api/news-events/${eventId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
+    },
+  });
+
   // Mutation for deleting all events
   const deleteAllEventsMutation = useMutation({
     mutationFn: async () => {
@@ -308,6 +320,10 @@ export default function Dashboard() {
 
   const handleClearAllEvents = () => {
     deleteAllEventsMutation.mutate();
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    deleteNewsEventMutation.mutate(eventId);
   };
 
   return (
@@ -347,6 +363,7 @@ export default function Dashboard() {
             chartType={chartType}
             tokenName={tokenName}
             timeframe={timeframe}
+            onDeleteEvent={handleDeleteEvent}
           />
         </div>
 
@@ -365,7 +382,6 @@ export default function Dashboard() {
             setNewsModalType('negative');
             setNewsModalOpen(true);
           }}
-          onClearAllEvents={handleClearAllEvents}
           chartType={chartType}
           onChartTypeChange={setChartType}
           tokenName={tokenName}

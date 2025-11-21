@@ -1,14 +1,16 @@
-import { X, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, Calendar, TrendingUp, TrendingDown, Trash2 } from 'lucide-react';
 import { NewsEvent } from './LifeChart';
 import { formatMoscowDateTime, formatMoscowTime } from '@/lib/dateUtils';
+import { Button } from '@/components/ui/button';
 
 interface NewsPopupProps {
   events: NewsEvent[];
   onClose: () => void;
+  onDelete: (eventId: string) => void;
   position: { x: number; y: number };
 }
 
-export default function NewsPopup({ events, onClose, position }: NewsPopupProps) {
+export default function NewsPopup({ events, onClose, onDelete, position }: NewsPopupProps) {
   if (!events || events.length === 0) return null;
 
   return (
@@ -54,18 +56,31 @@ export default function NewsPopup({ events, onClose, position }: NewsPopupProps)
               className="pb-4 border-b border-border last:border-0 last:pb-0"
               data-testid={`event-item-${eventIndex}`}
             >
-              <div className="flex items-center gap-2 mb-3">
-                {isPositive ? (
-                  <TrendingUp className="w-4 h-4 text-positive" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-negative" />
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  {isPositive ? (
+                    <TrendingUp className="w-4 h-4 text-positive" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-negative" />
+                  )}
+                  <h4 className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                    {isPositive ? 'Позитивное' : 'Негативное'}
+                  </h4>
+                  <span className="text-xs text-muted-foreground">
+                    {formatMoscowTime(event.time as number)} МСК
+                  </span>
+                </div>
+                {event.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    onClick={() => onDelete(event.id!)}
+                    data-testid={`button-delete-event-${eventIndex}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
                 )}
-                <h4 className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                  {isPositive ? 'Позитивное' : 'Негативное'}
-                </h4>
-                <span className="text-xs text-muted-foreground">
-                  {formatMoscowTime(event.time as number)} МСК
-                </span>
               </div>
 
               <p className="text-sm text-foreground mb-3">{event.text}</p>

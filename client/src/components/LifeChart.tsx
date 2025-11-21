@@ -13,6 +13,7 @@ export interface StateData {
 }
 
 export interface NewsEvent {
+  id?: string;
   time: Time;
   type: 'positive' | 'negative';
   text: string;
@@ -47,9 +48,10 @@ interface LifeChartProps {
   chartType?: 'line' | 'candlestick';
   tokenName: string;
   timeframe?: Timeframe;
+  onDeleteEvent?: (eventId: string) => void;
 }
 
-export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = '1D' }: LifeChartProps) {
+export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = '1D', onDeleteEvent }: LifeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<{
@@ -75,7 +77,6 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
   const [selectedNews, setSelectedNews] = useState<NewsEvent[]>([]);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const markersReadyRef = useRef(false);
-  const [renderKey, setRenderKey] = useState(0);
   const [tooltipEvent, setTooltipEvent] = useState<NewsEvent | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -400,13 +401,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       }
     }
     
-    // Re-render HTML markers when news changes (using ref to avoid loop)
-    markersReadyRef.current = false;
-    const timeoutId = setTimeout(() => {
-      markersReadyRef.current = true;
-      setRenderKey(prev => prev + 1);
-    }, 100);
-    return () => clearTimeout(timeoutId);
+    // Mark markers as ready for rendering (no rerender needed)
+    markersReadyRef.current = true;
   }, [news, chartType]);
 
   // Render custom HTML markers for news with media
@@ -448,7 +444,9 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
           }}
           onClick={(e) => {
             e.stopPropagation();
-            setSelectedNews([event]);
+            // Show grouped events if this is an aggregated timeframe, otherwise show single event
+            const eventsToShow = event.groupedEvents || [event];
+            setSelectedNews(eventsToShow);
             setPopupPosition({ x: e.clientX, y: e.clientY });
           }}
           data-testid={`marker-news-${index}`}
@@ -488,13 +486,11 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       />
       
       {/* Custom HTML markers for news */}
-      {renderKey > 0 && (
-        <div className="absolute inset-0 pointer-events-none" key={renderKey}>
-          <div className="relative w-full h-full pointer-events-auto">
-            {renderNewsMarkers()}
-          </div>
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="relative w-full h-full pointer-events-auto">
+          {renderNewsMarkers()}
         </div>
-      )}
+      </div>
 
       {/* Chart tooltip */}
       <ChartTooltip
@@ -507,6 +503,12 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
         <NewsPopup
           events={selectedNews}
           onClose={() => setSelectedNews([])}
+          onDelete={(eventId) => {
+            if (onDeleteEvent) {
+              onDeleteEvent(eventId);
+              setSelectedNews([]);
+            }
+          }}
           position={popupPosition}
         />
       )}
