@@ -74,7 +74,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
   
   const [selectedNews, setSelectedNews] = useState<NewsEvent[]>([]);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
-  const [markersReady, setMarkersReady] = useState(false);
+  const markersReadyRef = useRef(false);
+  const [renderKey, setRenderKey] = useState(0);
   const [tooltipEvent, setTooltipEvent] = useState<NewsEvent | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -399,15 +400,18 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       }
     }
     
-    // Re-render HTML markers when news changes (only once)
-    setMarkersReady(false);
-    const timeoutId = setTimeout(() => setMarkersReady(true), 100);
+    // Re-render HTML markers when news changes (using ref to avoid loop)
+    markersReadyRef.current = false;
+    const timeoutId = setTimeout(() => {
+      markersReadyRef.current = true;
+      setRenderKey(prev => prev + 1);
+    }, 100);
     return () => clearTimeout(timeoutId);
   }, [news, chartType]);
 
   // Render custom HTML markers for news with media
   const renderNewsMarkers = () => {
-    if (!chartRef.current || !markersReady) return null;
+    if (!chartRef.current || !markersReadyRef.current) return null;
 
     return news.map((event, index) => {
       const hasMedia = event.media && event.media.length > 0;
@@ -484,8 +488,8 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
       />
       
       {/* Custom HTML markers for news */}
-      {markersReady && (
-        <div className="absolute inset-0 pointer-events-none">
+      {renderKey > 0 && (
+        <div className="absolute inset-0 pointer-events-none" key={renderKey}>
           <div className="relative w-full h-full pointer-events-auto">
             {renderNewsMarkers()}
           </div>
