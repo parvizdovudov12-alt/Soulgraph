@@ -1,45 +1,84 @@
+import { useState } from 'react';
 import { X, Calendar, TrendingUp, TrendingDown, Trash2 } from 'lucide-react';
 import { NewsEvent } from './LifeChart';
 import { formatMoscowDateTime, formatMoscowTime } from '@/lib/dateUtils';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface NewsPopupProps {
   events: NewsEvent[];
   onClose: () => void;
   onDelete: (eventId: string) => void;
+  onDeleteAll?: () => void;
+  isDeleting?: boolean;
   position: { x: number; y: number };
 }
 
-export default function NewsPopup({ events, onClose, onDelete, position }: NewsPopupProps) {
+export default function NewsPopup({ events, onClose, onDelete, onDeleteAll, isDeleting = false, position }: NewsPopupProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
   if (!events || events.length === 0) return null;
 
+  const handleDeleteAll = () => {
+    if (onDeleteAll) {
+      onDeleteAll();
+      setShowDeleteDialog(false);
+      // Don't close popup here - let mutation success handler close it
+    }
+  };
+
   return (
-    <div
-      className="fixed z-50 bg-card border border-card-border rounded-lg shadow-2xl w-96 max-h-[32rem] overflow-auto"
-      style={{
-        left: `${Math.min(position.x, window.innerWidth - 384)}px`,
-        top: `${Math.min(position.y, window.innerHeight - 512)}px`,
-      }}
-      data-testid="popup-news"
-    >
-      <div className="sticky top-0 bg-card border-b border-border p-3 flex items-center justify-between z-10">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">
-            События дня
-          </h3>
-          <span className="text-xs text-muted-foreground">
-            ({events.length})
-          </span>
+    <>
+      <div
+        className="fixed z-50 bg-card border border-card-border rounded-lg shadow-2xl w-96 max-h-[32rem] overflow-auto"
+        style={{
+          left: `${Math.min(position.x, window.innerWidth - 384)}px`,
+          top: `${Math.min(position.y, window.innerHeight - 512)}px`,
+        }}
+        data-testid="popup-news"
+      >
+        <div className="sticky top-0 bg-card border-b border-border p-3 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">
+              События дня
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              ({events.length})
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {onDeleteAll && events.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-destructive hover:text-destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting}
+                data-testid="button-delete-all-events"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {isDeleting ? 'Удаление...' : 'Удалить день'}
+              </Button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="button-close-popup"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={onClose}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          data-testid="button-close-popup"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
 
       <div className="p-4 space-y-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -148,5 +187,31 @@ export default function NewsPopup({ events, onClose, onDelete, position }: NewsP
         })}
       </div>
     </div>
+
+    {/* Delete All Confirmation Dialog */}
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent data-testid="dialog-delete-all">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Удалить все события?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Вы собираетесь удалить {events.length} {events.length === 1 ? 'событие' : events.length < 5 ? 'события' : 'событий'} за этот день. 
+            Это действие необратимо и удалит все события с графика.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid="button-cancel-delete-all">
+            Отмена
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteAll}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            data-testid="button-confirm-delete-all"
+          >
+            Удалить
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

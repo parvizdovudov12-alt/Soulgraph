@@ -304,6 +304,33 @@ export default function Dashboard() {
     },
   });
 
+  // Mutation for deleting multiple events from a specific day
+  const deleteMultipleEventsMutation = useMutation({
+    mutationFn: async (params: { eventIds: string[]; onSuccess?: () => void }) => {
+      // Delete all events in parallel
+      const results = await Promise.allSettled(
+        params.eventIds.map(eventId => 
+          apiRequest('DELETE', `/api/news-events/${eventId}`, {})
+        )
+      );
+      
+      // Check for failures
+      const failures = results.filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        throw new Error(`Failed to delete ${failures.length} of ${params.eventIds.length} events`);
+      }
+      
+      return { results, onSuccessCallback: params.onSuccess };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
+      // Call the success callback to close popup
+      if (data.onSuccessCallback) {
+        data.onSuccessCallback();
+      }
+    },
+  });
+
   const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
     setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
   };
@@ -324,6 +351,11 @@ export default function Dashboard() {
 
   const handleDeleteEvent = (eventId: string) => {
     deleteNewsEventMutation.mutate(eventId);
+  };
+
+  const handleDeleteAllDayEvents = (eventIds: string[], onSuccess?: () => void) => {
+    if (eventIds.length === 0) return;
+    deleteMultipleEventsMutation.mutate({ eventIds, onSuccess });
   };
 
   return (
@@ -364,6 +396,8 @@ export default function Dashboard() {
             tokenName={tokenName}
             timeframe={timeframe}
             onDeleteEvent={handleDeleteEvent}
+            onDeleteAllDayEvents={handleDeleteAllDayEvents}
+            isDeletingMultiple={deleteMultipleEventsMutation.isPending}
           />
         </div>
 

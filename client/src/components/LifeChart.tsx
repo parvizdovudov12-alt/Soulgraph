@@ -49,9 +49,11 @@ interface LifeChartProps {
   tokenName: string;
   timeframe?: Timeframe;
   onDeleteEvent?: (eventId: string) => void;
+  onDeleteAllDayEvents?: (eventIds: string[], onSuccess?: () => void) => void;
+  isDeletingMultiple?: boolean;
 }
 
-export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = '1D', onDeleteEvent }: LifeChartProps) {
+export default function LifeChart({ data, visibleStates, weights, news, chartType = 'line', tokenName, timeframe = '1D', onDeleteEvent, onDeleteAllDayEvents, isDeletingMultiple = false }: LifeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<{
@@ -509,6 +511,16 @@ export default function LifeChart({ data, visibleStates, weights, news, chartTyp
               setSelectedNews([]);
             }
           }}
+          onDeleteAll={() => {
+            if (onDeleteAllDayEvents) {
+              const eventIds = selectedNews
+                .map(event => event.id)
+                .filter((id): id is string => id !== undefined);
+              // Pass callback that closes popup after successful deletion
+              onDeleteAllDayEvents(eventIds, () => setSelectedNews([]));
+            }
+          }}
+          isDeleting={isDeletingMultiple}
           position={popupPosition}
         />
       )}

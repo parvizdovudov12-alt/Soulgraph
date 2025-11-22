@@ -68,6 +68,18 @@ Preferred communication style: Simple, everyday language.
 -   **Image Optimization**: Renamed from Cyrillic filename to anatomy_muscles.png for better Vite compatibility
 -   **Performance**: Lightweight CSS overlays blend seamlessly with base image without rendering issues
 
+### Bulk Delete Candle Feature (November 2025)
+-   **Feature**: "Удалить день" button in NewsPopup allows deleting all events for a selected day at once
+-   **Visibility**: Button appears only when 2+ events exist for the same day, preventing accidental deletion of single events
+-   **Confirmation Dialog**: AlertDialog with event count display ("Удалить все {count} событий этого дня?") and cancel option
+-   **Callback-Based Closure**: Popup closes only after successful deletion via onSuccess callback pattern, preventing premature closure on errors
+-   **Mutation Pipeline**: Uses `deleteMultipleEventsMutation` with Promise.allSettled for parallel deletion, throwing error if any DELETE fails
+-   **Loading State**: Button shows "Удаление..." and is disabled during deletion (isPending from TanStack Query)
+-   **Error Handling**: Failed deletions keep popup open, successful deletions trigger callback that closes popup via setSelectedNews([])
+-   **Security**: Backend validates both eventId AND userId for each DELETE request, ensuring users only delete their own events
+-   **Flow**: User confirms → mutation starts (loading) → parallel deletion → if all succeed → invalidateQueries → callback closes popup; if any fail → error thrown → popup stays open
+-   **Implementation Details**: Dashboard passes `(eventIds, onSuccessCallback)` to mutation, which invokes callback after successful data invalidation
+
 ### Exchange-Style Timeframe System (November 2025)
 -   **Timeframe Options**: Implemented 1D, 7D, 30D, 90D buttons matching Bybit/Binance UX with monospace font
 -   **aggregateCandles Function**: Created in `dateUtils.ts` to group daily StateData into period candles with OHLC values, preserving individual state closes (mental, physical, moral, financial)
