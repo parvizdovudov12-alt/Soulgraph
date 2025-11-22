@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Camera, Upload } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -98,31 +99,35 @@ export default function AvatarUploader({ currentAvatarUrl, tokenName }: AvatarUp
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative">
-        <Avatar className="h-12 w-12" data-testid="avatar-display">
-          <AvatarImage src={currentAvatarUrl || undefined} alt={tokenName} />
-          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-            {getInitials()}
-          </AvatarFallback>
-        </Avatar>
-        {!currentAvatarUrl && (
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full bg-black/50">
-            <Camera className="w-5 h-5 text-white" />
+    <div className="flex flex-col items-center gap-4">
+      {/* Large Avatar */}
+      <div className="w-full max-w-[280px] relative group">
+        <AspectRatio ratio={1}>
+          <Avatar className="w-full h-full border-2 border-border" data-testid="avatar-display">
+            <AvatarImage src={currentAvatarUrl || undefined} alt={tokenName} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-6xl">
+              {getInitials()}
+            </AvatarFallback>
+          </Avatar>
+          {/* Hover overlay for upload prompt */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/60">
+            <Camera className="w-12 h-12 text-white" />
+            <span className="text-white text-sm font-medium">Изменить фото</span>
           </div>
-        )}
+        </AspectRatio>
       </div>
       
+      {/* Upload Button */}
       <Button
         variant="outline"
-        size="sm"
+        size="default"
         onClick={handleButtonClick}
         disabled={isUploading || updateAvatarMutation.isPending}
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 w-full max-w-[200px]"
         data-testid="button-upload-avatar"
       >
-        <Upload className="w-3 h-3" />
-        {isUploading || updateAvatarMutation.isPending ? "Загрузка..." : "Загрузить"}
+        <Upload className="w-4 h-4" />
+        {isUploading || updateAvatarMutation.isPending ? "Загрузка..." : "Загрузить фото"}
       </Button>
       
       <input
