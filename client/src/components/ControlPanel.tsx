@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, LineChart, CandlestickChart, Activity, Heart, Sparkles, Coins } from 'lucide-react';
 import { HumanBalance } from './HumanBalance';
 import TokenNameEditor from './TokenNameEditor';
+import AvatarUploader from './AvatarUploader';
 import type { NewsEvent } from './LifeChart';
 import type { Timeframe } from '@/lib/dateUtils';
 
@@ -33,6 +34,7 @@ interface ControlPanelProps {
   isAuthenticated: boolean;
   timeframe?: Timeframe;
   onTimeframeChange?: (timeframe: Timeframe) => void;
+  avatarUrl?: string | null;
 }
 
 export default function ControlPanel({
@@ -50,6 +52,7 @@ export default function ControlPanel({
   isAuthenticated,
   timeframe = '1D',
   onTimeframeChange,
+  avatarUrl,
 }: ControlPanelProps) {
   const states: Array<{ key: StateKey; label: string; color: string; bgColor: string; icon: any }> = [
     { key: 'mental', label: 'Душевное', color: 'text-mental', bgColor: 'bg-mental/10', icon: Sparkles },
@@ -60,6 +63,16 @@ export default function ControlPanel({
 
   return (
     <div className="w-full lg:w-80 bg-card border-t lg:border-t-0 lg:border-l border-card-border p-3 md:p-6 space-y-4 md:space-y-6 overflow-y-auto max-h-[50vh] lg:max-h-none">
+      {/* Avatar & User Info */}
+      {isAuthenticated && (
+        <div className="bg-background/50 rounded-lg p-3 md:p-4 border border-border">
+          <AvatarUploader 
+            currentAvatarUrl={avatarUrl}
+            tokenName={tokenName}
+          />
+        </div>
+      )}
+
       {/* Aggregate Index Display */}
       <div className="bg-background/50 rounded-lg p-3 md:p-4 border border-border">
         <div className="flex items-center mb-2">

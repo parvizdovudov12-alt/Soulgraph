@@ -23,6 +23,7 @@ export interface IStorage {
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTokenName(userId: string, tokenName: string): Promise<User | undefined>;
+  updateUserAvatar(userId: string, avatarUrl: string): Promise<User | undefined>;
   
   // News events - now user-specific
   getUserNewsEvents(userId: string): Promise<DBNewsEvent[]>;
@@ -70,6 +71,7 @@ export class MemStorage implements IStorage {
       password: insertUser.password ?? null,
       walletAddress: insertUser.walletAddress ?? null,
       tokenName: insertUser.tokenName ?? "SOUL",
+      avatarUrl: insertUser.avatarUrl ?? null,
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -81,6 +83,15 @@ export class MemStorage implements IStorage {
     if (!user) return undefined;
     
     const updatedUser: User = { ...user, tokenName };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserAvatar(userId: string, avatarUrl: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser: User = { ...user, avatarUrl };
     this.users.set(userId, updatedUser);
     return updatedUser;
   }
@@ -185,6 +196,14 @@ export class PostgresStorage implements IStorage {
   async updateUserTokenName(userId: string, tokenName: string): Promise<User | undefined> {
     const result = await this.db.update(users)
       .set({ tokenName })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async updateUserAvatar(userId: string, avatarUrl: string): Promise<User | undefined> {
+    const result = await this.db.update(users)
+      .set({ avatarUrl })
       .where(eq(users.id, userId))
       .returning();
     return result[0];

@@ -423,6 +423,7 @@ export default function Dashboard() {
           isAuthenticated={isAuthenticated}
           timeframe={timeframe}
           onTimeframeChange={setTimeframe}
+          avatarUrl={user?.avatarUrl}
         />
       </div>
 

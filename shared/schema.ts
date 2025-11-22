@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   password: text("password"),
   walletAddress: text("wallet_address").unique(),
   tokenName: text("token_name").default("SOUL"),
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

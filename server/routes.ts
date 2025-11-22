@@ -222,6 +222,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user's avatar
+  app.patch("/api/users/avatar", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { avatarUrl } = req.body;
+      if (!avatarUrl || typeof avatarUrl !== 'string') {
+        return res.status(400).json({ message: "Avatar URL is required" });
+      }
+
+      // Validate base64 image data URL (max 2MB)
+      if (!avatarUrl.startsWith('data:image/')) {
+        return res.status(400).json({ message: "Invalid image format" });
+      }
+
+      const sizeInBytes = (avatarUrl.length * 3) / 4;
+      if (sizeInBytes > 2 * 1024 * 1024) {
+        return res.status(400).json({ message: "Avatar image must be less than 2MB" });
+      }
+
+      const user = await storage.updateUserAvatar(req.session.userId, avatarUrl);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ user });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update avatar" });
+    }
+  });
+
   // Get user's news events
   app.get("/api/news-events", async (req, res) => {
     try {
