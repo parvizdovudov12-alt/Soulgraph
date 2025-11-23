@@ -66,10 +66,14 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
           <defs>
             {/* Gradients for 3D muscle effect */}
             <linearGradient id="muscleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#000" stopOpacity="0.15" />
-              <stop offset="50%" stopColor="#fff" stopOpacity="0.1" />
-              <stop offset="100%" stopColor="#000" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="#000" stopOpacity="0.2" />
+              <stop offset="50%" stopColor="#fff" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#000" stopOpacity="0.2" />
             </linearGradient>
+            <radialGradient id="muscleRadial">
+              <stop offset="30%" stopColor="#fff" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#000" stopOpacity="0.15" />
+            </radialGradient>
           </defs>
 
           {/* Mental (Head) - fills based on balance */}
@@ -85,10 +89,19 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
             <ellipse cx="110" cy="35" rx="32" ry="35" fill="url(#muscleGradient)" />
           </g>
 
-          {/* Neck muscles */}
-          <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+          {/* Neck muscles - Trapezius */}
+          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.4">
             <path d="M 100 70 Q 100 80, 100 90" />
             <path d="M 120 70 Q 120 80, 120 90" />
+            {/* Trapezius outline */}
+            <path d="M 90 75 Q 85 85, 85 95" />
+            <path d="M 130 75 Q 135 85, 135 95" />
+          </g>
+          
+          {/* Upper Trapezius muscles */}
+          <g opacity="0.3">
+            <ellipse cx="95" cy="82" rx="8" ry="10" fill="url(#muscleRadial)" />
+            <ellipse cx="125" cy="82" rx="8" ry="10" fill="url(#muscleRadial)" />
           </g>
 
           {/* Moral (Chest/Heart) - Pecs with definition */}
@@ -110,10 +123,25 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
             <path d="M 135 95 Q 145 110, 142 130 Q 140 145, 135 158 L 115 162 Q 115 130, 120 110 Z" fill="url(#muscleGradient)" />
           </g>
 
-          {/* Shoulders (deltoids) */}
-          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
-            <ellipse cx="72" cy="98" rx="12" ry="15" />
-            <ellipse cx="148" cy="98" rx="12" ry="15" />
+          {/* Shoulders (deltoids) - Enhanced */}
+          <g>
+            {/* Deltoid muscle mass */}
+            <ellipse cx="72" cy="98" rx="13" ry="16" fill="url(#muscleRadial)" opacity="0.4" />
+            <ellipse cx="148" cy="98" rx="13" ry="16" fill="url(#muscleRadial)" opacity="0.4" />
+            {/* Deltoid definition lines */}
+            <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
+              <ellipse cx="72" cy="98" rx="12" ry="15" />
+              <ellipse cx="148" cy="98" rx="12" ry="15" />
+              {/* Anterior/Lateral/Posterior heads */}
+              <path d="M 67 90 Q 72 98, 67 106" opacity="0.5" />
+              <path d="M 153 90 Q 148 98, 153 106" opacity="0.5" />
+            </g>
+          </g>
+          
+          {/* Latissimus dorsi (lats) - visible from front */}
+          <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+            <path d="M 78 110 Q 70 130, 75 160" />
+            <path d="M 142 110 Q 150 130, 145 160" />
           </g>
 
           {/* Physical (Torso/Core) - Abs definition */}
@@ -124,14 +152,29 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
               fill={physicalColor}
               opacity={getOpacity(balance.physical)}
             />
-            {/* Six-pack abs definition */}
-            <g fill="url(#muscleGradient)">
-              {/* Upper abs */}
-              <rect x="95" y="170" width="30" height="15" rx="3" />
-              {/* Middle abs */}
-              <rect x="95" y="190" width="30" height="15" rx="3" />
-              {/* Lower abs */}
-              <rect x="95" y="210" width="30" height="15" rx="3" />
+            {/* Enhanced Six-pack abs with more definition */}
+            <g>
+              {/* Upper abs - split left/right */}
+              <rect x="96" y="170" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              <rect x="111" y="170" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              {/* Middle abs - split left/right */}
+              <rect x="96" y="188" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              <rect x="111" y="188" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              {/* Lower abs - split left/right */}
+              <rect x="96" y="206" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              <rect x="111" y="206" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              {/* Ab separation lines */}
+              <line x1="110" y1="168" x2="110" y2="222" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.5" />
+            </g>
+            
+            {/* Serratus anterior (finger muscles) */}
+            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.35">
+              <path d="M 82 175 Q 78 178, 80 182" />
+              <path d="M 82 185 Q 78 188, 80 192" />
+              <path d="M 82 195 Q 78 198, 80 202" />
+              <path d="M 138 175 Q 142 178, 140 182" />
+              <path d="M 138 185 Q 142 188, 140 192" />
+              <path d="M 138 195 Q 142 198, 140 202" />
             </g>
             {/* Obliques */}
             <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4">
@@ -140,21 +183,47 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
             </g>
           </g>
 
-          {/* Arms - Biceps and Triceps */}
-          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
+          {/* Arms - Enhanced Biceps, Triceps, Forearms */}
+          <g>
             {/* Left arm */}
-            <path d="M 70 95 Q 65 105, 62 120" />
-            <path d="M 62 120 Q 58 140, 55 160" />
-            <path d="M 55 160 L 50 180" />
-            {/* Left bicep bulge */}
-            <ellipse cx="65" cy="115" rx="8" ry="12" opacity="0.5" />
+            <g>
+              {/* Upper arm structure */}
+              <path d="M 70 95 Q 65 105, 62 120" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
+              <path d="M 62 120 Q 58 140, 55 160" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
+              <path d="M 55 160 L 50 180" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
+              
+              {/* Bicep peak */}
+              <ellipse cx="65" cy="115" rx="9" ry="13" fill="url(#muscleRadial)" opacity="0.5" />
+              <path d="M 60 110 Q 65 115, 70 110" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              
+              {/* Tricep */}
+              <ellipse cx="68" cy="125" rx="6" ry="10" fill="url(#muscleRadial)" opacity="0.3" />
+              
+              {/* Forearm muscles */}
+              <ellipse cx="57" cy="150" rx="5" ry="8" fill="url(#muscleRadial)" opacity="0.35" />
+              <path d="M 54 145 L 53 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
+              <path d="M 58 145 L 57 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
+            </g>
             
             {/* Right arm */}
-            <path d="M 150 95 Q 155 105, 158 120" />
-            <path d="M 158 120 Q 162 140, 165 160" />
-            <path d="M 165 160 L 170 180" />
-            {/* Right bicep bulge */}
-            <ellipse cx="155" cy="115" rx="8" ry="12" opacity="0.5" />
+            <g>
+              {/* Upper arm structure */}
+              <path d="M 150 95 Q 155 105, 158 120" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
+              <path d="M 158 120 Q 162 140, 165 160" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
+              <path d="M 165 160 L 170 180" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
+              
+              {/* Bicep peak */}
+              <ellipse cx="155" cy="115" rx="9" ry="13" fill="url(#muscleRadial)" opacity="0.5" />
+              <path d="M 150 110 Q 155 115, 160 110" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              
+              {/* Tricep */}
+              <ellipse cx="152" cy="125" rx="6" ry="10" fill="url(#muscleRadial)" opacity="0.3" />
+              
+              {/* Forearm muscles */}
+              <ellipse cx="163" cy="150" rx="5" ry="8" fill="url(#muscleRadial)" opacity="0.35" />
+              <path d="M 166 145 L 167 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
+              <path d="M 162 145 L 163 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
+            </g>
           </g>
 
           {/* Financial (Legs) - Quads and Calves */}
@@ -181,10 +250,41 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
               <path d="M 135 245 Q 138 260, 138 280 L 140 310 Q 142 330, 140 350 L 138 370 L 140 390 L 125 390 L 127 370 L 125 350 Q 123 330, 125 310 L 127 280 Q 127 260, 125 245 Z" fill="url(#muscleGradient)" />
             </g>
 
-            {/* Quad separation lines */}
-            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+            {/* Enhanced Quad separation and definition */}
+            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4">
+              {/* Vastus medialis/lateralis separation */}
               <path d="M 88 250 L 87 310" />
+              <path d="M 92 252 L 91 308" />
               <path d="M 132 250 L 133 310" />
+              <path d="M 128 252 L 129 308" />
+              {/* Rectus femoris */}
+              <path d="M 87 255 Q 85 280, 86 305" />
+              <path d="M 133 255 Q 135 280, 134 305" />
+            </g>
+            
+            {/* Hamstring hints (back of leg visible) */}
+            <g opacity="0.25">
+              <ellipse cx="83" cy="270" rx="3" ry="12" fill="url(#muscleRadial)" />
+              <ellipse cx="137" cy="270" rx="3" ry="12" fill="url(#muscleRadial)" />
+            </g>
+            
+            {/* Calves - Gastrocnemius */}
+            <g opacity={getOpacity(balance.financial) * 0.8}>
+              {/* Left calf */}
+              <ellipse cx="87" cy="340" rx="7" ry="18" fill={financialColor} />
+              <ellipse cx="87" cy="340" rx="7" ry="18" fill="url(#muscleRadial)" />
+              <path d="M 84 330 Q 87 340, 90 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              
+              {/* Right calf */}
+              <ellipse cx="133" cy="340" rx="7" ry="18" fill={financialColor} />
+              <ellipse cx="133" cy="340" rx="7" ry="18" fill="url(#muscleRadial)" />
+              <path d="M 130 330 Q 133 340, 136 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+            </g>
+            
+            {/* Tibialis anterior (shin) */}
+            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+              <path d="M 92 315 L 94 365" />
+              <path d="M 128 315 L 126 365" />
             </g>
           </g>
 
