@@ -146,40 +146,40 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
 
           {/* Physical (Torso/Core) - Abs definition */}
           <g data-testid="region-physical">
-            {/* Main core fill */}
+            {/* Main core fill - narrower torso */}
             <path
-              d="M 85 165 L 78 180 L 80 210 L 85 240 L 135 240 L 140 210 L 142 180 L 135 165 Z"
+              d="M 90 165 L 85 180 L 87 210 L 92 240 L 128 240 L 133 210 L 135 180 L 130 165 Z"
               fill={physicalColor}
               opacity={getOpacity(balance.physical)}
             />
-            {/* Enhanced Six-pack abs with more definition */}
+            {/* Enhanced Six-pack abs with more definition - narrower */}
             <g>
-              {/* Upper abs - split left/right */}
-              <rect x="96" y="170" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
-              <rect x="111" y="170" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
-              {/* Middle abs - split left/right */}
-              <rect x="96" y="188" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
-              <rect x="111" y="188" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
-              {/* Lower abs - split left/right */}
-              <rect x="96" y="206" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
-              <rect x="111" y="206" width="13" height="14" rx="3" fill="url(#muscleRadial)" opacity="0.6" />
+              {/* Upper abs - split left/right, smaller */}
+              <rect x="99" y="172" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
+              <rect x="111" y="172" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
+              {/* Middle abs - split left/right, smaller */}
+              <rect x="99" y="188" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
+              <rect x="111" y="188" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
+              {/* Lower abs - split left/right, smaller */}
+              <rect x="99" y="204" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
+              <rect x="111" y="204" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
               {/* Ab separation lines */}
-              <line x1="110" y1="168" x2="110" y2="222" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.5" />
+              <line x1="110" y1="170" x2="110" y2="218" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.5" />
             </g>
             
-            {/* Serratus anterior (finger muscles) */}
+            {/* Serratus anterior (finger muscles) - adjusted for narrower torso */}
             <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.35">
-              <path d="M 82 175 Q 78 178, 80 182" />
-              <path d="M 82 185 Q 78 188, 80 192" />
-              <path d="M 82 195 Q 78 198, 80 202" />
-              <path d="M 138 175 Q 142 178, 140 182" />
-              <path d="M 138 185 Q 142 188, 140 192" />
-              <path d="M 138 195 Q 142 198, 140 202" />
+              <path d="M 88 175 Q 84 178, 86 182" />
+              <path d="M 88 185 Q 84 188, 86 192" />
+              <path d="M 88 195 Q 84 198, 86 202" />
+              <path d="M 132 175 Q 136 178, 134 182" />
+              <path d="M 132 185 Q 136 188, 134 192" />
+              <path d="M 132 195 Q 136 198, 134 202" />
             </g>
-            {/* Obliques */}
+            {/* Obliques - adjusted for V-taper */}
             <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4">
-              <path d="M 85 170 Q 75 190, 78 210" />
-              <path d="M 135 170 Q 145 190, 142 210" />
+              <path d="M 90 170 Q 82 190, 85 210" />
+              <path d="M 130 170 Q 138 190, 135 210" />
             </g>
           </g>
 
