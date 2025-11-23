@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import type { NewsEvent } from './LifeChart';
-import anatomyImage from '@assets/anatomy_muscles.png';
 
 interface HumanBalanceProps {
   newsEvents: NewsEvent[];
@@ -44,7 +43,7 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
 
   // Get color based on positive/negative
   const getColor = (value: number, baseColor: string) => {
-    if (value === 0) return `${baseColor}20`; // Very transparent if neutral
+    if (value === 0) return `${baseColor}30`; // Low opacity if neutral (visible in legend)
     return value > 0 ? baseColor : '#ef4444'; // Base color if positive, red if negative
   };
 
@@ -57,59 +56,64 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
     <div className="flex flex-col items-center gap-3" data-testid="human-balance">
       <h3 className="text-sm font-medium text-muted-foreground">Баланс дня</h3>
       
-      {/* Anatomical Figure with Color Overlays */}
+      {/* SVG Human Figure with Dynamic Fills */}
       <div className="relative w-[220px] h-[400px]" data-testid="human-figure">
-        {/* Base anatomical image */}
-        <img
-          src={anatomyImage}
-          alt="Human anatomy"
-          className="absolute inset-0 w-full h-full object-contain"
-          style={{ opacity: 0.85 }}
-        />
+        <svg
+          viewBox="0 0 220 400"
+          className="w-full h-full"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Base outline - subtle gray */}
+          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
+            {/* Head outline */}
+            <ellipse cx="110" cy="35" rx="32" ry="35" />
+            {/* Neck */}
+            <line x1="110" y1="70" x2="110" y2="90" />
+            {/* Shoulders */}
+            <line x1="70" y1="95" x2="150" y2="95" />
+            {/* Arms */}
+            <line x1="70" y1="95" x2="50" y2="180" />
+            <line x1="150" y1="95" x2="170" y2="180" />
+            {/* Torso */}
+            <path d="M 85 95 L 75 170 L 85 245 L 135 245 L 145 170 L 135 95 Z" />
+            {/* Legs */}
+            <path d="M 85 245 L 80 390" />
+            <path d="M 135 245 L 140 390" />
+          </g>
 
-        {/* Mental overlay (Head) - Purple */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: mentalColor,
-            opacity: getOpacity(balance.mental),
-            clipPath: 'polygon(35% 0%, 65% 0%, 65% 18%, 35% 18%)',
-          }}
-          data-testid="region-mental"
-        />
+          {/* Mental (Head) - fills based on balance */}
+          <ellipse
+            cx="110"
+            cy="35"
+            rx="32"
+            ry="35"
+            fill={mentalColor}
+            opacity={getOpacity(balance.mental)}
+            data-testid="region-mental"
+          />
 
-        {/* Moral overlay (Chest/Heart) - Yellow */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: moralColor,
-            opacity: getOpacity(balance.moral),
-            clipPath: 'polygon(30% 18%, 70% 18%, 70% 42%, 30% 42%)',
-          }}
-          data-testid="region-moral"
-        />
+          {/* Moral (Chest/Heart) - fills based on balance */}
+          <path
+            d="M 85 95 L 75 130 L 80 165 L 140 165 L 145 130 L 135 95 Z"
+            fill={moralColor}
+            opacity={getOpacity(balance.moral)}
+            data-testid="region-moral"
+          />
 
-        {/* Physical overlay (Torso/Core) - Cyan */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: physicalColor,
-            opacity: getOpacity(balance.physical),
-            clipPath: 'polygon(32% 42%, 68% 42%, 68% 62%, 32% 62%)',
-          }}
-          data-testid="region-physical"
-        />
+          {/* Physical (Torso/Core) - fills based on balance */}
+          <path
+            d="M 80 165 L 75 170 L 85 245 L 135 245 L 145 170 L 140 165 Z"
+            fill={physicalColor}
+            opacity={getOpacity(balance.physical)}
+            data-testid="region-physical"
+          />
 
-        {/* Financial overlay (Legs) - Green */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: financialColor,
-            opacity: getOpacity(balance.financial),
-            clipPath: 'polygon(25% 62%, 75% 62%, 60% 100%, 40% 100%)',
-          }}
-          data-testid="region-financial"
-        />
+          {/* Financial (Legs) - fills based on balance */}
+          <g opacity={getOpacity(balance.financial)} data-testid="region-financial">
+            <path d="M 85 245 L 82 320 L 80 390 L 95 390 L 95 320 Z" fill={financialColor} />
+            <path d="M 135 245 L 138 320 L 140 390 L 125 390 L 125 320 Z" fill={financialColor} />
+          </g>
+        </svg>
       </div>
 
       {/* Legend */}
