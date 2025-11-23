@@ -27,7 +27,7 @@ Preferred communication style: Simple, everyday language.
 -   **Key Components**: `LifeChart`, `ControlPanel`, `TokenNameEditor`, `NewsModal`, `HumanBalance`.
 -   **Features**: User avatar upload (base64, 2MB limit, full-width display up to 280px with vertical layout using AspectRatio for 1:1 square format, hover overlay with camera icon), media persistence in events (base64, 10MB limit), clickable candlesticks/event markers with popups, interactive chart tooltips, and a "Clear All Events" feature with confirmation.
 -   **Timeframe System**: Exchange-style 1D, 7D, 30D, 90D timeframes. Candlestick mode restricted to 1D; aggregated timeframes (7D/30D/90D) auto-switch to line mode due to cumulative state data.
--   **Anatomical Model**: `HumanBalance` uses a custom SVG human figure with dynamic fill regions for Mental (head - purple), Moral (chest/heart - yellow), Physical (torso/core - cyan), and Financial (legs - green), dynamically colored and opacity-adjusted based on daily event impact (positive: base color, negative: red, neutral: transparent).
+-   **Anatomical Model**: `HumanBalance` uses a custom SVG human figure with detailed muscle anatomy and 3D gradient effects. Features include: pectorals (split chest), deltoids (shoulders), six-pack abs, obliques, biceps, neck muscles, and quadriceps. Dynamic fill regions for Mental (head - purple), Moral (chest/heart - yellow), Physical (torso/core - cyan), and Financial (legs - green) are colored and opacity-adjusted based on daily event impact (positive: base color, negative: red, neutral: 30% opacity). Linear gradients create depth and volume for realistic muscle appearance.
 
 ### Backend
 

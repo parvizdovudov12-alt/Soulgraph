@@ -63,55 +63,136 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
           className="w-full h-full"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Base outline - subtle gray */}
-          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
-            {/* Head outline */}
-            <ellipse cx="110" cy="35" rx="32" ry="35" />
-            {/* Neck */}
-            <line x1="110" y1="70" x2="110" y2="90" />
-            {/* Shoulders */}
-            <line x1="70" y1="95" x2="150" y2="95" />
-            {/* Arms */}
-            <line x1="70" y1="95" x2="50" y2="180" />
-            <line x1="150" y1="95" x2="170" y2="180" />
-            {/* Torso */}
-            <path d="M 85 95 L 75 170 L 85 245 L 135 245 L 145 170 L 135 95 Z" />
-            {/* Legs */}
-            <path d="M 85 245 L 80 390" />
-            <path d="M 135 245 L 140 390" />
-          </g>
+          <defs>
+            {/* Gradients for 3D muscle effect */}
+            <linearGradient id="muscleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#000" stopOpacity="0.15" />
+              <stop offset="50%" stopColor="#fff" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#000" stopOpacity="0.15" />
+            </linearGradient>
+          </defs>
 
           {/* Mental (Head) - fills based on balance */}
-          <ellipse
-            cx="110"
-            cy="35"
-            rx="32"
-            ry="35"
-            fill={mentalColor}
-            opacity={getOpacity(balance.mental)}
-            data-testid="region-mental"
-          />
+          <g data-testid="region-mental">
+            <ellipse
+              cx="110"
+              cy="35"
+              rx="32"
+              ry="35"
+              fill={mentalColor}
+              opacity={getOpacity(balance.mental)}
+            />
+            <ellipse cx="110" cy="35" rx="32" ry="35" fill="url(#muscleGradient)" />
+          </g>
 
-          {/* Moral (Chest/Heart) - fills based on balance */}
-          <path
-            d="M 85 95 L 75 130 L 80 165 L 140 165 L 145 130 L 135 95 Z"
-            fill={moralColor}
-            opacity={getOpacity(balance.moral)}
-            data-testid="region-moral"
-          />
+          {/* Neck muscles */}
+          <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+            <path d="M 100 70 Q 100 80, 100 90" />
+            <path d="M 120 70 Q 120 80, 120 90" />
+          </g>
 
-          {/* Physical (Torso/Core) - fills based on balance */}
-          <path
-            d="M 80 165 L 75 170 L 85 245 L 135 245 L 145 170 L 140 165 Z"
-            fill={physicalColor}
-            opacity={getOpacity(balance.physical)}
-            data-testid="region-physical"
-          />
+          {/* Moral (Chest/Heart) - Pecs with definition */}
+          <g data-testid="region-moral">
+            {/* Left pec */}
+            <path
+              d="M 85 95 Q 75 110, 78 130 Q 80 145, 85 158 L 105 162 Q 105 130, 100 110 Z"
+              fill={moralColor}
+              opacity={getOpacity(balance.moral)}
+            />
+            {/* Right pec */}
+            <path
+              d="M 135 95 Q 145 110, 142 130 Q 140 145, 135 158 L 115 162 Q 115 130, 120 110 Z"
+              fill={moralColor}
+              opacity={getOpacity(balance.moral)}
+            />
+            {/* Pec separation/definition */}
+            <path d="M 85 95 Q 75 110, 78 130 Q 80 145, 85 158 L 105 162 Q 105 130, 100 110 Z" fill="url(#muscleGradient)" />
+            <path d="M 135 95 Q 145 110, 142 130 Q 140 145, 135 158 L 115 162 Q 115 130, 120 110 Z" fill="url(#muscleGradient)" />
+          </g>
 
-          {/* Financial (Legs) - fills based on balance */}
-          <g opacity={getOpacity(balance.financial)} data-testid="region-financial">
-            <path d="M 85 245 L 82 320 L 80 390 L 95 390 L 95 320 Z" fill={financialColor} />
-            <path d="M 135 245 L 138 320 L 140 390 L 125 390 L 125 320 Z" fill={financialColor} />
+          {/* Shoulders (deltoids) */}
+          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
+            <ellipse cx="72" cy="98" rx="12" ry="15" />
+            <ellipse cx="148" cy="98" rx="12" ry="15" />
+          </g>
+
+          {/* Physical (Torso/Core) - Abs definition */}
+          <g data-testid="region-physical">
+            {/* Main core fill */}
+            <path
+              d="M 85 165 L 78 180 L 80 210 L 85 240 L 135 240 L 140 210 L 142 180 L 135 165 Z"
+              fill={physicalColor}
+              opacity={getOpacity(balance.physical)}
+            />
+            {/* Six-pack abs definition */}
+            <g fill="url(#muscleGradient)">
+              {/* Upper abs */}
+              <rect x="95" y="170" width="30" height="15" rx="3" />
+              {/* Middle abs */}
+              <rect x="95" y="190" width="30" height="15" rx="3" />
+              {/* Lower abs */}
+              <rect x="95" y="210" width="30" height="15" rx="3" />
+            </g>
+            {/* Obliques */}
+            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4">
+              <path d="M 85 170 Q 75 190, 78 210" />
+              <path d="M 135 170 Q 145 190, 142 210" />
+            </g>
+          </g>
+
+          {/* Arms - Biceps and Triceps */}
+          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
+            {/* Left arm */}
+            <path d="M 70 95 Q 65 105, 62 120" />
+            <path d="M 62 120 Q 58 140, 55 160" />
+            <path d="M 55 160 L 50 180" />
+            {/* Left bicep bulge */}
+            <ellipse cx="65" cy="115" rx="8" ry="12" opacity="0.5" />
+            
+            {/* Right arm */}
+            <path d="M 150 95 Q 155 105, 158 120" />
+            <path d="M 158 120 Q 162 140, 165 160" />
+            <path d="M 165 160 L 170 180" />
+            {/* Right bicep bulge */}
+            <ellipse cx="155" cy="115" rx="8" ry="12" opacity="0.5" />
+          </g>
+
+          {/* Financial (Legs) - Quads and Calves */}
+          <g data-testid="region-financial">
+            {/* Left leg - Quad and calf definition */}
+            <g opacity={getOpacity(balance.financial)}>
+              {/* Left quad */}
+              <path
+                d="M 85 245 Q 82 260, 82 280 L 80 310 Q 78 330, 80 350 L 82 370 L 80 390 L 95 390 L 93 370 L 95 350 Q 97 330, 95 310 L 93 280 Q 93 260, 95 245 Z"
+                fill={financialColor}
+              />
+              {/* Left quad muscles */}
+              <path d="M 85 245 Q 82 260, 82 280 L 80 310 Q 78 330, 80 350 L 82 370 L 80 390 L 95 390 L 93 370 L 95 350 Q 97 330, 95 310 L 93 280 Q 93 260, 95 245 Z" fill="url(#muscleGradient)" />
+            </g>
+
+            {/* Right leg - Quad and calf definition */}
+            <g opacity={getOpacity(balance.financial)}>
+              {/* Right quad */}
+              <path
+                d="M 135 245 Q 138 260, 138 280 L 140 310 Q 142 330, 140 350 L 138 370 L 140 390 L 125 390 L 127 370 L 125 350 Q 123 330, 125 310 L 127 280 Q 127 260, 125 245 Z"
+                fill={financialColor}
+              />
+              {/* Right quad muscles */}
+              <path d="M 135 245 Q 138 260, 138 280 L 140 310 Q 142 330, 140 350 L 138 370 L 140 390 L 125 390 L 127 370 L 125 350 Q 123 330, 125 310 L 127 280 Q 127 260, 125 245 Z" fill="url(#muscleGradient)" />
+            </g>
+
+            {/* Quad separation lines */}
+            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+              <path d="M 88 250 L 87 310" />
+              <path d="M 132 250 L 133 310" />
+            </g>
+          </g>
+
+          {/* Overall body outline */}
+          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.6">
+            <ellipse cx="110" cy="35" rx="32" ry="35" />
+            <path d="M 110 70 L 110 90" />
+            <path d="M 70 95 L 150 95" />
           </g>
         </svg>
       </div>
