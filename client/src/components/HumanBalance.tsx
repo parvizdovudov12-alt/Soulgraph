@@ -183,108 +183,120 @@ export function HumanBalance({ newsEvents }: HumanBalanceProps) {
             </g>
           </g>
 
-          {/* Arms - Enhanced Biceps, Triceps, Forearms */}
+          {/* Arms - Massive Enhanced Biceps, Triceps, Forearms */}
           <g>
             {/* Left arm */}
             <g>
-              {/* Upper arm structure */}
-              <path d="M 70 95 Q 65 105, 62 120" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
-              <path d="M 62 120 Q 58 140, 55 160" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
-              <path d="M 55 160 L 50 180" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
+              {/* Upper arm structure - thicker */}
+              <path d="M 70 95 Q 64 105, 60 120" stroke="hsl(var(--border))" strokeWidth="3.5" fill="none" />
+              <path d="M 60 120 Q 56 140, 53 160" stroke="hsl(var(--border))" strokeWidth="3" fill="none" />
+              <path d="M 53 160 L 48 180" stroke="hsl(var(--border))" strokeWidth="2.5" fill="none" />
               
-              {/* Bicep peak */}
-              <ellipse cx="65" cy="115" rx="9" ry="13" fill="url(#muscleRadial)" opacity="0.5" />
-              <path d="M 60 110 Q 65 115, 70 110" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              {/* Massive bicep peak */}
+              <ellipse cx="64" cy="115" rx="12" ry="17" fill="url(#muscleRadial)" opacity="0.6" />
+              <path d="M 57 110 Q 64 117, 71 110" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
+              <path d="M 59 108 Q 64 114, 69 108" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
               
-              {/* Tricep */}
-              <ellipse cx="68" cy="125" rx="6" ry="10" fill="url(#muscleRadial)" opacity="0.3" />
+              {/* Massive tricep */}
+              <ellipse cx="67" cy="125" rx="9" ry="14" fill="url(#muscleRadial)" opacity="0.4" />
               
-              {/* Forearm muscles */}
-              <ellipse cx="57" cy="150" rx="5" ry="8" fill="url(#muscleRadial)" opacity="0.35" />
-              <path d="M 54 145 L 53 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
-              <path d="M 58 145 L 57 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
+              {/* Massive forearm muscles */}
+              <ellipse cx="56" cy="150" rx="7" ry="12" fill="url(#muscleRadial)" opacity="0.45" />
+              <path d="M 52 145 L 51 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
+              <path d="M 58 145 L 57 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
+              <path d="M 55 145 L 54 165" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.3" />
             </g>
             
             {/* Right arm */}
             <g>
-              {/* Upper arm structure */}
-              <path d="M 150 95 Q 155 105, 158 120" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
-              <path d="M 158 120 Q 162 140, 165 160" stroke="hsl(var(--border))" strokeWidth="2" fill="none" />
-              <path d="M 165 160 L 170 180" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
+              {/* Upper arm structure - thicker */}
+              <path d="M 150 95 Q 156 105, 160 120" stroke="hsl(var(--border))" strokeWidth="3.5" fill="none" />
+              <path d="M 160 120 Q 164 140, 167 160" stroke="hsl(var(--border))" strokeWidth="3" fill="none" />
+              <path d="M 167 160 L 172 180" stroke="hsl(var(--border))" strokeWidth="2.5" fill="none" />
               
-              {/* Bicep peak */}
-              <ellipse cx="155" cy="115" rx="9" ry="13" fill="url(#muscleRadial)" opacity="0.5" />
-              <path d="M 150 110 Q 155 115, 160 110" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              {/* Massive bicep peak */}
+              <ellipse cx="156" cy="115" rx="12" ry="17" fill="url(#muscleRadial)" opacity="0.6" />
+              <path d="M 149 110 Q 156 117, 163 110" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
+              <path d="M 151 108 Q 156 114, 161 108" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
               
-              {/* Tricep */}
-              <ellipse cx="152" cy="125" rx="6" ry="10" fill="url(#muscleRadial)" opacity="0.3" />
+              {/* Massive tricep */}
+              <ellipse cx="153" cy="125" rx="9" ry="14" fill="url(#muscleRadial)" opacity="0.4" />
               
-              {/* Forearm muscles */}
-              <ellipse cx="163" cy="150" rx="5" ry="8" fill="url(#muscleRadial)" opacity="0.35" />
-              <path d="M 166 145 L 167 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
-              <path d="M 162 145 L 163 165" stroke="hsl(var(--border))" strokeWidth="0.8" opacity="0.3" />
+              {/* Massive forearm muscles */}
+              <ellipse cx="164" cy="150" rx="7" ry="12" fill="url(#muscleRadial)" opacity="0.45" />
+              <path d="M 168 145 L 169 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
+              <path d="M 162 145 L 163 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
+              <path d="M 165 145 L 166 165" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.3" />
             </g>
           </g>
 
           {/* Financial (Legs) - Quads and Calves */}
           <g data-testid="region-financial">
-            {/* Left leg - Quad and calf definition */}
+            {/* Left leg - Massive Quad definition */}
             <g opacity={getOpacity(balance.financial)}>
-              {/* Left quad */}
+              {/* Left quad - wider and more massive */}
               <path
-                d="M 85 245 Q 82 260, 82 280 L 80 310 Q 78 330, 80 350 L 82 370 L 80 390 L 95 390 L 93 370 L 95 350 Q 97 330, 95 310 L 93 280 Q 93 260, 95 245 Z"
+                d="M 85 245 Q 78 260, 75 280 L 72 310 Q 70 330, 72 350 L 75 370 L 72 390 L 98 390 L 95 370 L 97 350 Q 99 330, 97 310 L 95 280 Q 95 260, 97 245 Z"
                 fill={financialColor}
               />
-              {/* Left quad muscles */}
-              <path d="M 85 245 Q 82 260, 82 280 L 80 310 Q 78 330, 80 350 L 82 370 L 80 390 L 95 390 L 93 370 L 95 350 Q 97 330, 95 310 L 93 280 Q 93 260, 95 245 Z" fill="url(#muscleGradient)" />
+              {/* Left quad muscles - enhanced volume */}
+              <path d="M 85 245 Q 80 260, 78 280 L 75 310 Q 73 330, 75 350 L 78 370 L 75 390 L 98 390 L 95 370 L 97 350 Q 99 330, 97 310 L 95 280 Q 95 260, 97 245 Z" fill="url(#muscleGradient)" />
+              {/* Additional quad mass */}
+              <ellipse cx="86" cy="275" rx="8" ry="22" fill="url(#muscleRadial)" opacity="0.5" />
             </g>
 
-            {/* Right leg - Quad and calf definition */}
+            {/* Right leg - Massive Quad definition */}
             <g opacity={getOpacity(balance.financial)}>
-              {/* Right quad */}
+              {/* Right quad - wider and more massive */}
               <path
-                d="M 135 245 Q 138 260, 138 280 L 140 310 Q 142 330, 140 350 L 138 370 L 140 390 L 125 390 L 127 370 L 125 350 Q 123 330, 125 310 L 127 280 Q 127 260, 125 245 Z"
+                d="M 135 245 Q 142 260, 145 280 L 148 310 Q 150 330, 148 350 L 145 370 L 148 390 L 122 390 L 125 370 L 123 350 Q 121 330, 123 310 L 125 280 Q 125 260, 123 245 Z"
                 fill={financialColor}
               />
-              {/* Right quad muscles */}
-              <path d="M 135 245 Q 138 260, 138 280 L 140 310 Q 142 330, 140 350 L 138 370 L 140 390 L 125 390 L 127 370 L 125 350 Q 123 330, 125 310 L 127 280 Q 127 260, 125 245 Z" fill="url(#muscleGradient)" />
+              {/* Right quad muscles - enhanced volume */}
+              <path d="M 135 245 Q 140 260, 142 280 L 145 310 Q 147 330, 145 350 L 142 370 L 145 390 L 122 390 L 125 370 L 123 350 Q 121 330, 123 310 L 125 280 Q 125 260, 123 245 Z" fill="url(#muscleGradient)" />
+              {/* Additional quad mass */}
+              <ellipse cx="134" cy="275" rx="8" ry="22" fill="url(#muscleRadial)" opacity="0.5" />
             </g>
 
-            {/* Enhanced Quad separation and definition */}
-            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4">
-              {/* Vastus medialis/lateralis separation */}
-              <path d="M 88 250 L 87 310" />
-              <path d="M 92 252 L 91 308" />
-              <path d="M 132 250 L 133 310" />
-              <path d="M 128 252 L 129 308" />
-              {/* Rectus femoris */}
-              <path d="M 87 255 Q 85 280, 86 305" />
-              <path d="M 133 255 Q 135 280, 134 305" />
+            {/* Enhanced Quad separation and definition - thicker lines */}
+            <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5">
+              {/* Vastus medialis/lateralis separation - wider */}
+              <path d="M 86 250 L 85 310" />
+              <path d="M 91 252 L 90 308" />
+              <path d="M 134 250 L 135 310" />
+              <path d="M 129 252 L 130 308" />
+              {/* Rectus femoris - center line */}
+              <path d="M 85 255 Q 83 280, 84 305" />
+              <path d="M 135 255 Q 137 280, 136 305" />
             </g>
             
-            {/* Hamstring hints (back of leg visible) */}
-            <g opacity="0.25">
-              <ellipse cx="83" cy="270" rx="3" ry="12" fill="url(#muscleRadial)" />
-              <ellipse cx="137" cy="270" rx="3" ry="12" fill="url(#muscleRadial)" />
+            {/* Hamstring hints (back of leg visible) - larger */}
+            <g opacity="0.35">
+              <ellipse cx="80" cy="270" rx="5" ry="18" fill="url(#muscleRadial)" />
+              <ellipse cx="140" cy="270" rx="5" ry="18" fill="url(#muscleRadial)" />
             </g>
             
-            {/* Calves - Gastrocnemius */}
+            {/* Calves - Massive Gastrocnemius */}
             <g opacity={getOpacity(balance.financial) * 0.8}>
-              {/* Left calf */}
-              <ellipse cx="87" cy="340" rx="7" ry="18" fill={financialColor} />
-              <ellipse cx="87" cy="340" rx="7" ry="18" fill="url(#muscleRadial)" />
-              <path d="M 84 330 Q 87 340, 90 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              {/* Left calf - HUGE */}
+              <ellipse cx="86" cy="340" rx="10" ry="24" fill={financialColor} />
+              <ellipse cx="86" cy="340" rx="10" ry="24" fill="url(#muscleRadial)" />
+              <path d="M 81 328 Q 86 342, 91 328" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
+              <path d="M 83 330 Q 86 340, 89 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
               
-              {/* Right calf */}
-              <ellipse cx="133" cy="340" rx="7" ry="18" fill={financialColor} />
-              <ellipse cx="133" cy="340" rx="7" ry="18" fill="url(#muscleRadial)" />
-              <path d="M 130 330 Q 133 340, 136 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4" />
+              {/* Right calf - HUGE */}
+              <ellipse cx="134" cy="340" rx="10" ry="24" fill={financialColor} />
+              <ellipse cx="134" cy="340" rx="10" ry="24" fill="url(#muscleRadial)" />
+              <path d="M 129 328 Q 134 342, 139 328" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
+              <path d="M 131 330 Q 134 340, 137 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
             </g>
             
-            {/* Tibialis anterior (shin) */}
-            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
+            {/* Tibialis anterior (shin) - thicker */}
+            <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.4">
               <path d="M 92 315 L 94 365" />
+              <path d="M 95 317 L 97 363" />
               <path d="M 128 315 L 126 365" />
+              <path d="M 125 317 L 123 363" />
             </g>
           </g>
 
