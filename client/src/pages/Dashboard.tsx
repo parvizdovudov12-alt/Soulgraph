@@ -6,11 +6,16 @@ import ControlPanel from '@/components/ControlPanel';
 import NewsModal from '@/components/NewsModal';
 import ConnectWallet from '@/components/ConnectWallet';
 import { useAuth } from '@/hooks/useAuth';
-import { Activity } from 'lucide-react';
+import { Activity, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
 import { aggregateCandles, timeframeToDays, type Timeframe } from '@/lib/dateUtils';
 
-export default function Dashboard() {
+interface DashboardProps {
+  onOpenFriends?: () => void;
+}
+
+export default function Dashboard({ onOpenFriends }: DashboardProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [tokenName, setTokenName] = useState(user?.tokenName || 'SOUL');
 
@@ -379,6 +384,16 @@ export default function Dashboard() {
               day: 'numeric' 
             })}
           </div>
+          {onOpenFriends && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onOpenFriends}
+              data-testid="button-open-friends"
+            >
+              <Users className="h-5 w-5" />
+            </Button>
+          )}
           <ConnectWallet />
         </div>
       </header>

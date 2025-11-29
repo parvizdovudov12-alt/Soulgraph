@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 -   **Data Visualization**: `lightweight-charts` for charts, custom SVG rendering for `HumanBalance`.
 -   **Key Components**: `LifeChart`, `ControlPanel`, `TokenNameEditor`, `NewsModal`, `HumanBalance`.
 -   **Features**: User avatar upload (base64, 2MB limit, full-width display up to 280px with vertical layout using AspectRatio for 1:1 square format, hover overlay with camera icon), media persistence in events (base64, 10MB limit), clickable candlesticks/event markers with popups, interactive chart tooltips, and a "Clear All Events" feature with confirmation.
+-   **Social Features (Friends Feed)**: Search users by token name, follow/unfollow users, view following/followers lists, view other users' graphs with privacy controls. Pages: `Friends.tsx` (search and lists), `ViewUser.tsx` (profile and chart view).
 -   **Timeframe System**: Exchange-style 1D, 7D, 30D, 90D timeframes. Candlestick mode restricted to 1D; aggregated timeframes (7D/30D/90D) auto-switch to line mode due to cumulative state data.
 -   **Anatomical Model**: `HumanBalance` uses a custom SVG human figure with extensive muscle anatomy and 3D gradient effects. Features classic **V-taper bodybuilder physique** with: massive pectorals (split chest), wide deltoids (3-head shoulders), trapezius (upper back/neck), latissimus dorsi (lats), serratus anterior (ribs), **narrow waist** with smaller six-pack abs, obliques, **massive biceps with double peaks** (33% larger), **thick triceps** (50% larger), **detailed forearms** (40% larger with triple tendon lines), **wide quadriceps** (vastus medialis/lateralis, rectus femoris with volume ellipses), **enlarged hamstrings** (67% larger), **huge gastrocnemius calves** (43% larger with double diamond definition), and **thick tibialis anterior shins** (double lines). Dynamic fill regions for Mental (head - purple), Moral (chest/heart - yellow), Physical (torso/core - cyan), and Financial (legs/calves - green) are colored and opacity-adjusted based on daily event impact (positive: base color, negative: red, neutral: 30% opacity). Linear and radial gradients create depth and volume for hyper-realistic bodybuilder appearance with wide shoulders, narrow waist, and massive limbs.
 
@@ -44,6 +45,8 @@ Preferred communication style: Simple, everyday language.
     -   `Users`: `tokenName`, `avatarUrl` (base64), `walletAddress`.
     -   `News events`: User-specific events, media attachments (base64 data URLs in JSONB).
     -   `State data`: Time-series values for the four life states.
+    -   `User profiles`: Social profile settings (`displayName`, `bio`, `isPublic`, `allowEventSharing`).
+    -   `User relationships`: Follow relationships between users (`followerId`, `followedId`, `status`).
 -   **Validation**: Zod for schema validation.
 
 ## External Dependencies

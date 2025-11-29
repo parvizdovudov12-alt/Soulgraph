@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertNewsEventSchema, insertStateDataSchema, registerUserSchema, loginUserSchema } from "@shared/schema";
+import { insertNewsEventSchema, insertStateDataSchema, registerUserSchema, loginUserSchema, searchUsersSchema } from "@shared/schema";
 import { PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
@@ -343,6 +343,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to create state data:", error);
       res.status(400).json({ message: "Invalid state data" });
+    }
+  });
+
+  // ====== SOCIAL FEATURES ======
+
+  // Search users
+  app.get("/api/social/search", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const query = req.query.query as string;
+      if (!query || query.length < 1) {
+        return res.json([]);
+      }
+
+      const results = await storage.searchUsers(query, req.session.userId);
+      
+      // Remove sensitive data
+      const sanitizedResults = results.map(user => ({
+        id: user.id,
+        tokenName: user.tokenName,
+        avatarUrl: user.avatarUrl,
+        profile: user.profile,
+        isFollowing: user.isFollowing,
+      }));
+
+      res.json(sanitizedResults);
+    } catch (error) {
+      console.error("Search error:", error);
+      res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+
+  // Get current user's profile
+  app.get("/api/social/profile", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      let profile = await storage.getUserProfile(req.session.userId);
+      
+      // Create default profile if doesn't exist
+      if (!profile) {
+        const user = await storage.getUser(req.session.userId);
+        profile = await storage.createUserProfile({
+          userId: req.session.userId,
+          displayName: user?.tokenName || null,
+          bio: null,
+          isPublic: true,
+          allowEventSharing: false,
+        });
+      }
+
+      res.json(profile);
+    } catch (error) {
+      console.error("Profile error:", error);
+      res.status(500).json({ message: "Failed to get profile" });
+    }
+  });
+
+  // Update current user's profile
+  app.patch("/api/social/profile", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { displayName, bio, isPublic, allowEventSharing } = req.body;
+      
+      let profile = await storage.getUserProfile(req.session.userId);
+      
+      if (!profile) {
+        profile = await storage.createUserProfile({
+          userId: req.session.userId,
+          displayName: displayName || null,
+          bio: bio || null,
+          isPublic: isPublic ?? true,
+          allowEventSharing: allowEventSharing ?? false,
+        });
+      } else {
+        profile = await storage.updateUserProfile(req.session.userId, {
+          displayName,
+          bio,
+          isPublic,
+          allowEventSharing,
+        });
+      }
+
+      res.json(profile);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Follow a user
+  app.post("/api/social/follow", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      if (userId === req.session.userId) {
+        return res.status(400).json({ message: "Cannot follow yourself" });
+      }
+
+      const relationship = await storage.followUser(req.session.userId, userId);
+      res.json(relationship);
+    } catch (error) {
+      console.error("Follow error:", error);
+      res.status(500).json({ message: "Failed to follow user" });
+    }
+  });
+
+  // Unfollow a user
+  app.delete("/api/social/follow/:userId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { userId } = req.params;
+      await storage.unfollowUser(req.session.userId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Unfollow error:", error);
+      res.status(500).json({ message: "Failed to unfollow user" });
+    }
+  });
+
+  // Get users I'm following
+  app.get("/api/social/following", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const following = await storage.getFollowing(req.session.userId);
+      
+      // Remove sensitive data
+      const sanitizedFollowing = following.map(user => ({
+        id: user.id,
+        tokenName: user.tokenName,
+        avatarUrl: user.avatarUrl,
+        profile: user.profile,
+      }));
+
+      res.json(sanitizedFollowing);
+    } catch (error) {
+      console.error("Following error:", error);
+      res.status(500).json({ message: "Failed to get following" });
+    }
+  });
+
+  // Get my followers
+  app.get("/api/social/followers", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const followers = await storage.getFollowers(req.session.userId);
+      
+      // Remove sensitive data
+      const sanitizedFollowers = followers.map(user => ({
+        id: user.id,
+        tokenName: user.tokenName,
+        avatarUrl: user.avatarUrl,
+        profile: user.profile,
+      }));
+
+      res.json(sanitizedFollowers);
+    } catch (error) {
+      console.error("Followers error:", error);
+      res.status(500).json({ message: "Failed to get followers" });
+    }
+  });
+
+  // Get another user's public data (for viewing their graph)
+  app.get("/api/social/users/:userId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { userId } = req.params;
+      const publicData = await storage.getPublicUserData(userId, req.session.userId);
+
+      if (!publicData) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Remove sensitive data
+      const sanitizedData = {
+        user: {
+          id: publicData.user.id,
+          tokenName: publicData.user.tokenName,
+          avatarUrl: publicData.user.avatarUrl,
+        },
+        profile: publicData.profile,
+        stateData: publicData.stateData,
+        events: publicData.events,
+        isFollowing: publicData.isFollowing,
+      };
+
+      res.json(sanitizedData);
+    } catch (error) {
+      console.error("User data error:", error);
+      res.status(500).json({ message: "Failed to get user data" });
     }
   });
 

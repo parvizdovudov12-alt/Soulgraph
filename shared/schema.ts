@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -76,3 +76,50 @@ export const insertStateDataSchema = createInsertSchema(stateData).omit({
 
 export type InsertStateData = z.infer<typeof insertStateDataSchema>;
 export type StateData = typeof stateData.$inferSelect;
+
+// User profiles for social features
+export const userProfiles = pgTable("user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  displayName: text("display_name"),
+  bio: text("bio"),
+  isPublic: boolean("is_public").default(true),
+  allowEventSharing: boolean("allow_event_sharing").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
+
+// User relationships (follows)
+export const userRelationships = pgTable("user_relationships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  followedId: varchar("followed_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: text("status").notNull().default("accepted"), // 'pending', 'accepted', 'blocked'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserRelationshipSchema = createInsertSchema(userRelationships).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserRelationship = z.infer<typeof insertUserRelationshipSchema>;
+export type UserRelationship = typeof userRelationships.$inferSelect;
+
+// Search users schema
+export const searchUsersSchema = z.object({
+  query: z.string().min(1).max(100),
+});
+
+export type SearchUsersQuery = z.infer<typeof searchUsersSchema>;
