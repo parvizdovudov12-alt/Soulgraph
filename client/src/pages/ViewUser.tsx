@@ -105,7 +105,9 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
     );
   }
 
-  const hasData = data.stateData.length > 0;
+  const hasStateData = data.stateData.length > 0;
+  const hasEvents = data.events && data.events.length > 0;
+  const hasData = hasStateData || hasEvents;
   const isPrivate = !hasData && !data.isFollowing && data.profile?.isPublic === false;
 
   return (
@@ -182,25 +184,27 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
           </Card>
         ) : hasData ? (
           <div>
-            <Card className="p-4 mb-4">
-              <LifeChart 
-                data={chartData}
-                news={chartEvents}
-                tokenName={data.user.tokenName || "SOUL"}
-                visibleStates={{ mental: false, physical: false, moral: false, financial: false }}
-                weights={{ mental: 0.25, physical: 0.25, moral: 0.25, financial: 0.25 }}
-                chartType="line"
-              />
-            </Card>
+            {hasStateData && (
+              <Card className="p-4 mb-4">
+                <LifeChart 
+                  data={chartData}
+                  news={chartEvents}
+                  tokenName={data.user.tokenName || "SOUL"}
+                  visibleStates={{ mental: false, physical: false, moral: false, financial: false }}
+                  weights={{ mental: 0.25, physical: 0.25, moral: 0.25, financial: 0.25 }}
+                  chartType="line"
+                />
+              </Card>
+            )}
             
-            {data.events && data.events.length > 0 && (
+            {hasEvents && (
               <Card className="p-4">
                 <h2 className="font-medium mb-3 flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  События ({data.events.length})
+                  События ({data.events!.length})
                 </h2>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {data.events.slice().reverse().map((event) => (
+                  {data.events!.slice().reverse().map((event) => (
                     <div 
                       key={event.id}
                       className={`p-2 rounded text-sm ${

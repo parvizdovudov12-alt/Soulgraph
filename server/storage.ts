@@ -540,9 +540,9 @@ export class PostgresStorage implements IStorage {
 
     const userStateData = await this.getUserStateData(userId);
     
-    // Only include events if user allows event sharing
+    // Include events if: no profile (default to allow), allowEventSharing is true, or viewing own profile
     let events: DBNewsEvent[] | undefined;
-    if (profile?.allowEventSharing || userId === viewerId) {
+    if (!profile || profile.allowEventSharing !== false || userId === viewerId) {
       events = await this.getUserNewsEvents(userId);
     }
 
