@@ -51,16 +51,49 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
   });
 
   // Hooks must be called before any conditional returns
+  // Generate stateData from events if no stateData exists (same logic as Dashboard)
   const chartData = useMemo((): ChartStateData[] => {
-    if (!data?.stateData) return [];
-    return data.stateData.map(s => ({
-      time: s.time as any,
-      mental: s.mental,
-      physical: s.physical,
-      moral: s.moral,
-      financial: s.financial,
-    }));
-  }, [data?.stateData]);
+    // If we have stateData from DB, use it
+    if (data?.stateData && data.stateData.length > 0) {
+      return data.stateData.map(s => ({
+        time: s.time as any,
+        mental: s.mental,
+        physical: s.physical,
+        moral: s.moral,
+        financial: s.financial,
+      }));
+    }
+    
+    // Otherwise generate from events
+    if (data?.events && data.events.length > 0) {
+      const sortedEvents = [...data.events].sort((a, b) => a.time - b.time);
+      const firstEventTime = sortedEvents[0].time;
+      const baseline: ChartStateData = { 
+        time: (firstEventTime - 1) as any, 
+        mental: 0, 
+        physical: 0, 
+        moral: 0, 
+        financial: 0 
+      };
+      
+      const newData: ChartStateData[] = [baseline];
+      
+      sortedEvents.forEach((event) => {
+        const lastPoint = newData[newData.length - 1];
+        newData.push({
+          time: event.time as any,
+          mental: Math.max(-1000, Math.min(1000, lastPoint.mental + event.impactMental)),
+          physical: Math.max(-1000, Math.min(1000, lastPoint.physical + event.impactPhysical)),
+          moral: Math.max(-1000, Math.min(1000, lastPoint.moral + event.impactMoral)),
+          financial: Math.max(-1000, Math.min(1000, lastPoint.financial + event.impactFinancial)),
+        });
+      });
+      
+      return newData;
+    }
+    
+    return [];
+  }, [data?.stateData, data?.events]);
 
   const chartEvents = useMemo((): ChartNewsEvent[] => {
     if (!data?.events) return [];
@@ -105,9 +138,9 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
     );
   }
 
-  const hasStateData = data.stateData.length > 0;
+  const hasChartData = chartData.length > 0;
   const hasEvents = data.events && data.events.length > 0;
-  const hasData = hasStateData || hasEvents;
+  const hasData = hasChartData || hasEvents;
   const isPrivate = !hasData && !data.isFollowing && data.profile?.isPublic === false;
 
   return (
@@ -184,7 +217,7 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
           </Card>
         ) : hasData ? (
           <div>
-            {hasStateData && (
+            {hasChartData && (
               <Card className="p-4 mb-4">
                 <LifeChart 
                   data={chartData}
