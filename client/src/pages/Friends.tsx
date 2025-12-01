@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, UserPlus, UserMinus, Users, ArrowLeft, Eye } from "lucide-react";
+import { Search, UserPlus, UserMinus, Users, ArrowLeft } from "lucide-react";
 import type { UserProfile } from "@shared/schema";
 
 interface SocialUser {
@@ -83,7 +83,11 @@ export default function Friends({ onBack, onViewUser }: FriendsProps) {
       className="p-3 flex items-center justify-between gap-3"
       data-testid={`card-user-${user.id}`}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div 
+        className="flex items-center gap-3 min-w-0 cursor-pointer hover-elevate flex-1"
+        onClick={() => onViewUser(user.id)}
+        data-testid={`link-user-${user.id}`}
+      >
         <Avatar className="h-10 w-10 flex-shrink-0">
           <AvatarImage src={user.avatarUrl || undefined} />
           <AvatarFallback className="bg-primary/10 text-primary">
@@ -91,7 +95,7 @@ export default function Friends({ onBack, onViewUser }: FriendsProps) {
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <div className="font-medium truncate" data-testid={`text-username-${user.id}`}>
+          <div className="font-medium truncate text-primary hover:underline" data-testid={`text-username-${user.id}`}>
             {user.tokenName || "Unknown"}
           </div>
           {user.profile?.displayName && (
@@ -102,14 +106,6 @@ export default function Friends({ onBack, onViewUser }: FriendsProps) {
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => onViewUser(user.id)}
-          data-testid={`button-view-${user.id}`}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
         {showFollowButton && (
           user.isFollowing ? (
             <Button
