@@ -50,6 +50,35 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
     },
   });
 
+  // Hooks must be called before any conditional returns
+  const chartData = useMemo((): ChartStateData[] => {
+    if (!data?.stateData) return [];
+    return data.stateData.map(s => ({
+      time: s.time as any,
+      mental: s.mental,
+      physical: s.physical,
+      moral: s.moral,
+      financial: s.financial,
+    }));
+  }, [data?.stateData]);
+
+  const chartEvents = useMemo((): ChartNewsEvent[] => {
+    if (!data?.events) return [];
+    return data.events.map(e => ({
+      id: e.id,
+      time: e.time as any,
+      type: e.type as 'positive' | 'negative',
+      text: e.text,
+      impact: {
+        mental: e.impactMental,
+        physical: e.impactPhysical,
+        moral: e.impactMoral,
+        financial: e.impactFinancial,
+      },
+      media: e.media || undefined,
+    }));
+  }, [data?.events]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -78,33 +107,6 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
 
   const hasData = data.stateData.length > 0;
   const isPrivate = !hasData && !data.isFollowing && data.profile?.isPublic === false;
-
-  const chartData = useMemo((): ChartStateData[] => {
-    return data.stateData.map(s => ({
-      time: s.time as any,
-      mental: s.mental,
-      physical: s.physical,
-      moral: s.moral,
-      financial: s.financial,
-    }));
-  }, [data.stateData]);
-
-  const chartEvents = useMemo((): ChartNewsEvent[] => {
-    if (!data.events) return [];
-    return data.events.map(e => ({
-      id: e.id,
-      time: e.time as any,
-      type: e.type as 'positive' | 'negative',
-      text: e.text,
-      impact: {
-        mental: e.impactMental,
-        physical: e.impactPhysical,
-        moral: e.impactMoral,
-        financial: e.impactFinancial,
-      },
-      media: e.media || undefined,
-    }));
-  }, [data.events]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
