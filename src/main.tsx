@@ -1,1 +1,1 @@
-import "../client/src/main";
+import "../client/src/main.tsx";
