@@ -1,0 +1,9 @@
+node_modules
+.git
+dist
+*.log
+attached_assets
+public.cookies.txt
+register.json
+profile.json
+event.json

@@ -1,0 +1,10 @@
+10:58:19 PM [config] SESSION_SECRET is not set. Using local development secret.
+10:58:20 PM [express] Server started in development mode on port 5000
+10:58:39 PM [express] GET /api/auth/me 401 in 6ms :: Not authenticated
+10:58:40 PM [express] POST /api/auth/register 200 in 135ms
+10:58:40 PM [express] GET /api/social/profile 200 in 1ms
+10:58:56 PM [express] POST /api/auth/register 200 in 77ms
+10:58:56 PM [express] POST /api/news-events 200 in 1ms
+10:58:56 PM [express] GET /api/news-events 200 in 1ms
+10:58:57 PM [express] POST /api/auth/register 200 in 72ms
+10:58:57 PM [express] PATCH /api/social/profile 200 in 1ms

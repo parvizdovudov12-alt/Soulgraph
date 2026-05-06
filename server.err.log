@@ -1,0 +1,4 @@
+DATABASE_URL is not set. Falling back to in-memory storage for local development.
+Warning: connect.session() MemoryStore is not
+designed for a production environment, as it will leak
+memory, and will not scale past a single process.

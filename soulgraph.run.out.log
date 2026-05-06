@@ -1,0 +1,14 @@
+4:06:41 PM [express] Server started in production mode on port 5000
+4:06:41 PM [express] Static files: serving from dist/public
+4:10:02 PM [express] GET /api/auth/me 304 in 554ms
+4:10:03 PM [express] GET /api/social/profile 304 in 503ms
+4:10:03 PM [express] GET /api/news-events 304 in 579ms
+4:21:01 PM [express] GET /api/auth/me 304 in 848ms
+4:21:02 PM [express] GET /api/social/profile 304 in 504ms
+4:21:03 PM [express] GET /api/news-events 304 in 523ms
+4:22:12 PM [express] POST /api/news-events 200 in 546ms
+4:22:14 PM [express] GET /api/news-events 200 in 562ms
+4:22:19 PM [express] POST /api/news-events 200 in 840ms
+4:22:21 PM [express] GET /api/news-events 200 in 566ms
+4:22:26 PM [express] POST /api/news-events 200 in 572ms
+4:22:27 PM [express] GET /api/news-events 200 in 531ms

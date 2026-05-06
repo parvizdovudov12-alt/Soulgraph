@@ -1,0 +1,22 @@
+11:40:55 PM [express] Server started in production mode on port 5000
+11:40:55 PM [express] Static files: serving from dist/public
+11:41:14 PM [express] POST /api/auth/register 200 in 1728ms
+11:41:21 PM [express] GET /api/auth/me 401 in 1ms :: Not authenticated
+11:42:07 PM [express] GET /api/auth/me 200 in 549ms
+11:42:20 PM [express] GET /api/auth/me 401 in 1ms :: Not authenticated
+11:42:20 PM [express] GET /api/news-events 401 in 1ms :: Not authenticated
+11:42:20 PM [express] GET /api/social/profile 401 in 1ms :: Not authenticated
+11:42:20 PM [express] POST /api/auth/logout 200 in 1ms
+11:42:20 PM [express] GET /api/auth/me 401 in 1ms :: Not authenticated
+11:42:32 PM [express] GET /api/auth/me 401 in 1ms :: Not authenticated
+11:42:37 PM [express] GET /api/news-events 401 in 1ms :: Not authenticated
+11:42:37 PM [express] GET /api/social/profile 401 in 1ms :: Not authenticated
+11:45:36 PM [express] GET /api/auth/me 401 in 1ms :: Not authenticated
+11:45:38 PM [express] PATCH /api/social/profile 401 in 1ms :: Not authenticated
+11:45:38 PM [express] POST /api/news-events 401 in 0ms :: Not authenticated
+11:45:40 PM [express] GET /api/news-events 401 in 1ms :: Not authenticated
+11:45:57 PM [express] POST /api/auth/register 200 in 1582ms
+11:46:11 PM [express] GET /api/auth/me 200 in 473ms
+11:46:13 PM [express] PATCH /api/social/profile 200 in 956ms
+11:46:15 PM [express] POST /api/news-events 200 in 471ms
+11:46:17 PM [express] GET /api/news-events 200 in 482ms
