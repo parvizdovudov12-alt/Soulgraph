@@ -1,54 +1,194 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import LifeChart, { StateData, NewsEvent } from '@/components/LifeChart';
-import ControlPanel from '@/components/ControlPanel';
-import NewsModal from '@/components/NewsModal';
-import ConnectWallet from '@/components/ConnectWallet';
-import { useAuth } from '@/hooks/useAuth';
-import { Activity, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { NewsEvent as DBNewsEvent, StateData as DBStateData } from '@shared/schema';
-import { aggregateCandles, timeframeToDays, type Timeframe } from '@/lib/dateUtils';
+﻿import { useState, useMemo, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import LifeChart, { type StateData, type NewsEvent } from "@/components/LifeChart";
+import ControlPanel from "@/components/ControlPanel";
+import NewsModal from "@/components/NewsModal";
+import ConnectWallet from "@/components/ConnectWallet";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import type { NewsEvent as DBNewsEvent, UserProfile } from "@shared/schema";
+import type { Timeframe } from "@/lib/dateUtils";
+import { timeframeToSeconds } from "@/lib/dateUtils";
+import { analyzeGoalProgress } from "@/lib/goalCoach";
+import { useLanguage } from "@/lib/i18n";
+import { calculateLevelProgress } from "@/lib/levelSystem";
+import { getLocalDayKey, mergeDashboardEvents, normalizeTaskImpact, readLocalDashboardState, updateLocalDashboardState, type DailyTask, type TaskImpact } from "@/lib/localDashboardState";
+import type { SubscriptionResponse } from "@/lib/premium";
+import type { AiGoalAnalysisResult } from "@/components/ControlPanel";
 
 interface DashboardProps {
   onOpenFriends?: () => void;
 }
 
 export default function Dashboard({ onOpenFriends }: DashboardProps) {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const [tokenName, setTokenName] = useState(user?.tokenName || 'SOUL');
+  const { user, isAuthenticated } = useAuth();
+  const { language } = useLanguage();
+  const { toast } = useToast();
+  const [localState, setLocalState] = useState(() => readLocalDashboardState());
+  const [tokenName, setTokenName] = useState(user?.tokenName || "SOUL");
+  const [visibleStates, setVisibleStates] = useState({ mental: false, physical: false, moral: false, financial: false });
+  const [newsModalOpen, setNewsModalOpen] = useState(false);
+  const [newsModalType, setNewsModalType] = useState<"positive" | "negative">("positive");
+  const [chartType] = useState<"line" | "candlestick">("candlestick");
+  const [timeframe, setTimeframe] = useState<Timeframe>("ALL");
+  const [aiGoalAnalysis, setAiGoalAnalysis] = useState<AiGoalAnalysisResult | null>(null);
+  const [aiGoalAnalysisError, setAiGoalAnalysisError] = useState<string | null>(null);
+  const [draftTask, setDraftTask] = useState("");
+  const [draftTaskImpact, setDraftTaskImpact] = useState<TaskImpact>({
+    mental: 0,
+    physical: 0,
+    moral: 0,
+    financial: 0,
+  });
 
-  // Update token name when user changes
+  const t =
+    language === "ru"
+      ? {
+          subtitle: "Операционная система человека",
+          dateLocale: "ru-RU",
+          friends: "Друзья",
+          eventSavedLocal: "Событие сохранено локально",
+          eventSavedLocalDescription: "Сервер сейчас недоступен. Мы сохранили событие в браузере:",
+          goalSaved: "Цель сохранена",
+          goalCleared: "Цель очищена",
+          goalSavedDescription: "Теперь кабинет будет разбирать события относительно этой цели.",
+          goalClearedDescription: "Задай новую цель, чтобы снова включить анализ действий.",
+          goalSavedLocal: "Цель сохранена локально",
+          goalSavedLocalDescription: "Сервер сейчас недоступен. Мы сохранили цель в браузере:",
+          day: "день",
+          week: "неделю",
+          month: "месяц",
+          year: "год",
+          allPeriod: "весь период",
+          taskCompleted: "Задача выполнена",
+          taskCompletedDescription: "Добавили выполнение в события и на график.",
+          goalCompleted: "Цель выполнена",
+          goalCompletedDescription: "Добавили достижение цели в события и на график.",
+          premiumRequired: "AI-анализ цели доступен в Premium.",
+        }
+      : {
+          subtitle: "Soulgraph Human Operating System",
+          dateLocale: "en-US",
+          friends: "Friends",
+          eventSavedLocal: "Event saved locally",
+          eventSavedLocalDescription: "The server is unavailable right now. We saved the event in the browser:",
+          goalSaved: "Goal saved",
+          goalCleared: "Goal cleared",
+          goalSavedDescription: "The desk will now evaluate events against this goal.",
+          goalClearedDescription: "Set a new goal to turn the analysis back on.",
+          goalSavedLocal: "Goal saved locally",
+          goalSavedLocalDescription: "The server is unavailable right now. We saved the goal in the browser:",
+          day: "day",
+          week: "week",
+          month: "month",
+          year: "year",
+          allPeriod: "all time",
+          taskCompleted: "Task completed",
+          taskCompletedDescription: "Completion was added to events and the chart.",
+          goalCompleted: "Goal completed",
+          goalCompletedDescription: "Goal achievement was added to events and the chart.",
+          premiumRequired: "AI goal analysis is available in Premium.",
+        };
+
   useEffect(() => {
     if (user?.tokenName) {
       setTokenName(user.tokenName);
     }
   }, [user?.tokenName]);
 
-  // Initial state data - start with one baseline point at zero
   const [stateData, setStateData] = useState<StateData[]>(() => {
     const now = Math.floor(Date.now() / 1000);
-    return [{
-      time: now as any,
-      mental: 0,
-      physical: 0,
-      moral: 0,
-      financial: 0,
-    }];
+    return [{ time: now as any, mental: 0, physical: 0, moral: 0, financial: 0 }];
   });
 
-  // Load news events from server
-  const { data: newsEventsData = [] } = useQuery<DBNewsEvent[]>({
-    queryKey: ['/api/news-events'],
+  const liveSyncIntervalMs = isAuthenticated ? 10_000 : false;
+  const liveSyncQueryOptions = {
+    enabled: isAuthenticated,
+    refetchInterval: liveSyncIntervalMs,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 0,
+  } as const;
+
+  const newsEventsQuery = useQuery<DBNewsEvent[]>({ queryKey: ["/api/news-events"], ...liveSyncQueryOptions });
+  const profileQuery = useQuery<UserProfile>({ queryKey: ["/api/social/profile"], enabled: isAuthenticated });
+  const subscriptionQuery = useQuery<SubscriptionResponse>({ queryKey: ["/api/me/subscription"], enabled: isAuthenticated });
+  const dailyTasksQuery = useQuery<DailyTask[]>({ queryKey: ["/api/daily-tasks"], ...liveSyncQueryOptions });
+  const newsEventsData = newsEventsQuery.data ?? [];
+  const profile = profileQuery.data;
+  const isPremium = !!subscriptionQuery.data?.isPremium;
+  const effectiveGoal = localState.pendingGoal ?? profile?.goal ?? localState.lastKnownGoal ?? "";
+  const effectiveDbNewsEvents = useMemo(
+    () => mergeDashboardEvents(newsEventsData, localState),
+    [localState, newsEventsData],
+  );
+
+  useEffect(() => {
+    if (newsEventsQuery.isSuccess) {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        lastKnownEvents: newsEventsData,
+        pendingEvents: current.pendingEvents.filter(
+          (pendingEvent) => !newsEventsData.some((event) => event.id === pendingEvent.id),
+        ),
+      })));
+    }
+  }, [newsEventsData, newsEventsQuery.isSuccess]);
+
+  useEffect(() => {
+    if (profileQuery.isSuccess) {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        lastKnownGoal: profile?.goal ?? "",
+        pendingGoal: current.pendingGoal === (profile?.goal ?? "") ? null : current.pendingGoal,
+      })));
+    }
+  }, [profile?.goal, profileQuery.isSuccess]);
+
+  const migrateLocalDailyTasksMutation = useMutation({
+    mutationFn: async (tasks: DailyTask[]) => {
+      await Promise.all(tasks.map((task) => apiRequest("POST", "/api/daily-tasks", task)));
+    },
+    onSuccess: () => {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        dailyTasks: [],
+      })));
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+    },
   });
 
-  // Convert DB news events to frontend format
+  useEffect(() => {
+    if (!isAuthenticated || !dailyTasksQuery.isSuccess || migrateLocalDailyTasksMutation.isPending) {
+      return;
+    }
+
+    const serverTasks = dailyTasksQuery.data ?? [];
+    const serverTaskIds = new Set(serverTasks.map((task) => task.id));
+    const serverTaskTexts = new Set(serverTasks.map((task) => task.text.trim().toLowerCase()));
+    const tasksToMigrate = localState.dailyTasks.filter((task) => (
+      !serverTaskIds.has(task.id) && !serverTaskTexts.has(task.text.trim().toLowerCase())
+    ));
+
+    if (tasksToMigrate.length > 0) {
+      migrateLocalDailyTasksMutation.mutate(tasksToMigrate);
+    } else if (localState.dailyTasks.length > 0) {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        dailyTasks: [],
+      })));
+    }
+  }, [dailyTasksQuery.data, dailyTasksQuery.isSuccess, isAuthenticated, localState.dailyTasks, migrateLocalDailyTasksMutation.isPending]);
+
   const newsEvents = useMemo((): NewsEvent[] => {
-    return newsEventsData.map(event => ({
+    return effectiveDbNewsEvents.map((event) => ({
       id: event.id,
       time: event.time as any,
-      type: event.type as 'positive' | 'negative',
+      type: event.type as "positive" | "negative",
       text: event.text,
       impact: {
         mental: event.impactMental,
@@ -58,27 +198,15 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
       },
       media: event.media || undefined,
     }));
-  }, [newsEventsData]);
+  }, [effectiveDbNewsEvents]);
 
-  // Apply loaded events to state data
   useEffect(() => {
     if (newsEvents.length > 0) {
-      // Sort events by time first
       const sortedEvents = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
-      
-      // Get initial baseline point - 1 second before first event
       const firstEventTime = sortedEvents[0].time as number;
-      const baseline = { 
-        time: (firstEventTime - 1) as any, 
-        mental: 0, 
-        physical: 0, 
-        moral: 0, 
-        financial: 0 
-      };
-      
-      // Build new data array starting from baseline
+      const baseline = { time: (firstEventTime - 1) as any, mental: 0, physical: 0, moral: 0, financial: 0 };
       const newData: StateData[] = [baseline];
-      
+
       sortedEvents.forEach((event) => {
         const lastPoint = newData[newData.length - 1];
         newData.push({
@@ -89,148 +217,21 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
           financial: Math.max(-1000, Math.min(1000, lastPoint.financial + event.impact.financial)),
         });
       });
-      
+
       setStateData(newData);
-    } else if (newsEvents.length === 0) {
-      // Reset to baseline when no events
+    } else {
       const now = Math.floor(Date.now() / 1000);
-      setStateData([{
-        time: now as any,
-        mental: 0,
-        physical: 0,
-        moral: 0,
-        financial: 0,
-      }]);
+      setStateData([{ time: now as any, mental: 0, physical: 0, moral: 0, financial: 0 }]);
     }
-  }, [newsEvents]); // Re-run when events change
+  }, [newsEvents]);
 
-  const [visibleStates, setVisibleStates] = useState({
-    mental: false,
-    physical: false,
-    moral: false,
-    financial: false,
-  });
+  const weights = { mental: 0.25, physical: 0.25, moral: 0.25, financial: 0.25 };
 
-  const [newsModalOpen, setNewsModalOpen] = useState(false);
-  const [newsModalType, setNewsModalType] = useState<'positive' | 'negative'>('positive');
-  const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
-  const [timeframe, setTimeframe] = useState<Timeframe>('1D');
-
-  // Fixed weights (equal for all states)
-  const weights = {
-    mental: 0.25,
-    physical: 0.25,
-    moral: 0.25,
-    financial: 0.25,
-  };
-
-  // Aggregate data based on timeframe
-  const aggregatedData = useMemo(() => {
-    if (timeframe === '1D') {
-      return stateData; // No aggregation for 1D view
-    }
-
-    if (stateData.length === 0) return stateData;
-
-    const days = timeframeToDays(timeframe);
-    
-    // Convert StateData to format expected by aggregateCandles
-    const dailyData = stateData.map(d => ({
-      time: d.time as number,
-      mental: d.mental,
-      physical: d.physical,
-      moral: d.moral,
-      financial: d.financial,
-    }));
-    
-    const candles = aggregateCandles(dailyData, days);
-
-    // Convert aggregated candles back to StateData format for chart
-    // Use dateEnd to align with closing values
-    return candles.map(candle => ({
-      time: candle.dateEnd as any,
-      mental: candle.mental,
-      physical: candle.physical,
-      moral: candle.moral,
-      financial: candle.financial,
-    }));
-  }, [stateData, timeframe]);
-
-  // Aggregate news events by period
-  const aggregatedNews = useMemo(() => {
-    if (timeframe === '1D') {
-      return newsEvents; // No aggregation for 1D view
-    }
-
-    if (newsEvents.length === 0) return newsEvents;
-
-    const days = timeframeToDays(timeframe);
-    
-    // Sort events by time
-    const sorted = [...newsEvents].sort((a, b) => (a.time as number) - (b.time as number));
-    
-    // Group events into periods
-    const periods: NewsEvent[][] = [];
-    let currentPeriod: NewsEvent[] = [];
-    let periodStartTime = sorted[0].time as number;
-    
-    for (let i = 0; i < sorted.length; i++) {
-      const event = sorted[i];
-      const daysSinceStart = Math.floor(((event.time as number) - periodStartTime) / (24 * 60 * 60));
-      
-      if (daysSinceStart >= days) {
-        if (currentPeriod.length > 0) {
-          periods.push(currentPeriod);
-        }
-        currentPeriod = [event];
-        periodStartTime = event.time as number;
-      } else {
-        currentPeriod.push(event);
-      }
-    }
-    
-    if (currentPeriod.length > 0) {
-      periods.push(currentPeriod);
-    }
-
-    // Create summary event for each period
-    const aggregated: NewsEvent[] = periods.map(events => {
-      // Calculate total impact for the period
-      const totalImpact = events.reduce(
-        (acc, event) => ({
-          mental: acc.mental + event.impact.mental,
-          physical: acc.physical + event.impact.physical,
-          moral: acc.moral + event.impact.moral,
-          financial: acc.financial + event.impact.financial,
-        }),
-        { mental: 0, physical: 0, moral: 0, financial: 0 }
-      );
-
-      // Determine overall type based on total impact
-      const totalValue = totalImpact.mental + totalImpact.physical + totalImpact.moral + totalImpact.financial;
-      const type = totalValue >= 0 ? 'positive' : 'negative';
-
-      // Create summary text
-      const positiveCount = events.filter(e => e.type === 'positive').length;
-      const negativeCount = events.filter(e => e.type === 'negative').length;
-      const summaryText = `${events.length} событий (+${positiveCount} -${negativeCount})`;
-
-      return {
-        id: events[0].id, // Use first event's id for aggregated event
-        time: events[0].time,
-        type,
-        text: summaryText,
-        impact: totalImpact,
-        groupedEvents: events,
-      } as any;
-    });
-
-    return aggregated;
-  }, [newsEvents, timeframe]);
-
-  // Calculate total assets
   const totalAssets = useMemo(() => {
-    if (stateData.length === 0) return 50;
+    if (stateData.length === 0) {
+      return 0;
+    }
+
     const lastPoint = stateData[stateData.length - 1];
     const total = weights.mental + weights.physical + weights.moral + weights.financial;
     return (
@@ -242,30 +243,120 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
     );
   }, [stateData]);
 
-  // Get current values for daily norm display
   const currentValues = useMemo(() => {
-    if (stateData.length === 0) {
-      return { mental: 50, physical: 50, moral: 50, financial: 50 };
-    }
-    const lastPoint = stateData[stateData.length - 1];
-    return {
-      mental: lastPoint.mental,
-      physical: lastPoint.physical,
-      moral: lastPoint.moral,
-      financial: lastPoint.financial,
-    };
-  }, [stateData]);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodaySeconds = Math.floor(startOfToday.getTime() / 1000);
 
-  // Mutation for creating news events
+    const todayEvents = newsEvents.filter((event) => Number(event.time) >= startOfTodaySeconds);
+
+    if (todayEvents.length === 0) {
+      return { mental: 0, physical: 0, moral: 0, financial: 0 };
+    }
+
+    return todayEvents.reduce(
+      (acc, event) => ({
+        mental: Math.max(-1000, Math.min(1000, acc.mental + event.impact.mental)),
+        physical: Math.max(-1000, Math.min(1000, acc.physical + event.impact.physical)),
+        moral: Math.max(-1000, Math.min(1000, acc.moral + event.impact.moral)),
+        financial: Math.max(-1000, Math.min(1000, acc.financial + event.impact.financial)),
+      }),
+      { mental: 0, physical: 0, moral: 0, financial: 0 },
+    );
+  }, [newsEvents]);
+
+  const analysisPeriodLabel = useMemo(() => {
+    switch (timeframe) {
+      case "ALL":
+        return t.allPeriod;
+      case "1D":
+        return t.day;
+      case "1W":
+        return t.week;
+      case "1M":
+        return t.month;
+      case "1Y":
+        return t.year;
+    }
+  }, [timeframe, t.allPeriod, t.day, t.month, t.week, t.year]);
+
+  const analysisEvents = useMemo(() => {
+    if (newsEvents.length === 0) return [];
+    if (timeframe === "ALL") return newsEvents;
+    const latestEventTime = Math.max(...newsEvents.map((event) => Number(event.time)));
+    const periodStart = latestEventTime - timeframeToSeconds(timeframe);
+    return newsEvents.filter((event) => Number(event.time) >= periodStart);
+  }, [newsEvents, timeframe]);
+  const analysisEventsFingerprint = useMemo(
+    () =>
+      JSON.stringify(
+        analysisEvents.map((event) => ({
+          id: event.id ?? "no-id",
+          time: Number(event.time),
+          type: event.type,
+          text: event.text,
+          impact: event.impact,
+        })),
+      ),
+    [analysisEvents],
+  );
+
+  const goalAnalysis = useMemo(() => analyzeGoalProgress(effectiveGoal, analysisEvents, language), [effectiveGoal, analysisEvents, language]);
+
+  const aiGoalAnalysisMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/goal-analysis/ai", {
+        goal: effectiveGoal,
+        timeframe,
+        language,
+        events: analysisEvents.map((event) => ({
+          id: event.id,
+          time: Number(event.time),
+          type: event.type,
+          text: event.text,
+          impact: event.impact,
+        })),
+      });
+
+      return response.json() as Promise<AiGoalAnalysisResult>;
+    },
+    onSuccess: (result) => {
+      setAiGoalAnalysis(result);
+      setAiGoalAnalysisError(null);
+    },
+    onError: (error: Error) => {
+      setAiGoalAnalysis(null);
+      setAiGoalAnalysisError(error.message);
+    },
+  });
+
+  useEffect(() => {
+    if (!effectiveGoal.trim()) {
+      setAiGoalAnalysis(null);
+      setAiGoalAnalysisError(null);
+      return;
+    }
+
+    if (analysisEvents.length === 0) {
+      setAiGoalAnalysis(null);
+      setAiGoalAnalysisError(null);
+      return;
+    }
+
+    if (!isPremium) {
+      setAiGoalAnalysis(null);
+      setAiGoalAnalysisError(t.premiumRequired);
+      return;
+    }
+
+    setAiGoalAnalysisError(null);
+    aiGoalAnalysisMutation.mutate();
+  }, [effectiveGoal, timeframe, language, analysisEventsFingerprint, isPremium, t.premiumRequired]);
+
   const createNewsEventMutation = useMutation({
-    mutationFn: async (data: {
-      text: string;
-      time: number;
-      impact: { mental: number; physical: number; moral: number; financial: number };
-      media?: { type: 'image' | 'video'; url: string }[];
-    }) => {
-      return apiRequest('POST', '/api/news-events', {
-        type: newsModalType,
+    mutationFn: async (data: { type: "positive" | "negative"; text: string; time: number; impact: { mental: number; physical: number; moral: number; financial: number }; media?: { type: "image" | "video"; url: string }[] }) => {
+      return apiRequest("POST", "/api/news-events", {
+        type: data.type,
         time: data.time,
         text: data.text,
         impactMental: data.impact.mental,
@@ -276,179 +367,456 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/news-events"] });
+    },
+    onError: (error: Error, data) => {
+      const fallbackEvent: DBNewsEvent = {
+        id: `local-${Date.now()}`,
+        userId: user?.id ?? "local-user",
+        time: data.time,
+        type: data.type,
+        text: data.text,
+        impactMental: data.impact.mental,
+        impactPhysical: data.impact.physical,
+        impactMoral: data.impact.moral,
+        impactFinancial: data.impact.financial,
+        media: data.media ?? null,
+        createdAt: new Date(),
+      };
+
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        pendingEvents: [...current.pendingEvents, fallbackEvent],
+      })));
+
+      toast({
+        title: t.eventSavedLocal,
+        description: `${t.eventSavedLocalDescription} ${error.message}`,
+      });
     },
   });
 
-  // Mutation for deleting a single event
+  const saveGoalMutation = useMutation({
+    mutationFn: async (goal: string) => {
+      return apiRequest("PATCH", "/api/social/profile", {
+        displayName: profile?.displayName ?? user?.tokenName ?? null,
+        bio: profile?.bio ?? null,
+        goal: goal || null,
+        isPublic: profile?.isPublic ?? true,
+        allowEventSharing: profile?.allowEventSharing ?? false,
+      });
+    },
+    onSuccess: async (_response, goal) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/social/profile"] });
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        lastKnownGoal: goal,
+        pendingGoal: null,
+      })));
+      toast({
+        title: goal ? t.goalSaved : t.goalCleared,
+        description: goal ? t.goalSavedDescription : t.goalClearedDescription,
+      });
+    },
+    onError: (error: Error, goal) => {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        pendingGoal: goal,
+      })));
+      toast({
+        title: t.goalSavedLocal,
+        description: `${t.goalSavedLocalDescription} ${error.message}`,
+      });
+    },
+  });
+
+  const saveProfileMutation = useMutation({
+    mutationFn: async (payload: { displayName: string; bio: string }) => {
+      return apiRequest("PATCH", "/api/social/profile", {
+        displayName: payload.displayName || null,
+        bio: payload.bio || null,
+        goal: profile?.goal ?? (effectiveGoal || null),
+        isPublic: profile?.isPublic ?? true,
+        allowEventSharing: profile?.allowEventSharing ?? false,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/social/profile"] });
+    },
+  });
+
   const deleteNewsEventMutation = useMutation({
-    mutationFn: async (eventId: string) => {
-      return apiRequest('DELETE', `/api/news-events/${eventId}`, {});
-    },
+    mutationFn: async (eventId: string) => apiRequest("DELETE", `/api/news-events/${eventId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/news-events"] });
     },
   });
 
-  // Mutation for deleting all events
-  const deleteAllEventsMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('DELETE', '/api/news-events', {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
-      // Reset to baseline
-      const now = Math.floor(Date.now() / 1000);
-      setStateData([{
-        time: now as any,
-        mental: 0,
-        physical: 0,
-        moral: 0,
-        financial: 0,
-      }]);
-    },
-  });
-
-  // Mutation for deleting multiple events from a specific day
   const deleteMultipleEventsMutation = useMutation({
     mutationFn: async (params: { eventIds: string[]; onSuccess?: () => void }) => {
-      // Delete all events in parallel
-      const results = await Promise.allSettled(
-        params.eventIds.map(eventId => 
-          apiRequest('DELETE', `/api/news-events/${eventId}`, {})
-        )
-      );
-      
-      // Check for failures
-      const failures = results.filter(r => r.status === 'rejected');
+      const results = await Promise.allSettled(params.eventIds.map((eventId) => apiRequest("DELETE", `/api/news-events/${eventId}`, {})));
+      const failures = results.filter((result) => result.status === "rejected");
       if (failures.length > 0) {
         throw new Error(`Failed to delete ${failures.length} of ${params.eventIds.length} events`);
       }
-      
-      return { results, onSuccessCallback: params.onSuccess };
+      return params.onSuccess;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/news-events'] });
-      // Call the success callback to close popup
-      if (data.onSuccessCallback) {
-        data.onSuccessCallback();
-      }
+    onSuccess: (callback) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/news-events"] });
+      callback?.();
     },
   });
 
-  const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
-    setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
+  const createDailyTaskMutation = useMutation({
+    mutationFn: async (task: DailyTask) => apiRequest("POST", "/api/daily-tasks", task),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+    },
+    onError: (_error: Error, task) => {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        dailyTasks: current.dailyTasks.some((currentTask) => currentTask.id === task.id)
+          ? current.dailyTasks
+          : [...current.dailyTasks, task],
+      })));
+    },
+  });
+
+  const completeDailyTaskMutation = useMutation({
+    mutationFn: async (payload: { taskId: string; dayKey: string }) => (
+      apiRequest("PATCH", `/api/daily-tasks/${payload.taskId}/complete`, { dayKey: payload.dayKey })
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+    },
+  });
+
+  const pinDailyTaskMutation = useMutation({
+    mutationFn: async (payload: { taskId: string; pinned: boolean }) => (
+      apiRequest("PATCH", `/api/daily-tasks/${payload.taskId}/pin`, { pinned: payload.pinned })
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+    },
+  });
+
+  const reorderDailyTasksMutation = useMutation({
+    mutationFn: async (taskIds: string[]) => apiRequest("PATCH", "/api/daily-tasks/reorder", { taskIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+    },
+  });
+
+  const deleteDailyTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => apiRequest("DELETE", `/api/daily-tasks/${taskId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+    },
+  });
+
+  const todayKey = getLocalDayKey();
+  const dailyTasks = isAuthenticated ? (dailyTasksQuery.data ?? []) : localState.dailyTasks;
+  const isGoalCompleted = Boolean(
+    effectiveGoal.trim() &&
+      localState.completedGoals.some((completedGoal) => completedGoal.goal.trim() === effectiveGoal.trim()),
+  );
+  const levelProgress = useMemo(
+    () => calculateLevelProgress({ events: newsEvents, tasks: dailyTasks, language }),
+    [newsEvents, dailyTasks, language],
+  );
+
+  const handleAddNews = (data: { text: string; time: number; impact: { mental: number; physical: number; moral: number; financial: number }; media?: { type: "image" | "video"; url: string }[] }) => {
+    createNewsEventMutation.mutate({ ...data, type: newsModalType });
   };
 
-  const handleAddNews = (data: {
-    text: string;
-    time: number;
-    impact: { mental: number; physical: number; moral: number; financial: number };
-    media?: { type: 'image' | 'video'; url: string }[];
-  }) => {
-    // Save to server - the useEffect will handle updating the chart
-    createNewsEventMutation.mutate(data);
+  const handleAddDailyTask = () => {
+    const text = draftTask.trim();
+    if (!text) return;
+
+    const task: DailyTask = {
+      id: `task-${Date.now()}`,
+      text,
+      impact: normalizeTaskImpact(draftTaskImpact),
+      createdAt: new Date().toISOString(),
+      completedDates: [],
+      pinned: false,
+      orderIndex: dailyTasks.length,
+    };
+
+    if (isAuthenticated) {
+      createDailyTaskMutation.mutate(task);
+    } else {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        dailyTasks: [...current.dailyTasks, task],
+      })));
+    }
+    setDraftTask("");
+    setDraftTaskImpact({
+      mental: 0,
+      physical: 0,
+      moral: 0,
+      financial: 0,
+    });
   };
 
-  const handleClearAllEvents = () => {
-    deleteAllEventsMutation.mutate();
+  const handleCompleteDailyTask = (task: DailyTask) => {
+    if (task.completedDates.includes(todayKey)) return;
+
+    if (isAuthenticated) {
+      completeDailyTaskMutation.mutate({ taskId: task.id, dayKey: todayKey });
+    } else {
+      setLocalState(updateLocalDashboardState((current) => ({
+        ...current,
+        dailyTasks: current.dailyTasks.map((currentTask) =>
+          currentTask.id === task.id
+            ? { ...currentTask, completedDates: [...currentTask.completedDates, todayKey] }
+            : currentTask,
+        ),
+      })));
+    }
+
+    createNewsEventMutation.mutate({
+      type: task.impact.mental + task.impact.physical + task.impact.moral + task.impact.financial >= 0 ? "positive" : "negative",
+      time: Math.floor(Date.now() / 1000),
+      text: language === "ru" ? `Выполнена задача: ${task.text}` : `Completed task: ${task.text}`,
+      impact: normalizeTaskImpact(task.impact),
+    });
+
+    toast({
+      title: t.taskCompleted,
+      description: t.taskCompletedDescription,
+    });
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    deleteNewsEventMutation.mutate(eventId);
+  const handleCompleteGoal = () => {
+    const goalText = effectiveGoal.trim();
+    if (!goalText) return;
+
+    setLocalState(updateLocalDashboardState((current) => ({
+      ...current,
+      completedGoals: [
+        ...current.completedGoals,
+        {
+          goal: goalText,
+          completedAt: new Date().toISOString(),
+        },
+      ],
+    })));
+
+    createNewsEventMutation.mutate({
+      type: "positive",
+      time: Math.floor(Date.now() / 1000),
+      text: language === "ru" ? `Выполнена цель: ${goalText}` : `Goal completed: ${goalText}`,
+      impact: {
+        mental: 40,
+        physical: 20,
+        moral: 40,
+        financial: 20,
+      },
+    });
+
+    toast({
+      title: t.goalCompleted,
+      description: t.goalCompletedDescription,
+    });
+  };
+
+  const handleDeleteDailyTask = (taskId: string) => {
+    if (isAuthenticated) {
+      deleteDailyTaskMutation.mutate(taskId);
+      return;
+    }
+
+    setLocalState(updateLocalDashboardState((current) => ({
+      ...current,
+      dailyTasks: current.dailyTasks.filter((task) => task.id !== taskId),
+    })));
+  };
+
+  const handleToggleDailyTaskPin = (taskId: string) => {
+    const task = dailyTasks.find((currentTask) => currentTask.id === taskId);
+    if (!task) return;
+
+    if (isAuthenticated) {
+      pinDailyTaskMutation.mutate({ taskId, pinned: !task.pinned });
+      return;
+    }
+
+    setLocalState(updateLocalDashboardState((current) => ({
+      ...current,
+      dailyTasks: current.dailyTasks.map((currentTask) =>
+        currentTask.id === taskId ? { ...currentTask, pinned: !currentTask.pinned, orderIndex: currentTask.orderIndex } : currentTask,
+      ),
+    })));
+  };
+
+  const getOrderedDailyTasks = (tasks: DailyTask[]) => [...tasks].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  const moveTaskInList = (tasks: DailyTask[], taskId: string, direction: "up" | "down") => {
+    const ordered = getOrderedDailyTasks(tasks);
+    const currentIndex = ordered.findIndex((task) => task.id === taskId);
+    if (currentIndex < 0) return tasks;
+
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= ordered.length) return tasks;
+
+    const [task] = ordered.splice(currentIndex, 1);
+    ordered.splice(nextIndex, 0, task);
+    const orderById = new Map(ordered.map((orderedTask, index) => [orderedTask.id, index]));
+    return tasks.map((currentTask) => ({
+      ...currentTask,
+      orderIndex: orderById.get(currentTask.id) ?? currentTask.orderIndex,
+    }));
+  };
+
+  const handleMoveDailyTask = (taskId: string, direction: "up" | "down") => {
+    const nextTasks = moveTaskInList(dailyTasks, taskId, direction);
+    const nextTaskIds = getOrderedDailyTasks(nextTasks).map((task) => task.id);
+
+    if (isAuthenticated) {
+      queryClient.setQueryData(["/api/daily-tasks"], nextTasks);
+      reorderDailyTasksMutation.mutate(nextTaskIds);
+      return;
+    }
+
+    setLocalState(updateLocalDashboardState((current) => ({
+      ...current,
+      dailyTasks: moveTaskInList(current.dailyTasks, taskId, direction),
+    })));
+  };
+
+  const applyDailyTaskOrder = (tasks: DailyTask[], taskIds: string[]) => {
+    const orderById = new Map(taskIds.map((taskId, index) => [taskId, index]));
+    return tasks.map((task) => ({
+      ...task,
+      orderIndex: orderById.get(task.id) ?? task.orderIndex,
+    }));
+  };
+
+  const handleReorderDailyTasks = (taskIds: string[]) => {
+    if (taskIds.length === 0) return;
+
+    if (isAuthenticated) {
+      queryClient.setQueryData(["/api/daily-tasks"], applyDailyTaskOrder(dailyTasks, taskIds));
+      reorderDailyTasksMutation.mutate(taskIds);
+      return;
+    }
+
+    setLocalState(updateLocalDashboardState((current) => ({
+      ...current,
+      dailyTasks: applyDailyTaskOrder(current.dailyTasks, taskIds),
+    })));
   };
 
   const handleDeleteAllDayEvents = (eventIds: string[], onSuccess?: () => void) => {
-    if (eventIds.length === 0) return;
-    deleteMultipleEventsMutation.mutate({ eventIds, onSuccess });
+    if (eventIds.length > 0) {
+      deleteMultipleEventsMutation.mutate({ eventIds, onSuccess });
+    }
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="h-14 md:h-16 border-b border-border flex items-center justify-between px-3 md:px-6">
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
-            <Activity className="w-4 h-4 md:w-5 md:h-5 text-primary" strokeWidth={2} />
+    <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground lg:h-screen lg:overflow-hidden">
+      <div className="flex min-h-screen flex-col lg:h-full lg:min-h-0">
+      <header className="shrink-0 border-b border-border px-3 py-3 md:px-6 lg:h-16 lg:py-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 lg:h-full">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm">
+            <img src="/assets/soulgraph-logo-192.png" alt="Soulgraph" className="h-full w-full object-cover" />
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-semibold text-foreground tracking-tight">Soulgraph</h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">Трекер жизни</p>
+            <h1 className="text-lg font-semibold tracking-tight md:text-xl">Soulgraph</h1>
+            <p className="hidden text-xs text-muted-foreground sm:block">{t.subtitle}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="text-xs md:text-sm text-muted-foreground font-medium hidden lg:block">
-            {new Date().toLocaleDateString('ru-RU', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
+
+        <div className="flex flex-wrap items-center justify-end gap-2 md:gap-4">
+          <div className="hidden text-sm text-muted-foreground lg:block">
+            {new Date().toLocaleDateString(t.dateLocale, { year: "numeric", month: "long", day: "numeric" })}
           </div>
+          <LanguageSwitcher />
           {onOpenFriends && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onOpenFriends}
-              data-testid="button-open-friends"
-            >
+            <Button size="icon" variant="ghost" onClick={onOpenFriends} data-testid="button-open-friends">
               <Users className="h-5 w-5" />
+              <span className="sr-only">{t.friends}</span>
             </Button>
           )}
           <ConnectWallet />
         </div>
+        </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Chart Area */}
-        <div className="flex-1 p-2 md:p-4 min-h-0">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
+        <div className="min-h-0 min-w-0 px-1 pb-2 pt-1 md:px-2 md:pb-3 md:pt-2 lg:pb-2">
           <LifeChart
-            data={aggregatedData}
+            data={stateData}
             visibleStates={visibleStates}
             weights={weights}
-            news={aggregatedNews}
+            news={newsEvents}
             chartType={chartType}
             tokenName={tokenName}
             timeframe={timeframe}
-            onDeleteEvent={handleDeleteEvent}
+            onTimeframeChange={setTimeframe}
+            onDeleteEvent={(eventId) => deleteNewsEventMutation.mutate(eventId)}
             onDeleteAllDayEvents={handleDeleteAllDayEvents}
             isDeletingMultiple={deleteMultipleEventsMutation.isPending}
           />
         </div>
 
-        {/* Control Panel */}
         <ControlPanel
           totalAssets={totalAssets}
           visibleStates={visibleStates}
           currentValues={currentValues}
           news={newsEvents}
-          onToggleState={handleToggleState}
+          onToggleState={(state) => setVisibleStates((current) => ({ ...current, [state]: !current[state] }))}
           onAddPositiveNews={() => {
-            setNewsModalType('positive');
+            setNewsModalType("positive");
             setNewsModalOpen(true);
           }}
           onAddNegativeNews={() => {
-            setNewsModalType('negative');
+            setNewsModalType("negative");
             setNewsModalOpen(true);
           }}
-          chartType={chartType}
-          onChartTypeChange={setChartType}
-          tokenName={tokenName}
-          onTokenNameUpdate={setTokenName}
           isAuthenticated={isAuthenticated}
-          timeframe={timeframe}
-          onTimeframeChange={setTimeframe}
           avatarUrl={user?.avatarUrl}
+          tokenName={tokenName}
+          profileDisplayName={profile?.displayName ?? null}
+          profileBio={profile?.bio ?? null}
+          twoFactorEnabled={!!user?.twoFactorEnabled}
+          goal={effectiveGoal}
+          onGoalSave={(goal) => saveGoalMutation.mutate(goal)}
+          onGoalComplete={handleCompleteGoal}
+          isGoalCompleted={isGoalCompleted}
+          isSavingGoal={saveGoalMutation.isPending}
+          onProfileSave={(profileData) => saveProfileMutation.mutate(profileData)}
+          isSavingProfile={saveProfileMutation.isPending}
+          goalAnalysis={goalAnalysis}
+          aiGoalAnalysis={aiGoalAnalysis}
+          isLoadingAiGoalAnalysis={aiGoalAnalysisMutation.isPending}
+          aiGoalAnalysisError={aiGoalAnalysisError}
+          analysisPeriodLabel={analysisPeriodLabel}
+          analysisTimeframe={timeframe}
+          levelProgress={levelProgress}
+          dailyTasks={dailyTasks}
+          todayKey={todayKey}
+          draftTask={draftTask}
+          draftTaskImpact={draftTaskImpact}
+          onDraftTaskChange={setDraftTask}
+          onDraftTaskImpactChange={(impact) => setDraftTaskImpact(normalizeTaskImpact(impact))}
+          onAddDailyTask={handleAddDailyTask}
+          onCompleteDailyTask={handleCompleteDailyTask}
+          onDeleteDailyTask={handleDeleteDailyTask}
+          onToggleDailyTaskPin={handleToggleDailyTaskPin}
+          onReorderDailyTasks={handleReorderDailyTasks}
         />
       </div>
 
-      {/* News Modal */}
-      <NewsModal
-        open={newsModalOpen}
-        onClose={() => setNewsModalOpen(false)}
-        type={newsModalType}
-        onSubmit={handleAddNews}
-      />
+      <NewsModal open={newsModalOpen} onClose={() => setNewsModalOpen(false)} type={newsModalType} onSubmit={handleAddNews} />
+      </div>
     </div>
   );
 }

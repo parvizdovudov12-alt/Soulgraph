@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import ControlPanel from '../ControlPanel';
+﻿import { useState } from "react";
+import ControlPanel from "../ControlPanel";
+import { analyzeGoalProgress } from "@/lib/goalCoach";
 
 export default function ControlPanelExample() {
   const [visibleStates, setVisibleStates] = useState({
@@ -8,38 +9,49 @@ export default function ControlPanelExample() {
     moral: true,
     financial: true,
   });
-
-  const [weights, setWeights] = useState({
-    mental: 0.25,
-    physical: 0.25,
-    moral: 0.25,
-    financial: 0.25,
-  });
-
-  const [chartType, setChartType] = useState<'line' | 'candlestick'>('line');
-
-  const handleToggleState = (state: 'mental' | 'physical' | 'moral' | 'financial') => {
-    setVisibleStates({ ...visibleStates, [state]: !visibleStates[state] });
-    console.log(`Toggled ${state}`);
-  };
-
-  const handleWeightChange = (state: 'mental' | 'physical' | 'moral' | 'financial', value: number) => {
-    setWeights({ ...weights, [state]: value });
-    console.log(`Weight ${state} changed to ${value}`);
-  };
+  const [goal, setGoal] = useState("Стать спокойнее и стабильнее в работе");
+  const [draftTask, setDraftTask] = useState("");
 
   return (
     <div className="h-screen bg-background">
       <ControlPanel
-        aggregateIndex={65.3}
+        totalAssets={64}
         visibleStates={visibleStates}
-        weights={weights}
-        onToggleState={handleToggleState}
-        onWeightChange={handleWeightChange}
-        onAddPositiveNews={() => console.log('Add positive news')}
-        onAddNegativeNews={() => console.log('Add negative news')}
-        chartType={chartType}
-        onChartTypeChange={setChartType}
+        currentValues={{ mental: 62, physical: 58, moral: 71, financial: 70 }}
+        news={[]}
+        onToggleState={(state) => setVisibleStates((current) => ({ ...current, [state]: !current[state] }))}
+        onAddPositiveNews={() => undefined}
+        onAddNegativeNews={() => undefined}
+        isAuthenticated={false}
+        tokenName="SOUL"
+        profileDisplayName="Parviz"
+        profileBio="Собираю более сильную и спокойную версию себя."
+        twoFactorEnabled={false}
+        goal={goal}
+        onGoalSave={setGoal}
+        onGoalComplete={() => undefined}
+        isGoalCompleted={false}
+        isSavingGoal={false}
+        onProfileSave={() => undefined}
+        isSavingProfile={false}
+        goalAnalysis={analyzeGoalProgress(goal, [])}
+        aiGoalAnalysis={null}
+        isLoadingAiGoalAnalysis={false}
+        aiGoalAnalysisError={null}
+        analysisPeriodLabel="день"
+        analysisTimeframe="1D"
+        levelProgress={{ level: 1, xp: 42, xpToNextLevel: 100, rankName: "Искра роста", progress: 42, totalXp: 42 }}
+        dailyTasks={[]}
+        todayKey="2026-05-23"
+        draftTask={draftTask}
+        draftTaskImpact={{ mental: 0, physical: 0, moral: 0, financial: 0 }}
+        onDraftTaskChange={setDraftTask}
+        onDraftTaskImpactChange={() => undefined}
+        onAddDailyTask={() => undefined}
+        onCompleteDailyTask={() => undefined}
+        onDeleteDailyTask={() => undefined}
+        onToggleDailyTaskPin={() => undefined}
+        onReorderDailyTasks={() => undefined}
       />
     </div>
   );

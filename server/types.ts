@@ -1,8 +1,12 @@
-import 'express-session';
-
-declare module 'express-session' {
-  interface SessionData {
-    userId?: string;
-    walletAddress?: string;
+declare global {
+  namespace Express {
+    interface Request {
+      session: {
+        userId?: string;
+        destroy: (callback: (err?: Error) => void) => void;
+      };
+    }
   }
 }
+
+export {};

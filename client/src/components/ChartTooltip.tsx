@@ -1,101 +1,122 @@
-import { NewsEvent } from './LifeChart';
+﻿import { useLanguage } from "@/lib/i18n";
+import { NewsEvent } from "./LifeChart";
 
 interface ChartTooltipProps {
   event: NewsEvent | null;
   position: { x: number; y: number };
 }
 
+const impactLabels = {
+  ru: {
+    mental: "Ментальное",
+    physical: "Физическое",
+    moral: "Душевное",
+    financial: "Финансовое",
+  },
+  en: {
+    mental: "Mental",
+    physical: "Physical",
+    moral: "Spiritual",
+    financial: "Financial",
+  },
+} as const;
+
+const impactColors = {
+  mental: "#B388FF",
+  physical: "#2EC5FF",
+  moral: "#F7C948",
+  financial: "#00C076",
+} as const;
+
 export default function ChartTooltip({ event, position }: ChartTooltipProps) {
+  const { language } = useLanguage();
+
   if (!event) return null;
 
-  const isPositive = event.type === 'positive';
+  const isPositive = event.type === "positive";
+  const labels = impactLabels[language];
+  const impactEntries = Object.entries(event.impact).filter(([, value]) => value !== 0) as Array<
+    [keyof typeof labels, number]
+  >;
 
   return (
     <div
-      className="fixed z-50 pointer-events-none"
+      className="pointer-events-none fixed z-50"
       style={{
         left: `${position.x + 20}px`,
         top: `${position.y}px`,
-        transform: 'translateY(-50%)',
+        transform: "translateY(-50%)",
       }}
       data-testid="chart-tooltip"
     >
-      <div className="bg-card/95 backdrop-blur-sm border border-card-border rounded-lg shadow-2xl max-w-sm">
-        {/* Header */}
-        <div className={`px-3 py-2 border-b ${isPositive ? 'border-positive/20 bg-positive/5' : 'border-negative/20 bg-negative/5'}`}>
-          <p className={`text-sm font-semibold ${isPositive ? 'text-positive' : 'text-negative'}`}>
-            {isPositive ? '📈 Позитивное событие' : '📉 Негативное событие'}
+      <div
+        className="max-w-sm overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl"
+        style={{
+          backgroundColor: "rgba(20, 23, 30, 0.96)",
+          borderColor: "rgba(255, 255, 255, 0.08)",
+          boxShadow: "0 20px 50px rgba(0, 0, 0, 0.4)",
+        }}
+      >
+        <div
+          className="border-b px-3 py-2"
+          style={{
+            borderColor: isPositive ? "rgba(0, 192, 118, 0.24)" : "rgba(246, 70, 93, 0.24)",
+            backgroundColor: isPositive ? "rgba(0, 192, 118, 0.08)" : "rgba(246, 70, 93, 0.08)",
+          }}
+        >
+          <p className="text-sm font-semibold" style={{ color: isPositive ? "#00C076" : "#F6465D" }}>
+            {isPositive
+              ? language === "ru"
+                ? "Позитивное событие"
+                : "Positive event"
+              : language === "ru"
+                ? "Негативное событие"
+                : "Negative event"}
           </p>
         </div>
 
-        {/* Content */}
-        <div className="p-3 space-y-3">
-          {/* Text */}
-          <p className="text-sm text-foreground">{event.text}</p>
+        <div className="space-y-3 p-3">
+          <p className="text-sm leading-6 text-white">{event.text}</p>
 
-          {/* Media */}
           {event.media && event.media.length > 0 && (
             <div className="space-y-2">
               {event.media.slice(0, 1).map((media, index) => (
-                <div key={index} className="rounded-md overflow-hidden border border-border">
-                  {media.type === 'image' ? (
-                    <img
-                      src={media.url}
-                      alt="Event media"
-                      className="w-full h-32 object-cover"
-                    />
+                <div key={index} className="overflow-hidden rounded-xl border" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                  {media.type === "image" ? (
+                    <img src={media.url} alt="Event media" className="h-32 w-full object-cover" />
                   ) : (
-                    <video
-                      src={media.url}
-                      className="w-full h-32 object-cover"
-                      muted
-                    />
+                    <video src={media.url} className="h-32 w-full object-cover" muted />
                   )}
                 </div>
               ))}
               {event.media.length > 1 && (
-                <p className="text-xs text-muted-foreground">
-                  +{event.media.length - 1} еще
+                <p className="text-xs" style={{ color: "#8D94A5" }}>
+                  +{event.media.length - 1} {language === "ru" ? "ещё" : "more"}
                 </p>
               )}
             </div>
           )}
 
-          {/* Impact */}
-          <div className="grid grid-cols-2 gap-1 pt-2 border-t border-border">
-            {event.impact.mental !== 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-mental">Душевное</span>
-                <span className="text-mental font-mono">
-                  {event.impact.mental > 0 ? '+' : ''}{event.impact.mental}
-                </span>
-              </div>
-            )}
-            {event.impact.physical !== 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-physical">Физическое</span>
-                <span className="text-physical font-mono">
-                  {event.impact.physical > 0 ? '+' : ''}{event.impact.physical}
-                </span>
-              </div>
-            )}
-            {event.impact.moral !== 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-moral">Моральное</span>
-                <span className="text-moral font-mono">
-                  {event.impact.moral > 0 ? '+' : ''}{event.impact.moral}
-                </span>
-              </div>
-            )}
-            {event.impact.financial !== 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-financial">Финансовое</span>
-                <span className="text-financial font-mono">
-                  {event.impact.financial > 0 ? '+' : ''}{event.impact.financial}
-                </span>
-              </div>
-            )}
-          </div>
+          {impactEntries.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+              {impactEntries.map(([key, value]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between rounded-xl px-2.5 py-2 text-xs"
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.035)",
+                    color: impactColors[key],
+                  }}
+                >
+                  <span>{labels[key]}</span>
+                  <span className="font-mono font-semibold">
+                    {value > 0 ? "+" : ""}
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

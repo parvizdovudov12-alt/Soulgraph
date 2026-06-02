@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,17 +8,20 @@ import AuthPage from "@/pages/AuthPage";
 import Friends from "@/pages/Friends";
 import ViewUser from "@/pages/ViewUser";
 import { useAuth } from "@/hooks/useAuth";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { LanguageProvider, useLanguage } from "@/lib/i18n";
 
 type AppView = "dashboard" | "friends" | { type: "viewUser"; userId: string };
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { language } = useLanguage();
   const [currentView, setCurrentView] = useState<AppView>("dashboard");
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Загрузка...</div>
+        <div className="text-muted-foreground">{language === "ru" ? "Загрузка..." : "Loading..."}</div>
       </div>
     );
   }
@@ -28,21 +31,11 @@ function AppContent() {
   }
 
   if (currentView === "friends") {
-    return (
-      <Friends 
-        onBack={() => setCurrentView("dashboard")}
-        onViewUser={(userId) => setCurrentView({ type: "viewUser", userId })}
-      />
-    );
+    return <Friends onBack={() => setCurrentView("dashboard")} onViewUser={(userId) => setCurrentView({ type: "viewUser", userId })} />;
   }
 
   if (typeof currentView === "object" && currentView.type === "viewUser") {
-    return (
-      <ViewUser 
-        userId={currentView.userId}
-        onBack={() => setCurrentView("friends")}
-      />
-    );
+    return <ViewUser userId={currentView.userId} onBack={() => setCurrentView("friends")} />;
   }
 
   return <Dashboard onOpenFriends={() => setCurrentView("friends")} />;
@@ -51,10 +44,12 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <AppContent />
-      </TooltipProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AppContent />
+        </TooltipProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

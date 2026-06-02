@@ -1,230 +1,148 @@
-import { useMemo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import type { NewsEvent } from './LifeChart';
+﻿import { useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useLanguage } from "@/lib/i18n";
 
 interface DailyBalanceProps {
-  news: NewsEvent[];
+  values: {
+    mental: number;
+    physical: number;
+    moral: number;
+    financial: number;
+  };
 }
 
-interface StateData {
-  name: string;
-  value: number; // Absolute value for chart visualization
-  actualValue: number; // Real value with sign
-  color: string;
-  label: string;
-}
+const COLORS = {
+  mental: "#9F7AEA",
+  physical: "#4FC3F7",
+  moral: "#F6C453",
+  financial: "#36C98B",
+} as const;
 
-export default function DailyBalance({ news }: DailyBalanceProps) {
-  const dailyData = useMemo(() => {
-    // Get current time and 24 hours ago
-    const now = Date.now() / 1000; // Convert to seconds
-    const oneDayAgo = now - (24 * 60 * 60);
+export default function DailyBalance({ values }: DailyBalanceProps) {
+  const { language } = useLanguage();
 
-    // Filter news from last 24 hours
-    const recentNews = (news || []).filter(event => {
-      const eventTime = typeof event.time === 'number' ? event.time : parseInt(event.time as string);
-      return eventTime >= oneDayAgo;
-    });
+  const copy =
+    language === "ru"
+      ? {
+          title: "Баланс дня",
+          empty: "Нет данных",
+          dominance: "Доминирует",
+          mental: "Ментальное",
+          physical: "Физическое",
+          moral: "Душевное",
+          financial: "Финансовое",
+        }
+      : {
+          title: "Daily balance",
+          empty: "No data",
+          dominance: "Dominant",
+          mental: "Mental",
+          physical: "Physical",
+          moral: "Spiritual",
+          financial: "Financial",
+        };
 
-    // Calculate totals for each state (with sign preserved)
-    const totals = {
-      mental: 0,
-      physical: 0,
-      moral: 0,
-      financial: 0,
-    };
+  const chartData = useMemo(() => {
+    const items = [
+      { key: "mental", label: copy.mental, value: values.mental, color: COLORS.mental },
+      { key: "physical", label: copy.physical, value: values.physical, color: COLORS.physical },
+      { key: "moral", label: copy.moral, value: values.moral, color: COLORS.moral },
+      { key: "financial", label: copy.financial, value: values.financial, color: COLORS.financial },
+    ] as const;
 
-    recentNews.forEach(event => {
-      totals.mental += event.impact.mental;
-      totals.physical += event.impact.physical;
-      totals.moral += event.impact.moral;
-      totals.financial += event.impact.financial;
-    });
+    const withMagnitude = items.map((item) => ({
+      ...item,
+      magnitude: Math.abs(item.value),
+    }));
 
-    // Prepare data for pie chart - use absolute values for visualization only
-    const allStates: StateData[] = [
-      {
-        name: 'mental',
-        value: Math.abs(totals.mental),
-        actualValue: totals.mental,
-        color: 'hsl(280, 65%, 65%)', // Purple
-        label: 'Душевное',
-      },
-      {
-        name: 'physical',
-        value: Math.abs(totals.physical),
-        actualValue: totals.physical,
-        color: 'hsl(200, 85%, 55%)', // Cyan
-        label: 'Физическое',
-      },
-      {
-        name: 'moral',
-        value: Math.abs(totals.moral),
-        actualValue: totals.moral,
-        color: 'hsl(45, 90%, 60%)', // Amber
-        label: 'Моральное',
-      },
-      {
-        name: 'financial',
-        value: Math.abs(totals.financial),
-        actualValue: totals.financial,
-        color: 'hsl(142, 76%, 36%)', // Green
-        label: 'Финансовое',
-      },
-    ];
-    
-    const data: StateData[] = allStates.filter(item => item.value > 0);
-    
-    // If no data, create empty state visualization with colored segments
-    const isEmpty = data.length === 0;
-    const chartData = isEmpty ? [
-      {
-        name: 'mental',
-        value: 0.25,
-        actualValue: 0,
-        color: 'hsl(280, 65%, 65%)', // Purple
-        label: '',
-      },
-      {
-        name: 'physical',
-        value: 0.25,
-        actualValue: 0,
-        color: 'hsl(200, 85%, 55%)', // Cyan
-        label: '',
-      },
-      {
-        name: 'moral',
-        value: 0.25,
-        actualValue: 0,
-        color: 'hsl(45, 90%, 60%)', // Amber
-        label: '',
-      },
-      {
-        name: 'financial',
-        value: 0.25,
-        actualValue: 0,
-        color: 'hsl(142, 76%, 36%)', // Green
-        label: '',
-      },
-    ] : data;
+    const nonZero = withMagnitude.filter((item) => item.magnitude > 0);
+    const dataset = nonZero.length > 0 ? nonZero : withMagnitude.map((item) => ({ ...item, magnitude: 1 }));
+    const dominant = [...withMagnitude].sort((a, b) => b.magnitude - a.magnitude)[0];
+    const total = withMagnitude.reduce((sum, item) => sum + item.value, 0);
 
     return {
-      data,
-      chartData,
-      isEmpty,
-      totals,
-      eventCount: recentNews.length,
+      dataset,
+      dominant,
+      total,
+      isEmpty: nonZero.length === 0,
+      rows: withMagnitude,
     };
-  }, [news]);
-
-  // Calculate total balance (sum of all states with signs)
-  const totalBalance = dailyData.data.reduce((sum, item) => sum + item.actualValue, 0);
+  }, [copy.financial, copy.mental, copy.moral, copy.physical, values.financial, values.mental, values.moral, values.physical]);
 
   return (
-    <div className="bg-card border border-card-border rounded-lg p-4" data-testid="daily-balance">
-      <div className="mb-4">
-        <h3 className="text-sm font-medium text-foreground mb-1">Баланс дня</h3>
-        <p className="text-xs text-muted-foreground">
-          {dailyData.eventCount} {dailyData.eventCount === 1 ? 'событие' : dailyData.eventCount < 5 ? 'события' : 'событий'} за 24 часа
-        </p>
+    <div className="rounded-lg border border-border bg-background/50 p-4" data-testid="daily-balance-chart">
+      <div className="mb-3">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{copy.title}</div>
       </div>
 
-      <div className="relative h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={dailyData.chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              paddingAngle={dailyData.isEmpty ? 2 : 2}
-              dataKey="value"
-              label={dailyData.isEmpty ? false : (entry) => entry.label}
-              labelLine={false}
-              stroke="none"
-              strokeWidth={0}
-            >
-              {dailyData.chartData.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={dailyData.isEmpty ? entry.color : entry.color}
-                  fillOpacity={dailyData.isEmpty ? 0.3 : 1}
-                />
-              ))}
-            </Pie>
-            {!dailyData.isEmpty && (
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative h-36 w-36 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData.dataset}
+                dataKey="magnitude"
+                nameKey="label"
+                cx="50%"
+                cy="50%"
+                innerRadius={38}
+                outerRadius={64}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {chartData.dataset.map((entry) => (
+                  <Cell key={entry.key} fill={entry.color} fillOpacity={chartData.isEmpty ? 0.28 : 1} />
+                ))}
+              </Pie>
               <Tooltip
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload as StateData;
-                    const isPositive = data.actualValue >= 0;
-                    return (
-                      <div className="bg-card/95 backdrop-blur-sm border border-card-border rounded-lg px-3 py-2">
-                        <p className="text-sm font-medium" style={{ color: data.color }}>
-                          {data.label}
-                        </p>
-                        <p className={`text-xs font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                          Влияние: {isPositive ? '+' : ''}{data.actualValue.toFixed(0)}
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
+                formatter={(value: number, _name, payload) => {
+                  const item = payload?.payload as { value: number } | undefined;
+                  const realValue = item?.value ?? 0;
+                  return [`${realValue > 0 ? "+" : ""}${realValue.toFixed(1)}`, ""];
+                }}
+                contentStyle={{
+                  background: "rgba(20,23,30,0.96)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 12,
+                  color: "#fff",
                 }}
               />
-            )}
-          </PieChart>
-        </ResponsiveContainer>
+            </PieChart>
+          </ResponsiveContainer>
 
-        {/* Center label with total or empty state message */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center">
-            {dailyData.isEmpty ? (
-              <>
-                <div className="text-xl font-bold text-muted-foreground">0</div>
-                <div className="text-xs text-muted-foreground mt-1">Нет событий</div>
-              </>
-            ) : (
-              <>
-                <div className={`text-2xl font-bold font-mono ${totalBalance >= 0 ? 'text-positive' : 'text-negative'}`}>
-                  {totalBalance >= 0 ? '+' : ''}{totalBalance.toFixed(0)}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className={`text-xl font-bold font-mono ${chartData.total >= 0 ? "text-positive" : "text-negative"}`}>
+                {chartData.total >= 0 ? "+" : ""}{chartData.total.toFixed(1)}
+              </div>
+              <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{copy.title}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full space-y-3">
+          <div className="rounded-md border border-border/70 bg-background/50 px-3 py-2 text-center">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{copy.dominance}</div>
+            <div className="mt-1 text-sm font-medium text-foreground">
+              {chartData.isEmpty ? copy.empty : chartData.dominant.label}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {chartData.rows.map((item) => (
+              <div key={item.key} className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="truncate text-foreground">{item.label}</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Баланс дня</div>
-              </>
-            )}
+                <span className="font-mono" style={{ color: item.color }}>
+                  {item.value > 0 ? "+" : ""}{item.value.toFixed(1)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* State breakdown - only show when there's data */}
-      {!dailyData.isEmpty && (
-        <div className="mt-4 space-y-2">
-          {dailyData.data.map((item, index) => {
-            const isPositive = item.actualValue >= 0;
-            return (
-              <div
-                key={index}
-                className="flex items-center justify-between text-sm"
-                data-testid={`balance-state-${item.name}`}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-muted-foreground">{item.label}</span>
-                </div>
-                <span 
-                  className={`font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}
-                >
-                  {isPositive ? '+' : ''}{item.actualValue.toFixed(0)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

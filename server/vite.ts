@@ -1,12 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
-import { nanoid } from "nanoid";
-
-const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -20,6 +15,12 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  const [{ createServer: createViteServer, createLogger }, { default: react }, { nanoid }] = await Promise.all([
+    import("vite"),
+    import("@vitejs/plugin-react"),
+    import("nanoid"),
+  ]);
+  const viteLogger = createLogger();
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -27,8 +28,22 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   const vite = await createViteServer({
-    ...viteConfig,
     configFile: false,
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": path.resolve(import.meta.dirname, "..", "client", "src"),
+        "@shared": path.resolve(import.meta.dirname, "..", "shared"),
+        "@assets": path.resolve(import.meta.dirname, "..", "attached_assets"),
+      },
+    },
+    server: {
+      ...serverOptions,
+      fs: {
+        strict: true,
+        deny: ["**/.*"],
+      },
+    },
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -36,13 +51,17 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-    server: serverOptions,
     appType: "custom",
   });
 
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+
+    if (req.path.startsWith("/api/")) {
+      res.status(404).json({ message: "API route not found" });
+      return;
+    }
 
     try {
       const clientTemplate = path.resolve(
@@ -79,7 +98,11 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use("*", (req, res) => {
+    if (req.path.startsWith("/api/")) {
+      res.status(404).json({ message: "API route not found" });
+      return;
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

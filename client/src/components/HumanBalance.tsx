@@ -1,352 +1,328 @@
-import { useMemo } from 'react';
-import type { NewsEvent } from './LifeChart';
+import { useMemo } from "react";
+import { useLanguage } from "@/lib/i18n";
 
 interface HumanBalanceProps {
-  newsEvents: NewsEvent[];
+  values: {
+    mental: number;
+    physical: number;
+    moral: number;
+    financial: number;
+  };
 }
 
-export function HumanBalance({ newsEvents }: HumanBalanceProps) {
-  // Calculate net balance for last 24 hours
-  const balance = useMemo(() => {
-    const now = Date.now() / 1000; // Convert to seconds (Time format)
-    const oneDayAgo = now - 24 * 60 * 60;
+type RegionKey = "mental" | "physical" | "moral" | "financial";
 
-    const recent = newsEvents.filter(
-      (event) => {
-        // Skip aggregated summary events
-        if (event.groupedEvents) return false;
-        
-        const eventTime = typeof event.time === 'number' ? event.time : parseInt(event.time as string);
-        return eventTime >= oneDayAgo;
-      }
-    );
+const COLORS: Record<RegionKey | "negative" | "wire", string> = {
+  mental: "#A56EFF",
+  physical: "#58C7FF",
+  moral: "#7CF08F",
+  financial: "#7CF08F",
+  negative: "#E15B64",
+  wire: "rgba(214,223,238,0.72)",
+};
 
-    const totals = recent.reduce(
-      (acc, event) => ({
-        mental: acc.mental + (event.impact?.mental || 0),
-        physical: acc.physical + (event.impact?.physical || 0),
-        moral: acc.moral + (event.impact?.moral || 0),
-        financial: acc.financial + (event.impact?.financial || 0),
-      }),
-      { mental: 0, physical: 0, moral: 0, financial: 0 }
-    );
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
-    return totals;
-  }, [newsEvents]);
+function regionColor(key: RegionKey, value: number) {
+  return value > 0 ? COLORS[key] : COLORS.negative;
+}
 
-  // Convert balance to opacity (0 to 1)
-  const getOpacity = (value: number) => {
-    // Map -20 to +20 range to 0.1 to 1.0 opacity
-    const normalized = Math.abs(value) / 20;
-    return Math.min(Math.max(0.1 + normalized * 0.9, 0.1), 1);
-  };
+function regionOpacity(value: number) {
+  return 0.18 + clamp(Math.abs(value) / 10, 0, 1) * 0.72;
+}
 
-  // Get color based on positive/negative
-  const getColor = (value: number, baseColor: string) => {
-    if (value === 0) return `${baseColor}30`; // Low opacity if neutral (visible in legend)
-    return value > 0 ? baseColor : '#ef4444'; // Base color if positive, red if negative
-  };
+function metricText(value: number) {
+  const normalized = Math.round(clamp(Math.abs(value) * 10, 0, 100));
+  return `${normalized}/100`;
+}
 
-  const mentalColor = getColor(balance.mental, '#c084fc'); // Purple
-  const physicalColor = getColor(balance.physical, '#06b6d4'); // Cyan
-  const moralColor = getColor(balance.moral, '#eab308'); // Yellow
-  const financialColor = getColor(balance.financial, '#10b981'); // Green
+function lineWidth(value: number) {
+  return `${clamp(Math.abs(value) * 10, 8, 100)}%`;
+}
+
+interface CalloutItem {
+  key: string;
+  title: string;
+  value: number;
+  color: string;
+  width: string;
+  top: number;
+  anchorY: number;
+  side: "left" | "right";
+}
+
+export default function HumanBalance({ values }: HumanBalanceProps) {
+  const { language } = useLanguage();
+
+  const copy =
+    language === "ru"
+      ? {
+          title: "Баланс дня",
+          head: "Голова",
+          leftArm: "Левая рука",
+          rightArm: "Правая рука",
+          chest: "Грудь",
+          belly: "Живот",
+          leftLeg: "Левая нога",
+          rightLeg: "Правая нога",
+          statusBad: "Требует внимания",
+          statusGood: "Стабильное состояние",
+          affected: "Ослаблена зона",
+        }
+      : {
+          title: "Daily balance",
+          head: "Head",
+          leftArm: "Left arm",
+          rightArm: "Right arm",
+          chest: "Chest",
+          belly: "Body",
+          leftLeg: "Left leg",
+          rightLeg: "Right leg",
+          statusBad: "Needs attention",
+          statusGood: "Stable condition",
+          affected: "Affected zone",
+        };
+
+  const palette = useMemo(
+    () => ({
+      mental: regionColor("mental", values.mental),
+      moral: regionColor("moral", values.moral),
+      financial: regionColor("financial", values.financial),
+      physical: regionColor("physical", values.physical),
+    }),
+    [values.financial, values.mental, values.moral, values.physical],
+  );
+
+  const weakest = useMemo(() => {
+    const entries = [
+      { label: copy.head, value: values.mental },
+      { label: copy.belly, value: values.moral },
+      { label: copy.leftArm, value: values.financial },
+      { label: copy.leftLeg, value: values.physical },
+    ];
+    return entries.reduce((lowest, current) => (current.value < lowest.value ? current : lowest), entries[0]);
+  }, [copy.belly, copy.head, copy.leftArm, copy.leftLeg, values.financial, values.mental, values.moral, values.physical]);
+
+  const leftItems: CalloutItem[] = [
+    {
+      key: "head",
+      title: copy.head,
+      value: values.mental,
+      color: palette.mental,
+      width: lineWidth(values.mental),
+      top: 30,
+      anchorY: 58,
+      side: "left",
+    },
+    {
+      key: "rightArm",
+      title: copy.rightArm,
+      value: values.financial,
+      color: palette.financial,
+      width: lineWidth(values.financial),
+      top: 150,
+      anchorY: 146,
+      side: "left",
+    },
+    {
+      key: "chest",
+      title: copy.chest,
+      value: values.moral,
+      color: palette.moral,
+      width: lineWidth(values.moral),
+      top: 268,
+      anchorY: 196,
+      side: "left",
+    },
+    {
+      key: "rightLeg",
+      title: copy.rightLeg,
+      value: values.physical,
+      color: palette.physical,
+      width: lineWidth(values.physical),
+      top: 390,
+      anchorY: 340,
+      side: "left",
+    },
+  ];
+
+  const rightItems: CalloutItem[] = [
+    {
+      key: "leftArm",
+      title: copy.leftArm,
+      value: values.financial,
+      color: palette.financial,
+      width: lineWidth(values.financial),
+      top: 30,
+      anchorY: 118,
+      side: "right",
+    },
+    {
+      key: "belly",
+      title: copy.belly,
+      value: values.moral,
+      color: palette.moral,
+      width: lineWidth(values.moral),
+      top: 204,
+      anchorY: 215,
+      side: "right",
+    },
+    {
+      key: "leftLeg",
+      title: copy.leftLeg,
+      value: values.physical,
+      color: palette.physical,
+      width: lineWidth(values.physical),
+      top: 390,
+      anchorY: 340,
+      side: "right",
+    },
+  ];
+
+  const statusTone = weakest.value > 0 ? "text-[#DCE4F2]" : "text-negative";
+  const statusText =
+    weakest.value > 0
+      ? `${copy.statusGood}`
+      : `${copy.affected}: ${weakest.label}`;
 
   return (
-    <div className="flex flex-col items-center gap-3" data-testid="human-balance">
-      <h3 className="text-sm font-medium text-muted-foreground">Баланс дня</h3>
-      
-      {/* SVG Human Figure with Dynamic Fills */}
-      <div className="relative w-[220px] h-[400px]" data-testid="human-figure">
-        <svg
-          viewBox="0 0 220 400"
-          className="w-full h-full"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            {/* Gradients for 3D muscle effect */}
-            <linearGradient id="muscleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#000" stopOpacity="0.2" />
-              <stop offset="50%" stopColor="#fff" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#000" stopOpacity="0.2" />
-            </linearGradient>
-            <radialGradient id="muscleRadial">
-              <stop offset="30%" stopColor="#fff" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#000" stopOpacity="0.15" />
-            </radialGradient>
-          </defs>
-
-          {/* Mental (Head) - fills based on balance */}
-          <g data-testid="region-mental">
-            <ellipse
-              cx="110"
-              cy="35"
-              rx="32"
-              ry="35"
-              fill={mentalColor}
-              opacity={getOpacity(balance.mental)}
-            />
-            <ellipse cx="110" cy="35" rx="32" ry="35" fill="url(#muscleGradient)" />
-          </g>
-
-          {/* Neck muscles - Trapezius */}
-          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.4">
-            <path d="M 100 70 Q 100 80, 100 90" />
-            <path d="M 120 70 Q 120 80, 120 90" />
-            {/* Trapezius outline */}
-            <path d="M 90 75 Q 85 85, 85 95" />
-            <path d="M 130 75 Q 135 85, 135 95" />
-          </g>
-          
-          {/* Upper Trapezius muscles */}
-          <g opacity="0.3">
-            <ellipse cx="95" cy="82" rx="8" ry="10" fill="url(#muscleRadial)" />
-            <ellipse cx="125" cy="82" rx="8" ry="10" fill="url(#muscleRadial)" />
-          </g>
-
-          {/* Moral (Chest/Heart) - Pecs with definition */}
-          <g data-testid="region-moral">
-            {/* Left pec */}
-            <path
-              d="M 85 95 Q 75 110, 78 130 Q 80 145, 85 158 L 105 162 Q 105 130, 100 110 Z"
-              fill={moralColor}
-              opacity={getOpacity(balance.moral)}
-            />
-            {/* Right pec */}
-            <path
-              d="M 135 95 Q 145 110, 142 130 Q 140 145, 135 158 L 115 162 Q 115 130, 120 110 Z"
-              fill={moralColor}
-              opacity={getOpacity(balance.moral)}
-            />
-            {/* Pec separation/definition */}
-            <path d="M 85 95 Q 75 110, 78 130 Q 80 145, 85 158 L 105 162 Q 105 130, 100 110 Z" fill="url(#muscleGradient)" />
-            <path d="M 135 95 Q 145 110, 142 130 Q 140 145, 135 158 L 115 162 Q 115 130, 120 110 Z" fill="url(#muscleGradient)" />
-          </g>
-
-          {/* Shoulders (deltoids) - Enhanced */}
-          <g>
-            {/* Deltoid muscle mass */}
-            <ellipse cx="72" cy="98" rx="13" ry="16" fill="url(#muscleRadial)" opacity="0.4" />
-            <ellipse cx="148" cy="98" rx="13" ry="16" fill="url(#muscleRadial)" opacity="0.4" />
-            {/* Deltoid definition lines */}
-            <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none">
-              <ellipse cx="72" cy="98" rx="12" ry="15" />
-              <ellipse cx="148" cy="98" rx="12" ry="15" />
-              {/* Anterior/Lateral/Posterior heads */}
-              <path d="M 67 90 Q 72 98, 67 106" opacity="0.5" />
-              <path d="M 153 90 Q 148 98, 153 106" opacity="0.5" />
-            </g>
-          </g>
-          
-          {/* Latissimus dorsi (lats) - visible from front */}
-          <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3">
-            <path d="M 78 110 Q 70 130, 75 160" />
-            <path d="M 142 110 Q 150 130, 145 160" />
-          </g>
-
-          {/* Physical (Torso/Core) - Abs definition */}
-          <g data-testid="region-physical">
-            {/* Main core fill - narrower torso */}
-            <path
-              d="M 90 165 L 85 180 L 87 210 L 92 240 L 128 240 L 133 210 L 135 180 L 130 165 Z"
-              fill={physicalColor}
-              opacity={getOpacity(balance.physical)}
-            />
-            {/* Enhanced Six-pack abs with more definition - narrower */}
-            <g>
-              {/* Upper abs - split left/right, smaller */}
-              <rect x="99" y="172" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
-              <rect x="111" y="172" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
-              {/* Middle abs - split left/right, smaller */}
-              <rect x="99" y="188" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
-              <rect x="111" y="188" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
-              {/* Lower abs - split left/right, smaller */}
-              <rect x="99" y="204" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
-              <rect x="111" y="204" width="10" height="12" rx="2.5" fill="url(#muscleRadial)" opacity="0.6" />
-              {/* Ab separation lines */}
-              <line x1="110" y1="170" x2="110" y2="218" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.5" />
-            </g>
-            
-            {/* Serratus anterior (finger muscles) - adjusted for narrower torso */}
-            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.35">
-              <path d="M 88 175 Q 84 178, 86 182" />
-              <path d="M 88 185 Q 84 188, 86 192" />
-              <path d="M 88 195 Q 84 198, 86 202" />
-              <path d="M 132 175 Q 136 178, 134 182" />
-              <path d="M 132 185 Q 136 188, 134 192" />
-              <path d="M 132 195 Q 136 198, 134 202" />
-            </g>
-            {/* Obliques - adjusted for V-taper */}
-            <g stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.4">
-              <path d="M 90 170 Q 82 190, 85 210" />
-              <path d="M 130 170 Q 138 190, 135 210" />
-            </g>
-          </g>
-
-          {/* Arms - Massive Enhanced Biceps, Triceps, Forearms */}
-          <g>
-            {/* Left arm */}
-            <g>
-              {/* Upper arm structure - thicker */}
-              <path d="M 70 95 Q 64 105, 60 120" stroke="hsl(var(--border))" strokeWidth="3.5" fill="none" />
-              <path d="M 60 120 Q 56 140, 53 160" stroke="hsl(var(--border))" strokeWidth="3" fill="none" />
-              <path d="M 53 160 L 48 180" stroke="hsl(var(--border))" strokeWidth="2.5" fill="none" />
-              
-              {/* Massive bicep peak */}
-              <ellipse cx="64" cy="115" rx="12" ry="17" fill="url(#muscleRadial)" opacity="0.6" />
-              <path d="M 57 110 Q 64 117, 71 110" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
-              <path d="M 59 108 Q 64 114, 69 108" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
-              
-              {/* Massive tricep */}
-              <ellipse cx="67" cy="125" rx="9" ry="14" fill="url(#muscleRadial)" opacity="0.4" />
-              
-              {/* Massive forearm muscles */}
-              <ellipse cx="56" cy="150" rx="7" ry="12" fill="url(#muscleRadial)" opacity="0.45" />
-              <path d="M 52 145 L 51 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
-              <path d="M 58 145 L 57 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
-              <path d="M 55 145 L 54 165" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.3" />
-            </g>
-            
-            {/* Right arm */}
-            <g>
-              {/* Upper arm structure - thicker */}
-              <path d="M 150 95 Q 156 105, 160 120" stroke="hsl(var(--border))" strokeWidth="3.5" fill="none" />
-              <path d="M 160 120 Q 164 140, 167 160" stroke="hsl(var(--border))" strokeWidth="3" fill="none" />
-              <path d="M 167 160 L 172 180" stroke="hsl(var(--border))" strokeWidth="2.5" fill="none" />
-              
-              {/* Massive bicep peak */}
-              <ellipse cx="156" cy="115" rx="12" ry="17" fill="url(#muscleRadial)" opacity="0.6" />
-              <path d="M 149 110 Q 156 117, 163 110" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
-              <path d="M 151 108 Q 156 114, 161 108" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
-              
-              {/* Massive tricep */}
-              <ellipse cx="153" cy="125" rx="9" ry="14" fill="url(#muscleRadial)" opacity="0.4" />
-              
-              {/* Massive forearm muscles */}
-              <ellipse cx="164" cy="150" rx="7" ry="12" fill="url(#muscleRadial)" opacity="0.45" />
-              <path d="M 168 145 L 169 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
-              <path d="M 162 145 L 163 165" stroke="hsl(var(--border))" strokeWidth="1.2" opacity="0.4" />
-              <path d="M 165 145 L 166 165" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.3" />
-            </g>
-          </g>
-
-          {/* Financial (Legs) - Quads and Calves */}
-          <g data-testid="region-financial">
-            {/* Left leg - Massive Quad definition */}
-            <g opacity={getOpacity(balance.financial)}>
-              {/* Left quad - wider and more massive */}
-              <path
-                d="M 85 245 Q 78 260, 75 280 L 72 310 Q 70 330, 72 350 L 75 370 L 72 390 L 98 390 L 95 370 L 97 350 Q 99 330, 97 310 L 95 280 Q 95 260, 97 245 Z"
-                fill={financialColor}
-              />
-              {/* Left quad muscles - enhanced volume */}
-              <path d="M 85 245 Q 80 260, 78 280 L 75 310 Q 73 330, 75 350 L 78 370 L 75 390 L 98 390 L 95 370 L 97 350 Q 99 330, 97 310 L 95 280 Q 95 260, 97 245 Z" fill="url(#muscleGradient)" />
-              {/* Additional quad mass */}
-              <ellipse cx="86" cy="275" rx="8" ry="22" fill="url(#muscleRadial)" opacity="0.5" />
-            </g>
-
-            {/* Right leg - Massive Quad definition */}
-            <g opacity={getOpacity(balance.financial)}>
-              {/* Right quad - wider and more massive */}
-              <path
-                d="M 135 245 Q 142 260, 145 280 L 148 310 Q 150 330, 148 350 L 145 370 L 148 390 L 122 390 L 125 370 L 123 350 Q 121 330, 123 310 L 125 280 Q 125 260, 123 245 Z"
-                fill={financialColor}
-              />
-              {/* Right quad muscles - enhanced volume */}
-              <path d="M 135 245 Q 140 260, 142 280 L 145 310 Q 147 330, 145 350 L 142 370 L 145 390 L 122 390 L 125 370 L 123 350 Q 121 330, 123 310 L 125 280 Q 125 260, 123 245 Z" fill="url(#muscleGradient)" />
-              {/* Additional quad mass */}
-              <ellipse cx="134" cy="275" rx="8" ry="22" fill="url(#muscleRadial)" opacity="0.5" />
-            </g>
-
-            {/* Enhanced Quad separation and definition - thicker lines */}
-            <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5">
-              {/* Vastus medialis/lateralis separation - wider */}
-              <path d="M 86 250 L 85 310" />
-              <path d="M 91 252 L 90 308" />
-              <path d="M 134 250 L 135 310" />
-              <path d="M 129 252 L 130 308" />
-              {/* Rectus femoris - center line */}
-              <path d="M 85 255 Q 83 280, 84 305" />
-              <path d="M 135 255 Q 137 280, 136 305" />
-            </g>
-            
-            {/* Hamstring hints (back of leg visible) - larger */}
-            <g opacity="0.35">
-              <ellipse cx="80" cy="270" rx="5" ry="18" fill="url(#muscleRadial)" />
-              <ellipse cx="140" cy="270" rx="5" ry="18" fill="url(#muscleRadial)" />
-            </g>
-            
-            {/* Calves - Massive Gastrocnemius */}
-            <g opacity={getOpacity(balance.financial) * 0.8}>
-              {/* Left calf - HUGE */}
-              <ellipse cx="86" cy="340" rx="10" ry="24" fill={financialColor} />
-              <ellipse cx="86" cy="340" rx="10" ry="24" fill="url(#muscleRadial)" />
-              <path d="M 81 328 Q 86 342, 91 328" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
-              <path d="M 83 330 Q 86 340, 89 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
-              
-              {/* Right calf - HUGE */}
-              <ellipse cx="134" cy="340" rx="10" ry="24" fill={financialColor} />
-              <ellipse cx="134" cy="340" rx="10" ry="24" fill="url(#muscleRadial)" />
-              <path d="M 129 328 Q 134 342, 139 328" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.5" />
-              <path d="M 131 330 Q 134 340, 137 330" stroke="hsl(var(--border))" strokeWidth="1" fill="none" opacity="0.3" />
-            </g>
-            
-            {/* Tibialis anterior (shin) - thicker */}
-            <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.4">
-              <path d="M 92 315 L 94 365" />
-              <path d="M 95 317 L 97 363" />
-              <path d="M 128 315 L 126 365" />
-              <path d="M 125 317 L 123 363" />
-            </g>
-          </g>
-
-          {/* Overall body outline */}
-          <g stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" opacity="0.6">
-            <ellipse cx="110" cy="35" rx="32" ry="35" />
-            <path d="M 110 70 L 110 90" />
-            <path d="M 70 95 L 150 95" />
-          </g>
-        </svg>
+    <section
+      className="rounded-lg border border-border bg-[#090b0f] p-0 overflow-hidden"
+      data-testid="human-balance-card"
+    >
+      <div className="border-b border-white/8 px-5 py-4">
+        <h3 className="text-[2rem] font-semibold leading-none text-white">{copy.title}</h3>
       </div>
 
-      {/* Legend */}
-      <div className="grid grid-cols-2 gap-2 text-xs w-full" data-testid="balance-legend">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: mentalColor, opacity: Math.max(getOpacity(balance.mental), 0.3) }}
-          />
-          <span className="text-muted-foreground">
-            Душевное {balance.mental > 0 ? '+' : ''}{balance.mental.toFixed(0)}
-          </span>
+      <div className="relative min-h-[620px] bg-[radial-gradient(circle_at_center,rgba(54,68,92,0.22),transparent_50%),linear-gradient(180deg,#090b0f_0%,#0b0d12_100%)] px-5 py-6">
+        <div className="grid grid-cols-[110px_minmax(0,1fr)_110px] gap-2">
+          <div className="relative h-[500px]">
+            {leftItems.map((item) => (
+              <Callout key={item.key} item={item} />
+            ))}
+          </div>
+
+          <div className="relative mx-auto h-[500px] w-[240px]" data-testid="human-balance-figure">
+            <svg viewBox="0 0 240 500" className="h-full w-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <g opacity="0.16" fill="#88A2C8">
+                <ellipse cx="120" cy="240" rx="92" ry="210" />
+              </g>
+
+              <g fill="none" stroke={COLORS.wire} strokeWidth="1.45" strokeLinejoin="round" strokeLinecap="round">
+                <circle cx="120" cy="52" r="30" />
+                <path d="M92 84 Q120 98 148 84 L161 126 Q168 151 161 185 L152 270 Q147 309 140 406 L100 406 Q93 309 88 270 L79 185 Q72 151 79 126 Z" />
+                <path d="M79 104 Q55 130 46 164 L37 219 Q33 239 34 266" />
+                <path d="M161 104 Q185 130 194 164 L203 219 Q207 239 206 266" />
+                <path d="M104 406 L88 488" />
+                <path d="M136 406 L152 488" />
+                <path d="M104 406 L112 488" />
+                <path d="M136 406 L128 488" />
+                <path d="M94 122 Q120 132 146 122" opacity="0.8" />
+                <path d="M88 145 Q120 159 152 145" opacity="0.8" />
+                <path d="M82 174 Q120 188 158 174" opacity="0.8" />
+                <path d="M82 206 Q120 194 158 206" opacity="0.8" />
+                <path d="M90 235 Q120 250 150 235" opacity="0.7" />
+                <path d="M96 270 Q120 282 144 270" opacity="0.7" />
+                <path d="M100 309 Q120 320 140 309" opacity="0.7" />
+                <path d="M120 86 L120 406" opacity="0.35" />
+              </g>
+
+              <circle
+                cx="120"
+                cy="52"
+                r="27"
+                fill={palette.mental}
+                fillOpacity={regionOpacity(values.mental)}
+                filter="url(#softGlow)"
+              />
+
+              <path
+                d="M94 87 Q120 100 146 87 L158 128 Q165 151 158 184 L149 265 Q145 300 139 399 L101 399 Q95 300 91 265 L82 184 Q75 151 82 128 Z"
+                fill={palette.moral}
+                fillOpacity={regionOpacity(values.moral)}
+                filter="url(#softGlow)"
+              />
+
+              <path
+                d="M78 106 Q56 131 48 165 L40 218 Q36 239 37 264"
+                stroke={palette.financial}
+                strokeWidth="16"
+                strokeOpacity={regionOpacity(values.financial)}
+                filter="url(#softGlow)"
+              />
+              <path
+                d="M162 106 Q184 131 192 165 L200 218 Q204 239 203 264"
+                stroke={palette.financial}
+                strokeWidth="16"
+                strokeOpacity={regionOpacity(values.financial)}
+                filter="url(#softGlow)"
+              />
+
+              <path
+                d="M104 400 L91 486"
+                stroke={palette.physical}
+                strokeWidth="18"
+                strokeOpacity={regionOpacity(values.physical)}
+                filter="url(#softGlow)"
+              />
+              <path
+                d="M136 400 L149 486"
+                stroke={palette.physical}
+                strokeWidth="18"
+                strokeOpacity={regionOpacity(values.physical)}
+                filter="url(#softGlow)"
+              />
+
+              <line x1="16" y1="58" x2="89" y2="58" stroke={palette.mental} strokeWidth="1.4" strokeOpacity="0.55" />
+              <line x1="16" y1="146" x2="52" y2="146" stroke={palette.financial} strokeWidth="1.4" strokeOpacity="0.55" />
+              <line x1="16" y1="196" x2="83" y2="196" stroke={palette.moral} strokeWidth="1.4" strokeOpacity="0.55" />
+              <line x1="16" y1="340" x2="92" y2="340" stroke={palette.physical} strokeWidth="1.4" strokeOpacity="0.55" />
+
+              <line x1="150" y1="118" x2="224" y2="118" stroke={palette.financial} strokeWidth="1.4" strokeOpacity="0.55" />
+              <line x1="157" y1="215" x2="224" y2="215" stroke={palette.moral} strokeWidth="1.4" strokeOpacity="0.55" />
+              <line x1="148" y1="340" x2="224" y2="340" stroke={palette.physical} strokeWidth="1.4" strokeOpacity="0.55" />
+            </svg>
+          </div>
+
+          <div className="relative h-[500px]">
+            {rightItems.map((item) => (
+              <Callout key={item.key} item={item} />
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: physicalColor, opacity: Math.max(getOpacity(balance.physical), 0.3) }}
-          />
-          <span className="text-muted-foreground">
-            Физическое {balance.physical > 0 ? '+' : ''}{balance.physical.toFixed(0)}
-          </span>
+
+        <div className={`mt-6 px-3 text-center text-[1.05rem] font-medium leading-snug ${statusTone}`}>
+          {statusText}
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: moralColor, opacity: Math.max(getOpacity(balance.moral), 0.3) }}
-          />
-          <span className="text-muted-foreground">
-            Моральное {balance.moral > 0 ? '+' : ''}{balance.moral.toFixed(0)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: financialColor, opacity: Math.max(getOpacity(balance.financial), 0.3) }}
-          />
-          <span className="text-muted-foreground">
-            Финансовое {balance.financial > 0 ? '+' : ''}{balance.financial.toFixed(0)}
-          </span>
-        </div>
+      </div>
+    </section>
+  );
+}
+
+function Callout({ item }: { item: CalloutItem }) {
+  return (
+    <div
+      className={`absolute w-full ${item.side === "left" ? "left-0 text-left" : "right-0 text-right"}`}
+      style={{ top: `${item.top}px` }}
+    >
+      <div className="text-[11px] text-[#D7DEE8]">{item.title}</div>
+      <div className="mt-1 text-[1.05rem] font-medium leading-none" style={{ color: item.color }}>
+        {metricText(item.value)}
+      </div>
+      <div className={`mt-2 h-[3px] bg-white/12 ${item.side === "right" ? "ml-auto" : ""}`}>
+        <div className="h-full" style={{ width: item.width, backgroundColor: item.color }} />
       </div>
     </div>
   );

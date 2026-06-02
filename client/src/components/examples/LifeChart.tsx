@@ -1,11 +1,10 @@
-import LifeChart, { StateData, NewsEvent } from '../LifeChart';
+﻿import LifeChart, { type StateData, type NewsEvent } from "../LifeChart";
 
 export default function LifeChartExample() {
-  // Generate sample data for the last 30 days
   const now = Date.now() / 1000;
   const data: StateData[] = [];
-  
-  for (let i = 30; i >= 0; i--) {
+
+  for (let i = 30; i >= 0; i -= 1) {
     const time = (now - i * 24 * 60 * 60) as any;
     data.push({
       time,
@@ -19,20 +18,20 @@ export default function LifeChartExample() {
   const news: NewsEvent[] = [
     {
       time: (now - 20 * 24 * 60 * 60) as any,
-      type: 'positive',
-      text: 'Повышение на работе',
+      type: "positive",
+      text: "Work promotion",
       impact: { mental: 5, physical: 0, moral: 3, financial: 10 },
     },
     {
       time: (now - 10 * 24 * 60 * 60) as any,
-      type: 'negative',
-      text: 'Проблемы со здоровьем',
+      type: "negative",
+      text: "Health issues",
       impact: { mental: -3, physical: -8, moral: -2, financial: 0 },
     },
     {
       time: (now - 3 * 24 * 60 * 60) as any,
-      type: 'positive',
-      text: 'Встреча с друзьями',
+      type: "positive",
+      text: "Met friends",
       impact: { mental: 8, physical: 2, moral: 5, financial: -5 },
     },
   ];
@@ -44,6 +43,7 @@ export default function LifeChartExample() {
         visibleStates={{ mental: true, physical: true, moral: true, financial: true }}
         weights={{ mental: 0.25, physical: 0.25, moral: 0.25, financial: 0.25 }}
         news={news}
+        tokenName="SOUL"
       />
     </div>
   );

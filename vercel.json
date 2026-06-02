@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build:server",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api/|assets/|favicon.ico|manifest.webmanifest).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

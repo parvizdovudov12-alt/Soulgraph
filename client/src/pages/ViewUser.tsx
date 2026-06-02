@@ -1,3 +1,4 @@
+﻿import { useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, UserPlus, UserMinus, Lock, Calendar } from "lucide-react";
 import LifeChart, { StateData as ChartStateData, NewsEvent as ChartNewsEvent } from "@/components/LifeChart";
 import type { UserProfile, StateData, NewsEvent } from "@shared/schema";
-import { useMemo } from "react";
+import { useLanguage } from "@/lib/i18n";
 
 interface ViewUserData {
   user: {
@@ -25,59 +26,61 @@ interface ViewUserProps {
   onBack: () => void;
 }
 
+const copy = {
+  ru: {
+    loading: "Загрузка...",
+    userNotFound: "Пользователь не найден",
+    profile: "Профиль",
+    unknown: "Неизвестно",
+    unfollow: "Отписаться",
+    follow: "Подписаться",
+    privateProfile: "Закрытый профиль",
+    privateProfileDescription: "Подпишитесь, чтобы увидеть график этого пользователя",
+    events: "События",
+    noData: "Нет данных",
+    noDataDescription: "Этот пользователь ещё не добавлял события",
+    dateLocale: "ru-RU",
+  },
+  en: {
+    loading: "Loading...",
+    userNotFound: "User not found",
+    profile: "Profile",
+    unknown: "Unknown",
+    unfollow: "Unfollow",
+    follow: "Follow",
+    privateProfile: "Private profile",
+    privateProfileDescription: "Follow this user to see their chart",
+    events: "Events",
+    noData: "No data",
+    noDataDescription: "This user has not added any events yet",
+    dateLocale: "en-US",
+  },
+} as const;
+
 export default function ViewUser({ userId, onBack }: ViewUserProps) {
-  const { data, isLoading, error } = useQuery<ViewUserData>({
-    queryKey: ["/api/social/users", userId],
-  });
+  const { language } = useLanguage();
+  const t = copy[language];
+  const { data, isLoading, error } = useQuery<ViewUserData>({ queryKey: ["/api/social/users", userId] });
 
-  const followMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/social/follow", { userId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/social/users", userId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/social/following"] });
-    },
-  });
+  const followMutation = useMutation({ mutationFn: async () => apiRequest("POST", "/api/social/follow", { userId }), onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/social/users", userId] });
+    queryClient.invalidateQueries({ queryKey: ["/api/social/following"] });
+  }});
 
-  const unfollowMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("DELETE", `/api/social/follow/${userId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/social/users", userId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/social/following"] });
-    },
-  });
+  const unfollowMutation = useMutation({ mutationFn: async () => apiRequest("DELETE", `/api/social/follow/${userId}`), onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/social/users", userId] });
+    queryClient.invalidateQueries({ queryKey: ["/api/social/following"] });
+  }});
 
-  // Hooks must be called before any conditional returns
-  // Generate stateData from events if no stateData exists (same logic as Dashboard)
   const chartData = useMemo((): ChartStateData[] => {
-    // If we have stateData from DB, use it
     if (data?.stateData && data.stateData.length > 0) {
-      return data.stateData.map(s => ({
-        time: s.time as any,
-        mental: s.mental,
-        physical: s.physical,
-        moral: s.moral,
-        financial: s.financial,
-      }));
+      return data.stateData.map((s) => ({ time: s.time as any, mental: s.mental, physical: s.physical, moral: s.moral, financial: s.financial }));
     }
-    
-    // Otherwise generate from events
     if (data?.events && data.events.length > 0) {
       const sortedEvents = [...data.events].sort((a, b) => a.time - b.time);
       const firstEventTime = sortedEvents[0].time;
-      const baseline: ChartStateData = { 
-        time: (firstEventTime - 1) as any, 
-        mental: 0, 
-        physical: 0, 
-        moral: 0, 
-        financial: 0 
-      };
-      
+      const baseline: ChartStateData = { time: (firstEventTime - 1) as any, mental: 0, physical: 0, moral: 0, financial: 0 };
       const newData: ChartStateData[] = [baseline];
-      
       sortedEvents.forEach((event) => {
         const lastPoint = newData[newData.length - 1];
         newData.push({
@@ -88,19 +91,17 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
           financial: Math.max(-1000, Math.min(1000, lastPoint.financial + event.impactFinancial)),
         });
       });
-      
       return newData;
     }
-    
     return [];
-  }, [data?.stateData, data?.events]);
+  }, [data?.events, data?.stateData]);
 
   const chartEvents = useMemo((): ChartNewsEvent[] => {
     if (!data?.events) return [];
-    return data.events.map(e => ({
+    return data.events.map((e) => ({
       id: e.id,
       time: e.time as any,
-      type: e.type as 'positive' | 'negative',
+      type: e.type as "positive" | "negative",
       text: e.text,
       impact: {
         mental: e.impactMental,
@@ -113,27 +114,14 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
   }, [data?.events]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Загрузка...</div>
-      </div>
-    );
+    return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-muted-foreground">{t.loading}</div></div>;
   }
 
   if (error || !data) {
     return (
       <div className="min-h-screen bg-background p-4">
-        <Button 
-          size="icon" 
-          variant="ghost" 
-          onClick={onBack}
-          data-testid="button-back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="text-center py-8 text-muted-foreground">
-          Пользователь не найден
-        </div>
+        <Button size="icon" variant="ghost" onClick={onBack} data-testid="button-back"><ArrowLeft className="h-5 w-5" /></Button>
+        <div className="text-center py-8 text-muted-foreground">{t.userNotFound}</div>
       </div>
     );
   }
@@ -147,15 +135,8 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
     <div className="min-h-screen bg-background text-foreground">
       <div className="p-4 max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-4">
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={onBack}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-bold">Профиль</h1>
+          <Button size="icon" variant="ghost" onClick={onBack} data-testid="button-back"><ArrowLeft className="h-5 w-5" /></Button>
+          <h1 className="text-lg font-bold">{t.profile}</h1>
         </div>
 
         <Card className="p-4 mb-4">
@@ -163,45 +144,22 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
             <div className="flex items-center gap-3">
               <Avatar className="h-14 w-14">
                 <AvatarImage src={data.user.avatarUrl || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                  {data.user.tokenName?.charAt(0) || "U"}
-                </AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary text-lg">{data.user.tokenName?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-bold text-lg" data-testid="text-username">
-                  {data.user.tokenName || "Unknown"}
-                </div>
-                {data.profile?.displayName && (
-                  <div className="text-sm text-muted-foreground">
-                    {data.profile.displayName}
-                  </div>
-                )}
-                {data.profile?.bio && (
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {data.profile.bio}
-                  </div>
-                )}
+                <div className="font-bold text-lg" data-testid="text-username">{data.user.tokenName || t.unknown}</div>
+                {data.profile?.displayName && <div className="text-sm text-muted-foreground">{data.profile.displayName}</div>}
+                {data.profile?.bio && <div className="text-sm text-muted-foreground mt-1">{data.profile.bio}</div>}
               </div>
             </div>
-            
+
             {data.isFollowing ? (
-              <Button
-                variant="outline"
-                onClick={() => unfollowMutation.mutate()}
-                disabled={unfollowMutation.isPending}
-                data-testid="button-unfollow"
-              >
-                <UserMinus className="h-4 w-4 mr-2" />
-                Отписаться
+              <Button variant="outline" onClick={() => unfollowMutation.mutate()} disabled={unfollowMutation.isPending} data-testid="button-unfollow">
+                <UserMinus className="h-4 w-4 mr-2" />{t.unfollow}
               </Button>
             ) : (
-              <Button
-                onClick={() => followMutation.mutate()}
-                disabled={followMutation.isPending}
-                data-testid="button-follow"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Подписаться
+              <Button onClick={() => followMutation.mutate()} disabled={followMutation.isPending} data-testid="button-follow">
+                <UserPlus className="h-4 w-4 mr-2" />{t.follow}
               </Button>
             )}
           </div>
@@ -210,46 +168,20 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
         {isPrivate ? (
           <Card className="p-8 text-center">
             <Lock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-lg font-medium mb-2">Закрытый профиль</h2>
-            <p className="text-muted-foreground">
-              Подпишитесь, чтобы увидеть график этого пользователя
-            </p>
+            <h2 className="text-lg font-medium mb-2">{t.privateProfile}</h2>
+            <p className="text-muted-foreground">{t.privateProfileDescription}</p>
           </Card>
         ) : hasData ? (
           <div>
-            {hasChartData && (
-              <Card className="p-4 mb-4">
-                <LifeChart 
-                  data={chartData}
-                  news={chartEvents}
-                  tokenName={data.user.tokenName || "SOUL"}
-                  visibleStates={{ mental: false, physical: false, moral: false, financial: false }}
-                  weights={{ mental: 0.25, physical: 0.25, moral: 0.25, financial: 0.25 }}
-                  chartType="line"
-                />
-              </Card>
-            )}
-            
+            {hasChartData && <Card className="p-4 mb-4"><LifeChart data={chartData} news={chartEvents} tokenName={data.user.tokenName || "SOUL"} visibleStates={{ mental: false, physical: false, moral: false, financial: false }} weights={{ mental: 0.25, physical: 0.25, moral: 0.25, financial: 0.25 }} chartType="line" /></Card>}
             {hasEvents && (
               <Card className="p-4">
-                <h2 className="font-medium mb-3 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  События ({data.events!.length})
-                </h2>
+                <h2 className="font-medium mb-3 flex items-center gap-2"><Calendar className="h-4 w-4" />{t.events} ({data.events!.length})</h2>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {data.events!.slice().reverse().map((event) => (
-                    <div 
-                      key={event.id}
-                      className={`p-2 rounded text-sm ${
-                        event.type === 'positive' 
-                          ? 'bg-green-500/10 border-l-2 border-green-500' 
-                          : 'bg-red-500/10 border-l-2 border-red-500'
-                      }`}
-                    >
+                    <div key={event.id} className={`p-2 rounded text-sm ${event.type === "positive" ? "bg-green-500/10 border-l-2 border-green-500" : "bg-red-500/10 border-l-2 border-red-500"}`}>
                       <div className="font-medium">{event.text}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(event.time * 1000).toLocaleDateString('ru-RU')}
-                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{new Date(event.time * 1000).toLocaleDateString(t.dateLocale)}</div>
                     </div>
                   ))}
                 </div>
@@ -259,10 +191,8 @@ export default function ViewUser({ userId, onBack }: ViewUserProps) {
         ) : (
           <Card className="p-8 text-center">
             <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-lg font-medium mb-2">Нет данных</h2>
-            <p className="text-muted-foreground">
-              Этот пользователь ещё не добавлял события
-            </p>
+            <h2 className="text-lg font-medium mb-2">{t.noData}</h2>
+            <p className="text-muted-foreground">{t.noDataDescription}</p>
           </Card>
         )}
       </div>
