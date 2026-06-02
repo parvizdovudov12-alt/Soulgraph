@@ -1,35 +1,146 @@
-# Soulgraph
+# SoulGraph
 
-Soulgraph is a goal-driven life tracker. It stores life events, evaluates how they affect your mental, physical, moral, and financial balance, and compares your actions against a saved goal.
+## The Operating System of Human Growth
 
-## What is fixed
+If financial markets have charts for money, why doesn't a person have a chart for life?
 
-- Goal saving works for both new and existing profiles
-- Sessions survive restarts when the app uses PostgreSQL
-- User data persists in a cloud Postgres database instead of in local memory
-- Database tables are created automatically on first startup
+SoulGraph transforms your life into a living graph.
 
-## Local run
+Every day you add your actions, habits, victories, failures, work, sleep, training, learning, and discipline.
 
-1. Copy `.env.example` to `.env` and fill in values if you want persistent storage
-2. Run `npm install`
-3. Run `npm run dev`
+The system shows one thing:
 
-If `DATABASE_URL` is missing, the app still starts, but data is stored only in memory and disappears after restart.
+**Who are you becoming?**
 
-## Recommended free cloud setup
+Not motivation.
 
-Use these two free services together:
+Not self-help.
 
-1. Neon for PostgreSQL
-2. Vercel for hosting
+Not empty productivity.
 
-### Required environment variables
+Just visual truth.
 
-- `DATABASE_URL`: your Neon Postgres connection string
-- `SESSION_SECRET`: a long random string for stable login sessions
-- `COOKIE_SECURE`: `true` in cloud, `false` locally if needed
+## Why SoulGraph Exists
 
-## Deploy notes
+Today we can track:
 
-The app is ready for cloud persistence once `DATABASE_URL` is configured. On first boot it automatically creates the required tables and uses PostgreSQL-backed sessions, so logins and saved goals stop resetting between restarts.
+* Stock prices
+* Cryptocurrency markets
+* Website traffic
+* Business metrics
+
+But we cannot clearly see the trajectory of our own lives.
+
+SoulGraph solves this.
+
+It converts daily actions into a visible life graph so you can see:
+
+* What moves you forward
+* What slowly destroys your progress
+* Why some periods are your best
+* Why you feel stuck
+* Whether your life is trending up or down
+
+## Core Idea
+
+Think:
+
+**TradingView x Personal Growth**
+
+Instead of watching a coin chart, you watch the chart of your life.
+
+Every action becomes a signal.
+
+Every day becomes data.
+
+Every month becomes a trend.
+
+## Features
+
+### Life Graph
+
+A dynamic chart that reflects your personal growth.
+
+### Goal Engine
+
+Connect every action to a long-term purpose.
+
+### Levels & Progression
+
+Life works like a game.
+
+Earn experience.
+Unlock levels.
+Build momentum.
+
+### Daily Tracking
+
+Track:
+
+* Work
+* Learning
+* Sleep
+* Health
+* Training
+* Spirituality
+* Habits
+
+### Pattern Detection
+
+See:
+
+* Growth cycles
+* Self-destructive patterns
+* Productive routines
+* Hidden trends
+
+## Philosophy
+
+Most people don't fail because they lack motivation.
+
+They fail because they cannot see themselves.
+
+SoulGraph makes your life visible.
+
+And once something becomes visible, it becomes measurable.
+
+And once it becomes measurable, it can be improved.
+
+## Vision
+
+We believe every human being should have:
+
+* A graph of their life
+* A clear direction
+* A visible trajectory
+* A system for continuous growth
+
+SoulGraph is building the operating system for human development.
+
+## Future
+
+* AI Life Analysis
+* Personal Growth Forecasting
+* Achievement System
+* Life Score
+* Social Progress Networks
+* Life Replay
+* Personal Knowledge Graph
+
+## Mission
+
+Help people stop guessing who they are becoming.
+
+And start seeing it.
+
+---
+
+### Build yourself.
+
+### Measure yourself.
+
+### Become visible.
+
+# SoulGraph
+
+**The graph of your life.**

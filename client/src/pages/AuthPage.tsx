@@ -16,6 +16,39 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const r = decodeURIComponent;
 
+const presentationScreens = [
+  {
+    src: "/assets/presentation/dashboard-wide.png",
+    title: "Life Graph",
+    text: "A market-grade view of personal progress: actions, events, candles, XP and direction in one operating screen.",
+  },
+  {
+    src: "/assets/presentation/control-panel.png",
+    title: "Goal Engine",
+    text: "A focused command panel for the current goal, daily tasks, Premium and event logging.",
+  },
+  {
+    src: "/assets/presentation/indicators-body.png",
+    title: "State System",
+    text: "Mental, physical, moral and financial balance become visible instead of staying abstract.",
+  },
+  {
+    src: "/assets/presentation/mobile-login.png",
+    title: "Mobile OS",
+    text: "A compact PWA entry point for checking the trajectory of your life from a phone.",
+  },
+] as const;
+
+const featureCards = [
+  ["Life Graph", "A dynamic chart that reflects your personal growth."],
+  ["Goal Engine", "Connect every action to a long-term purpose."],
+  ["Levels & Progression", "Earn experience, unlock levels, build momentum."],
+  ["Daily Tracking", "Track work, learning, sleep, health, training, spirituality and habits."],
+  ["Pattern Detection", "See growth cycles, destructive patterns, productive routines and hidden trends."],
+] as const;
+
+const futureItems = ["AI Life Analysis", "Personal Growth Forecasting", "Achievement System", "Life Score", "Social Progress Networks", "Life Replay", "Personal Knowledge Graph"] as const;
+
 const copy = {
   ru: {
     title: r("Soulgraph"),
@@ -678,6 +711,101 @@ export default function AuthPage() {
         </CardContent>
       </Card>
       </div>
+
+      <section className="relative z-10 mx-auto w-full max-w-6xl space-y-16 pb-20 pt-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-end">
+          <div className="space-y-5">
+            <div className="inline-flex rounded-full border border-[#36c98b]/30 bg-[#36c98b]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9AF6C2]">
+              The Operating System of Human Growth
+            </div>
+            <h2 className="max-w-3xl text-4xl font-semibold leading-[1.02] tracking-tight text-white sm:text-5xl lg:text-6xl">
+              If markets have charts for money, why doesn't a person have a chart for life?
+            </h2>
+          </div>
+          <div className="space-y-4 text-base leading-relaxed text-white/68 sm:text-lg">
+            <p>SoulGraph transforms your life into a living graph.</p>
+            <p>Every day you add your actions, habits, victories, failures, work, sleep, training, learning, and discipline.</p>
+            <p className="text-xl font-semibold text-white">The system shows one thing: Who are you becoming?</p>
+            <p className="text-white/54">Not motivation. Not self-help. Not empty productivity. Just visual truth.</p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.035] shadow-[0_32px_110px_rgba(0,0,0,0.45)]">
+          <img
+            src="/assets/presentation/dashboard-wide.png"
+            alt="SoulGraph dashboard with life graph"
+            className="aspect-[16/9] w-full object-cover object-left-top"
+            loading="lazy"
+          />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {["TradingView x Personal Growth", "Every action becomes a signal", "Every month becomes a trend"].map((item) => (
+            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-sm font-semibold text-white/86">
+              {item}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9AF6C2]">Why SoulGraph Exists</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">See the trajectory of your own life.</h2>
+            <p className="leading-relaxed text-white/62">
+              Today we can track stock prices, crypto markets, website traffic and business metrics. SoulGraph converts daily actions into a visible life graph so you can see what moves you forward, what slowly destroys progress and whether your life is trending up or down.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {featureCards.map(([title, text]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-[#0d1413]/78 p-5">
+                <h3 className="text-base font-semibold text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/58">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {presentationScreens.map((screen) => (
+            <article key={screen.src} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+              <div className="h-64 overflow-hidden bg-black/30">
+                <img src={screen.src} alt={screen.title} className="h-full w-full object-cover object-top" loading="lazy" />
+              </div>
+              <div className="space-y-2 p-4">
+                <h3 className="text-sm font-semibold text-white">{screen.title}</h3>
+                <p className="text-xs leading-relaxed text-white/56">{screen.text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#101514]/80 p-6 sm:p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9AF6C2]">Philosophy</p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white">Most people don't fail because they lack motivation.</h2>
+            <p className="mt-4 leading-relaxed text-white/62">
+              They fail because they cannot see themselves. Once something becomes visible, it becomes measurable. Once it becomes measurable, it can be improved.
+            </p>
+          </div>
+          <div className="rounded-[1.5rem] border border-[#36c98b]/18 bg-[#082019]/72 p-6 sm:p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9AF6C2]">Future</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {futureItems.map((item) => (
+                <span key={item} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/74">
+                  {item}
+                </span>
+              ))}
+            </div>
+            <p className="mt-6 text-xl font-semibold leading-snug text-white">Help people stop guessing who they are becoming. And start seeing it.</p>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 pt-10 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/48">Build yourself. Measure yourself. Become visible.</p>
+          <h2 className="mt-4 text-4xl font-semibold tracking-tight text-white">SoulGraph</h2>
+          <p className="mt-2 text-white/58">The graph of your life.</p>
+        </div>
+      </section>
     </div>
   );
 }
