@@ -295,7 +295,7 @@ function DailyTasksPanel({
   };
 
   return (
-    <div className="mt-4 rounded-lg border border-[#36C98B]/35 bg-[#36C98B]/10 p-3">
+    <div className="mt-4 rounded-lg border border-[#ff4d8d]/75 bg-[radial-gradient(circle_at_12%_0%,rgba(255,77,141,0.42),transparent_34%),linear-gradient(135deg,rgba(98,36,255,0.34),rgba(255,54,84,0.22)_52%,rgba(18,6,16,0.92))] p-3 shadow-[0_0_0_1px_rgba(255,77,141,0.18),0_0_28px_rgba(255,54,116,0.24)]">
       <button
         type="button"
         onClick={() => setIsTasksExpanded((current) => !current)}
@@ -304,13 +304,13 @@ function DailyTasksPanel({
         aria-label={isTasksExpanded ? t.collapse : t.expand}
       >
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#8ef0bb]">{t.tasks}</p>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[#ffd6e6] drop-shadow-[0_0_10px_rgba(255,77,141,0.5)]">{t.tasks}</p>
           <p className="mt-0.5 text-[11px] font-medium text-[#e8fff1]">
             {tasks.filter((task) => task.completedDates.includes(todayKey)).length}/{tasks.length} {t.done}
           </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-[#bfeccc]">{t.taskCompletionHint}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-white/86">{t.taskCompletionHint}</p>
         </div>
-        {isTasksExpanded ? <ChevronUp className="h-4 w-4 shrink-0 text-[#8ef0bb]" /> : <ChevronDown className="h-4 w-4 shrink-0 text-[#8ef0bb]" />}
+        {isTasksExpanded ? <ChevronUp className="h-4 w-4 shrink-0 text-[#ffd6e6]" /> : <ChevronDown className="h-4 w-4 shrink-0 text-[#ffd6e6]" />}
       </button>
 
       {isTasksExpanded ? (
