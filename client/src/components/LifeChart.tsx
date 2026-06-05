@@ -11,7 +11,7 @@ import {
 } from "lightweight-charts";
 import NewsPopup from "./NewsPopup";
 import ChartTooltip from "./ChartTooltip";
-import { formatPeriodLabel, timeframeToSeconds, type Timeframe } from "@/lib/dateUtils";
+import { aggregateCandles, formatPeriodLabel, getPeriodBucket, timeframeToSeconds, type Timeframe } from "@/lib/dateUtils";
 import { useLanguage } from "@/lib/i18n";
 import { Expand, Minus, Plus } from "lucide-react";
 
@@ -110,6 +110,13 @@ type SeriesRefs = {
 
 type AggregatePoint = CandlestickData | LineData;
 type NumericRange = { from: number; to: number };
+type ChartStateCandle = Omit<StateData, "time"> & {
+  time: Time;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
 
 function deduplicateData<T extends { time: Time }>(input: T[]): T[] {
   const seen = new Map<number, T>();
@@ -173,9 +180,9 @@ function getIncrementalStartIndex(previousData: StateData[], nextData: StateData
 }
 
 function buildAggregatePoint(
-  point: StateData,
+  point: StateData | ChartStateCandle,
   index: number,
-  sourceData: StateData[],
+  sourceData: Array<StateData | ChartStateCandle>,
   weights: LifeChartProps["weights"],
   chartType: LifeChartProps["chartType"],
   syntheticSeries: boolean,
@@ -185,7 +192,17 @@ function buildAggregatePoint(
   if (chartType !== "candlestick") {
     return {
       time: point.time,
-      value: Number.isFinite(close) ? close : 0,
+      value: "close" in point && Number.isFinite(point.close) ? point.close : Number.isFinite(close) ? close : 0,
+    };
+  }
+
+  if ("open" in point && "high" in point && "low" in point && "close" in point) {
+    return {
+      time: point.time,
+      open: point.open,
+      high: point.high,
+      low: point.low,
+      close: point.close,
     };
   }
 
@@ -272,6 +289,7 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe): StateDat
     "1D": 18,
     "1W": 28,
     "1M": 42,
+    "3M": 56,
     "1Y": 84,
   };
   const points = pointsByTimeframe[timeframe];
@@ -291,6 +309,45 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe): StateDat
       financial: source.financial + Math.cos(phase * 1.15) * amplitude * 0.92,
     };
   });
+}
+
+function buildDailyCandles(input: StateData[], weights: LifeChartProps["weights"], timeframe: Timeframe): ChartStateCandle[] {
+  const source = buildRenderableData(input, timeframe);
+  const sorted = deduplicateData(source).sort((a, b) => (a.time as number) - (b.time as number));
+  if (sorted.length === 0) return [];
+
+  const dailyGroups = new Map<number, StateData[]>();
+  sorted.forEach((point) => {
+    const dayStart = getPeriodBucket(point.time as number, "1D");
+    const group = dailyGroups.get(dayStart);
+    if (group) {
+      group.push(point);
+    } else {
+      dailyGroups.set(dayStart, [point]);
+    }
+  });
+
+  const candles: ChartStateCandle[] = [];
+  Array.from(dailyGroups.entries())
+    .sort(([a], [b]) => a - b)
+    .forEach(([dayStart, group]) => {
+      const previousClose = candles[candles.length - 1]?.close;
+      const values = group.map((point) => aggregateValue(point, weights));
+      const last = group[group.length - 1];
+      const open = previousClose ?? values[0] ?? 0;
+      const close = values[values.length - 1] ?? open;
+
+      candles.push({
+        ...last,
+        time: dayStart as Time,
+        open,
+        high: Math.max(open, ...values),
+        low: Math.min(open, ...values),
+        close,
+      });
+    });
+
+  return candles;
 }
 
 export default function LifeChart({
@@ -318,7 +375,7 @@ export default function LifeChart({
     moral: null,
     financial: null,
   });
-  const plottedDataRef = useRef<StateData[]>([]);
+  const plottedDataRef = useRef<ChartStateCandle[]>([]);
   const previousWeightsRef = useRef<LifeChartProps["weights"] | null>(null);
   const previousChartTypeRef = useRef<LifeChartProps["chartType"] | null>(null);
   const newsRef = useRef(news);
@@ -350,6 +407,7 @@ export default function LifeChart({
           { value: "1D", label: "1Д" },
           { value: "1W", label: "1Н" },
           { value: "1M", label: "1М" },
+          { value: "3M", label: "3М" },
           { value: "1Y", label: "1Г" },
         ]
       : [
@@ -357,16 +415,19 @@ export default function LifeChart({
           { value: "1D", label: "1D" },
           { value: "1W", label: "1W" },
           { value: "1M", label: "1M" },
+          { value: "3M", label: "3M" },
           { value: "1Y", label: "1Y" },
         ];
   const stateLabels = STATE_META[language];
 
-  const renderableData = useMemo(() => buildRenderableData(data, timeframe), [data, timeframe]);
+  const dailyCandles = useMemo(() => buildDailyCandles(data, weights, timeframe), [data, weights, timeframe]);
+  const renderableData = useMemo(() => aggregateCandles(dailyCandles, timeframe), [dailyCandles, timeframe]);
   const barSpacingByTimeframe: Record<Timeframe, number> = {
     ALL: 8,
     "1D": 28,
     "1W": 18,
     "1M": 10,
+    "3M": 8,
     "1Y": 4,
   };
   const rightOffsetByTimeframe: Record<Timeframe, number> = {
@@ -374,6 +435,7 @@ export default function LifeChart({
     "1D": 10,
     "1W": 8,
     "1M": 6,
+    "3M": 5,
     "1Y": 3,
   };
   const minBarSpacingByTimeframe: Record<Timeframe, number> = {
@@ -381,6 +443,7 @@ export default function LifeChart({
     "1D": 16,
     "1W": 10,
     "1M": 6,
+    "3M": 4,
     "1Y": 2,
   };
   const aggregateStats = useMemo(() => {
@@ -388,23 +451,22 @@ export default function LifeChart({
       return { current: 0, previous: 0, change: 0, changePercent: 0, max: 0, min: 0, open: 0, close: 0 };
     }
 
-    const values = renderableData.map((point) => aggregateValue(point, weights));
-    const current = values[values.length - 1] ?? 0;
-    const previous = values[Math.max(values.length - 2, 0)] ?? current;
-    const open = values[0] ?? current;
+    const current = renderableData[renderableData.length - 1]?.close ?? 0;
+    const previous = renderableData[Math.max(renderableData.length - 2, 0)]?.close ?? current;
+    const open = renderableData[0]?.open ?? current;
     const close = current;
-    const max = Math.max(...values);
-    const min = Math.min(...values);
-    const change = current - previous;
+    const max = Math.max(...renderableData.map((point) => point.high));
+    const min = Math.min(...renderableData.map((point) => point.low));
+    const change = close - previous;
     const changePercent = previous === 0 ? (current === 0 ? 0 : 100) : (change / Math.abs(previous)) * 100;
 
     return { current, previous, change, changePercent, max, min, open, close };
-  }, [renderableData, weights]);
+  }, [renderableData]);
 
   const volumeBars = useMemo(() => {
     const bars = renderableData.slice(-72).map((point, index, source) => {
-      const value = aggregateValue(point, weights);
-      const previous = index > 0 ? aggregateValue(source[index - 1], weights) : value;
+      const value = point.close;
+      const previous = index > 0 ? source[index - 1].close : value;
       const rawVolume = Math.max(Math.abs(value - previous), 0.12);
 
       return {
@@ -418,7 +480,7 @@ export default function LifeChart({
       ...bar,
       height: Math.max(10, Math.min(100, (bar.value / maxVolume) * 100)),
     }));
-  }, [renderableData, weights]);
+  }, [renderableData]);
 
   const visibleLegendItems = (Object.keys(stateLabels) as VisibleStateKey[]).filter((key) => visibleStates[key]);
 

@@ -86,7 +86,7 @@ export function getStartOfYear(unixSeconds: number): number {
   return Math.floor((startOfYear.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export type Timeframe = "ALL" | "1D" | "1W" | "1M" | "1Y";
+export type Timeframe = "ALL" | "1D" | "1W" | "1M" | "3M" | "1Y";
 
 export function timeframeToSeconds(timeframe: Timeframe): number {
   switch (timeframe) {
@@ -98,12 +98,22 @@ export function timeframeToSeconds(timeframe: Timeframe): number {
       return 7 * 24 * 60 * 60;
     case "1M":
       return 30 * 24 * 60 * 60;
+    case "3M":
+      return 92 * 24 * 60 * 60;
     case "1Y":
       return 365 * 24 * 60 * 60;
   }
 }
 
-export interface AggregatedCandle {
+export interface CandleLike {
+  time: unknown;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+export interface AggregatedCandle extends CandleLike {
   dateStart: number;
   dateEnd: number;
   open: number;
@@ -116,57 +126,79 @@ export interface AggregatedCandle {
   financial: number;
 }
 
-export function aggregateCandles(
-  dailyData: Array<{ time: number; mental: number; physical: number; moral: number; financial: number }>,
-  days: number,
-): AggregatedCandle[] {
-  if (dailyData.length === 0) return [];
-
-  const sorted = [...dailyData].sort((a, b) => a.time - b.time);
-  const candles: AggregatedCandle[] = [];
-  let currentGroup: typeof sorted = [];
-  let groupStartTime = sorted[0].time;
-
-  for (let i = 0; i < sorted.length; i += 1) {
-    const point = sorted[i];
-    const daysSinceStart = Math.floor((point.time - groupStartTime) / (24 * 60 * 60));
-
-    if (daysSinceStart >= days) {
-      if (currentGroup.length > 0) {
-        candles.push(createCandleFromGroup(currentGroup));
-      }
-      currentGroup = [point];
-      groupStartTime = point.time;
-    } else {
-      currentGroup.push(point);
-    }
-  }
-
-  if (currentGroup.length > 0) {
-    candles.push(createCandleFromGroup(currentGroup));
-  }
-
-  return candles;
+export function getStartOfQuarter(unixSeconds: number): number {
+  const moscowDate = toMoscowTime(unixSeconds);
+  const quarterStartMonth = Math.floor(moscowDate.getUTCMonth() / 3) * 3;
+  const startOfQuarter = new Date(moscowDate.getUTCFullYear(), quarterStartMonth, 1);
+  return Math.floor((startOfQuarter.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-function createCandleFromGroup(
-  group: Array<{ time: number; mental: number; physical: number; moral: number; financial: number }>,
-): AggregatedCandle {
-  const values = group.map((point) => (point.mental + point.physical + point.moral + point.financial) / 4);
-  const last = group[group.length - 1];
+export function getPeriodKey(date: Date | number, timeframe: Timeframe): string {
+  const unixSeconds = typeof date === "number" ? date : Math.floor(date.getTime() / 1000);
+  const moscowDate = toMoscowTime(unixSeconds);
+  const year = moscowDate.getUTCFullYear();
+  const month = moscowDate.getUTCMonth() + 1;
 
-  return {
-    dateStart: group[0].time,
-    dateEnd: group[group.length - 1].time,
-    open: values[0],
-    high: Math.max(...values),
-    low: Math.min(...values),
-    close: values[values.length - 1],
-    mental: last.mental,
-    physical: last.physical,
-    moral: last.moral,
-    financial: last.financial,
-  };
+  switch (timeframe) {
+    case "ALL":
+    case "1D":
+      return `${year}-${month.toString().padStart(2, "0")}-${moscowDate.getUTCDate().toString().padStart(2, "0")}`;
+    case "1W":
+      return `week-${getStartOfWeek(unixSeconds)}`;
+    case "1M":
+      return `${year}-${month.toString().padStart(2, "0")}`;
+    case "3M":
+      return `${year}-Q${Math.floor((month - 1) / 3) + 1}`;
+    case "1Y":
+      return `${year}`;
+  }
+}
+
+function getPeriodStart(unixSeconds: number, timeframe: Timeframe): number {
+  switch (timeframe) {
+    case "ALL":
+    case "1D":
+      return getStartOfDay(unixSeconds);
+    case "1W":
+      return getStartOfWeek(unixSeconds);
+    case "1M":
+      return getStartOfMonth(unixSeconds);
+    case "3M":
+      return getStartOfQuarter(unixSeconds);
+    case "1Y":
+      return getStartOfYear(unixSeconds);
+  }
+}
+
+export function aggregateCandles<T extends CandleLike>(candles: T[], timeframe: Timeframe): T[] {
+  const sorted = [...candles].sort((a, b) => (a.time as number) - (b.time as number));
+  if (timeframe === "ALL" || timeframe === "1D") return sorted;
+
+  const grouped = new Map<string, T[]>();
+  sorted.forEach((candle) => {
+    const key = getPeriodKey(candle.time as number, timeframe);
+    const group = grouped.get(key);
+    if (group) {
+      group.push(candle);
+    } else {
+      grouped.set(key, [candle]);
+    }
+  });
+
+  return Array.from(grouped.values())
+    .map((group) => {
+      const first = group[0];
+      const last = group[group.length - 1];
+      return {
+        ...last,
+        time: getPeriodStart(first.time as number, timeframe),
+        open: first.open,
+        high: Math.max(...group.map((candle) => candle.high)),
+        low: Math.min(...group.map((candle) => candle.low)),
+        close: last.close,
+      };
+    })
+    .sort((a, b) => a.time - b.time);
 }
 
 export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _language: "ru" | "en" = "ru"): string {
@@ -183,13 +215,16 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
     case "1D":
       return `${hours}:${minutes}`;
     case "1W":
-    case "1M":
       return `${day}.${month}`;
-    case "1Y":
+    case "1M":
       return `${month}.${year}`;
+    case "3M":
+      return `Q${Math.floor(moscowDate.getUTCMonth() / 3) + 1} ${year}`;
+    case "1Y":
+      return `${year}`;
   }
 }
 
-export function getPeriodBucket(unixSeconds: number, _timeframe: string): number {
-  return getStartOfDay(unixSeconds);
+export function getPeriodBucket(unixSeconds: number, timeframe: Timeframe): number {
+  return getPeriodStart(unixSeconds, timeframe);
 }
