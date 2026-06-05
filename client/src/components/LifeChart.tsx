@@ -286,6 +286,7 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe): StateDat
   const windowSize = timeframe === "ALL" ? timeframeToSeconds("1Y") : timeframeToSeconds(timeframe);
   const pointsByTimeframe: Record<Timeframe, number> = {
     ALL: 84,
+    "1H": 24,
     "1D": 18,
     "1W": 28,
     "1M": 42,
@@ -311,26 +312,27 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe): StateDat
   });
 }
 
-function buildDailyCandles(input: StateData[], weights: LifeChartProps["weights"], timeframe: Timeframe): ChartStateCandle[] {
+function buildBaseCandles(input: StateData[], weights: LifeChartProps["weights"], timeframe: Timeframe): ChartStateCandle[] {
   const source = buildRenderableData(input, timeframe);
   const sorted = deduplicateData(source).sort((a, b) => (a.time as number) - (b.time as number));
   if (sorted.length === 0) return [];
 
-  const dailyGroups = new Map<number, StateData[]>();
+  const bucketTimeframe: Timeframe = timeframe === "1H" ? "1H" : "1D";
+  const baseGroups = new Map<number, StateData[]>();
   sorted.forEach((point) => {
-    const dayStart = getPeriodBucket(point.time as number, "1D");
-    const group = dailyGroups.get(dayStart);
+    const periodStart = getPeriodBucket(point.time as number, bucketTimeframe);
+    const group = baseGroups.get(periodStart);
     if (group) {
       group.push(point);
     } else {
-      dailyGroups.set(dayStart, [point]);
+      baseGroups.set(periodStart, [point]);
     }
   });
 
   const candles: ChartStateCandle[] = [];
-  Array.from(dailyGroups.entries())
+  Array.from(baseGroups.entries())
     .sort(([a], [b]) => a - b)
-    .forEach(([dayStart, group]) => {
+    .forEach(([periodStart, group]) => {
       const previousClose = candles[candles.length - 1]?.close;
       const values = group.map((point) => aggregateValue(point, weights));
       const last = group[group.length - 1];
@@ -339,7 +341,7 @@ function buildDailyCandles(input: StateData[], weights: LifeChartProps["weights"
 
       candles.push({
         ...last,
-        time: dayStart as Time,
+        time: periodStart as Time,
         open,
         high: Math.max(open, ...values),
         low: Math.min(open, ...values),
@@ -404,6 +406,7 @@ export default function LifeChart({
     language === "ru"
       ? [
           { value: "ALL", label: "ВСЕ" },
+          { value: "1H", label: "1Ч" },
           { value: "1D", label: "1Д" },
           { value: "1W", label: "1Н" },
           { value: "1M", label: "1М" },
@@ -412,6 +415,7 @@ export default function LifeChart({
         ]
       : [
           { value: "ALL", label: "ALL" },
+          { value: "1H", label: "1H" },
           { value: "1D", label: "1D" },
           { value: "1W", label: "1W" },
           { value: "1M", label: "1M" },
@@ -420,10 +424,11 @@ export default function LifeChart({
         ];
   const stateLabels = STATE_META[language];
 
-  const dailyCandles = useMemo(() => buildDailyCandles(data, weights, timeframe), [data, weights, timeframe]);
-  const renderableData = useMemo(() => aggregateCandles(dailyCandles, timeframe), [dailyCandles, timeframe]);
+  const baseCandles = useMemo(() => buildBaseCandles(data, weights, timeframe), [data, weights, timeframe]);
+  const renderableData = useMemo(() => aggregateCandles(baseCandles, timeframe), [baseCandles, timeframe]);
   const barSpacingByTimeframe: Record<Timeframe, number> = {
     ALL: 8,
+    "1H": 24,
     "1D": 28,
     "1W": 18,
     "1M": 10,
@@ -432,6 +437,7 @@ export default function LifeChart({
   };
   const rightOffsetByTimeframe: Record<Timeframe, number> = {
     ALL: 6,
+    "1H": 10,
     "1D": 10,
     "1W": 8,
     "1M": 6,
@@ -440,6 +446,7 @@ export default function LifeChart({
   };
   const minBarSpacingByTimeframe: Record<Timeframe, number> = {
     ALL: 2,
+    "1H": 12,
     "1D": 16,
     "1W": 10,
     "1M": 6,

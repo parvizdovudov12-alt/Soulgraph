@@ -211,5 +211,13 @@ export function getPeriodActionLabel(timeframe: Timeframe, language: string) {
     },
   } as const;
 
-  return labels[language === "ru" ? "ru" : "en"][timeframe as "1D" | "1W" | "1M" | "1Y"] ?? (language === "ru" ? "Анализ квартала" : "Quarter analysis");
+  if (timeframe === "1H") {
+    return language === "ru" ? "Анализ часа" : "Hour analysis";
+  }
+
+  if (timeframe === "3M") {
+    return language === "ru" ? "Анализ квартала" : "Quarter analysis";
+  }
+
+  return labels[language === "ru" ? "ru" : "en"][timeframe as "1D" | "1W" | "1M" | "1Y"];
 }
