@@ -185,9 +185,25 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
   }, [dailyTasksQuery.data, dailyTasksQuery.isSuccess, isAuthenticated, localState.dailyTasks, migrateLocalDailyTasksMutation.isPending]);
 
   const newsEvents = useMemo((): NewsEvent[] => {
-    return effectiveDbNewsEvents.map((event) => ({
+    let lastChartTime = 0;
+
+    return [...effectiveDbNewsEvents]
+      .sort((a, b) => {
+        if (a.time !== b.time) return a.time - b.time;
+
+        const aCreatedAt = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bCreatedAt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (aCreatedAt !== bCreatedAt) return aCreatedAt - bCreatedAt;
+
+        return String(a.id).localeCompare(String(b.id));
+      })
+      .map((event) => {
+        const chartTime = Math.max(event.time, lastChartTime + 1);
+        lastChartTime = chartTime;
+
+        return {
       id: event.id,
-      time: event.time as any,
+      time: chartTime as any,
       type: event.type as "positive" | "negative",
       text: event.text,
       impact: {
@@ -197,7 +213,8 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
         financial: event.impactFinancial,
       },
       media: event.media || undefined,
-    }));
+        };
+      });
   }, [effectiveDbNewsEvents]);
 
   useEffect(() => {

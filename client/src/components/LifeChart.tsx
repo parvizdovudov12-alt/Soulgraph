@@ -725,17 +725,27 @@ export default function LifeChart({
         freezeSeriesScale(seriesRef.current.financial, financialScaleState?.range ?? null);
       };
 
+      const isAppendingNewPoint = renderableData.length > previousData.length;
       const lastAnimatedIndex = renderableData.length - 1;
 
       for (let index = incrementalStartIndex; index < renderableData.length; index += 1) {
         const point = renderableData[index];
-        if (index === lastAnimatedIndex) break;
+        if (isAppendingNewPoint && index === lastAnimatedIndex) break;
 
         seriesRef.current.aggregate.update(buildAggregatePoint(point, index, renderableData, weights, chartType, syntheticSeries));
         seriesRef.current.mental?.update({ time: point.time, value: Number.isFinite(point.mental) ? point.mental : 0 });
         seriesRef.current.physical?.update({ time: point.time, value: Number.isFinite(point.physical) ? point.physical : 0 });
         seriesRef.current.moral?.update({ time: point.time, value: Number.isFinite(point.moral) ? point.moral : 0 });
         seriesRef.current.financial?.update({ time: point.time, value: Number.isFinite(point.financial) ? point.financial : 0 });
+      }
+
+      if (!isAppendingNewPoint) {
+        plottedDataRef.current = renderableData;
+        previousWeightsRef.current = { ...weights };
+        previousChartTypeRef.current = chartType;
+        restoreFrozenRanges();
+        requestMarkerFrame(2);
+        return;
       }
 
       const animatedPoint = renderableData[lastAnimatedIndex];
