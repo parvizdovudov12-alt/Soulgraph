@@ -62,17 +62,6 @@ export function getStartOfDay(unixSeconds: number): number {
   return Math.floor((startOfDay.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export function getStartOfHour(unixSeconds: number): number {
-  const moscowDate = toMoscowTime(unixSeconds);
-  const startOfHour = new Date(
-    moscowDate.getUTCFullYear(),
-    moscowDate.getUTCMonth(),
-    moscowDate.getUTCDate(),
-    moscowDate.getUTCHours(),
-  );
-  return Math.floor((startOfHour.getTime() - 3 * 60 * 60 * 1000) / 1000);
-}
-
 export function getStartOfMonth(unixSeconds: number): number {
   const moscowDate = toMoscowTime(unixSeconds);
   const startOfMonth = new Date(moscowDate.getUTCFullYear(), moscowDate.getUTCMonth(), 1);
@@ -97,14 +86,12 @@ export function getStartOfYear(unixSeconds: number): number {
   return Math.floor((startOfYear.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export type Timeframe = "ALL" | "1H" | "1D" | "1W" | "1M" | "3M" | "1Y";
+export type Timeframe = "ALL" | "1D" | "1W" | "1M" | "3M" | "1Y";
 
 export function timeframeToSeconds(timeframe: Timeframe): number {
   switch (timeframe) {
     case "ALL":
       return Number.MAX_SAFE_INTEGER;
-    case "1H":
-      return 60 * 60;
     case "1D":
       return 24 * 60 * 60;
     case "1W":
@@ -154,8 +141,6 @@ export function getPeriodKey(date: Date | number, timeframe: Timeframe): string 
 
   switch (timeframe) {
     case "ALL":
-    case "1H":
-      return `${year}-${month.toString().padStart(2, "0")}-${moscowDate.getUTCDate().toString().padStart(2, "0")}-${moscowDate.getUTCHours().toString().padStart(2, "0")}`;
     case "1D":
       return `${year}-${month.toString().padStart(2, "0")}-${moscowDate.getUTCDate().toString().padStart(2, "0")}`;
     case "1W":
@@ -172,8 +157,6 @@ export function getPeriodKey(date: Date | number, timeframe: Timeframe): string 
 function getPeriodStart(unixSeconds: number, timeframe: Timeframe): number {
   switch (timeframe) {
     case "ALL":
-    case "1H":
-      return getStartOfHour(unixSeconds);
     case "1D":
       return getStartOfDay(unixSeconds);
     case "1W":
@@ -189,7 +172,7 @@ function getPeriodStart(unixSeconds: number, timeframe: Timeframe): number {
 
 export function aggregateCandles<T extends CandleLike>(candles: T[], timeframe: Timeframe): T[] {
   const sorted = [...candles].sort((a, b) => (a.time as number) - (b.time as number));
-  if (timeframe === "ALL") return sorted;
+  if (timeframe === "ALL" || timeframe === "1D") return sorted;
 
   const grouped = new Map<string, T[]>();
   sorted.forEach((candle) => {
@@ -229,10 +212,8 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
   switch (timeframe) {
     case "ALL":
       return `${day}.${month}.${year}`;
-    case "1H":
-      return `${hours}:00`;
     case "1D":
-      return `${day}.${month}`;
+      return `${hours}:${minutes}`;
     case "1W":
       return `${day}.${month}`;
     case "1M":

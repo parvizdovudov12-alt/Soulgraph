@@ -59,7 +59,6 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
           goalClearedDescription: "Задай новую цель, чтобы снова включить анализ действий.",
           goalSavedLocal: "Цель сохранена локально",
           goalSavedLocalDescription: "Сервер сейчас недоступен. Мы сохранили цель в браузере:",
-          hour: "час",
           day: "день",
           week: "неделю",
           month: "месяц",
@@ -84,7 +83,6 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
           goalClearedDescription: "Set a new goal to turn the analysis back on.",
           goalSavedLocal: "Goal saved locally",
           goalSavedLocalDescription: "The server is unavailable right now. We saved the goal in the browser:",
-          hour: "hour",
           day: "day",
           week: "week",
           month: "month",
@@ -290,8 +288,6 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
     switch (timeframe) {
       case "ALL":
         return t.allPeriod;
-      case "1H":
-        return t.hour;
       case "1D":
         return t.day;
       case "1W":
@@ -303,7 +299,7 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
       case "1Y":
         return t.year;
     }
-  }, [timeframe, t.allPeriod, t.day, t.hour, t.month, t.quarter, t.week, t.year]);
+  }, [timeframe, t.allPeriod, t.day, t.month, t.quarter, t.week, t.year]);
 
   const analysisEvents = useMemo(() => {
     if (newsEvents.length === 0) return [];
