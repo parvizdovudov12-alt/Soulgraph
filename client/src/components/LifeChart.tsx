@@ -109,6 +109,8 @@ type SeriesRefs = {
   financial: any;
 };
 
+type AggregatePoint = CandlestickData | LineData;
+
 function deduplicateData<T extends { time: Time }>(input: T[]): T[] {
   const seen = new Map<number, T>();
   input.forEach((point) => {
@@ -126,6 +128,77 @@ function aggregateValue(point: StateData, weights: LifeChartProps["weights"]) {
       point.financial * weights.financial) /
     total
   );
+}
+
+function hasSameWeights(current: LifeChartProps["weights"], previous: LifeChartProps["weights"] | null) {
+  return (
+    !!previous &&
+    current.mental === previous.mental &&
+    current.physical === previous.physical &&
+    current.moral === previous.moral &&
+    current.financial === previous.financial
+  );
+}
+
+function hasSameStatePoint(current: StateData, previous: StateData) {
+  return (
+    current.time === previous.time &&
+    current.mental === previous.mental &&
+    current.physical === previous.physical &&
+    current.moral === previous.moral &&
+    current.financial === previous.financial
+  );
+}
+
+function getIncrementalStartIndex(previousData: StateData[], nextData: StateData[]) {
+  if (previousData.length === 0 || nextData.length === 0 || nextData.length < previousData.length) {
+    return null;
+  }
+
+  const sharedLength = Math.min(previousData.length, nextData.length);
+  const stablePrefixLength = nextData.length === previousData.length ? sharedLength - 1 : sharedLength;
+
+  for (let index = 0; index < stablePrefixLength; index += 1) {
+    if (!hasSameStatePoint(nextData[index], previousData[index])) {
+      return null;
+    }
+  }
+
+  if (nextData.length === previousData.length) {
+    const lastIndex = previousData.length - 1;
+    return nextData[lastIndex]?.time === previousData[lastIndex]?.time ? lastIndex : null;
+  }
+
+  return previousData.length;
+}
+
+function buildAggregatePoint(
+  point: StateData,
+  index: number,
+  sourceData: StateData[],
+  weights: LifeChartProps["weights"],
+  chartType: LifeChartProps["chartType"],
+  syntheticSeries: boolean,
+): AggregatePoint {
+  const close = aggregateValue(point, weights);
+
+  if (chartType !== "candlestick") {
+    return {
+      time: point.time,
+      value: Number.isFinite(close) ? close : 0,
+    };
+  }
+
+  const open = index > 0 ? aggregateValue(sourceData[index - 1], weights) : close;
+  const spread = Math.max(Math.abs(close - open) * 0.3, syntheticSeries ? 0.06 : 0.32);
+
+  return {
+    time: point.time,
+    open,
+    high: Math.max(open, close) + spread,
+    low: Math.min(open, close) - spread,
+    close,
+  };
 }
 
 function buildEventStickerLabel(event: NewsEvent, language: "ru" | "en") {
@@ -203,6 +276,7 @@ export default function LifeChart({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const markerFrameRequestRef = useRef<number | null>(null);
+  const candleAnimationFrameRef = useRef<number | null>(null);
   const seriesRef = useRef<SeriesRefs>({
     aggregate: null,
     mental: null,
@@ -211,6 +285,8 @@ export default function LifeChart({
     financial: null,
   });
   const plottedDataRef = useRef<StateData[]>([]);
+  const previousWeightsRef = useRef<LifeChartProps["weights"] | null>(null);
+  const previousChartTypeRef = useRef<LifeChartProps["chartType"] | null>(null);
   const newsRef = useRef(news);
   const [, setChartFrame] = useState(0);
   const [selectedNews, setSelectedNews] = useState<NewsEvent[]>([]);
@@ -395,7 +471,7 @@ export default function LifeChart({
         borderColor: "rgba(255,255,255,0.06)",
         timeVisible: true,
         secondsVisible: false,
-        shiftVisibleRangeOnNewBar: true,
+        shiftVisibleRangeOnNewBar: false,
         rightOffset: 8,
         barSpacing: 18,
         minBarSpacing: 10,
@@ -424,6 +500,9 @@ export default function LifeChart({
     });
 
     chartRef.current = chart;
+    plottedDataRef.current = [];
+    previousWeightsRef.current = null;
+    previousChartTypeRef.current = null;
     const shouldUseCandles = chartType === "candlestick";
 
     if (shouldUseCandles) {
@@ -538,6 +617,10 @@ export default function LifeChart({
         window.cancelAnimationFrame(markerFrameRequestRef.current);
         markerFrameRequestRef.current = null;
       }
+      if (candleAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(candleAnimationFrameRef.current);
+        candleAnimationFrameRef.current = null;
+      }
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
       resizeObserver.disconnect();
       chart.remove();
@@ -564,33 +647,117 @@ export default function LifeChart({
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current.aggregate || renderableData.length === 0) return;
 
-    plottedDataRef.current = renderableData;
+    const previousData = plottedDataRef.current;
+    const currentVisibleRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    const canIncrementallyUpdate =
+      previousChartTypeRef.current === chartType &&
+      hasSameWeights(weights, previousWeightsRef.current) &&
+      data.length >= 2;
+    const incrementalStartIndex = canIncrementallyUpdate ? getIncrementalStartIndex(previousData, renderableData) : null;
+    const syntheticSeries = data.length < 2;
 
-    if (chartType === "candlestick") {
-      const syntheticSeries = data.length < 2;
-      const candleData: CandlestickData[] = renderableData.map((point, index) => {
-        const close = aggregateValue(point, weights);
-        const open = index > 0 ? aggregateValue(renderableData[index - 1], weights) : close;
-        const spread = Math.max(Math.abs(close - open) * 0.3, syntheticSeries ? 0.06 : 0.32);
+    if (incrementalStartIndex !== null) {
+      if (candleAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(candleAnimationFrameRef.current);
+        candleAnimationFrameRef.current = null;
+      }
 
-        return {
-          time: point.time,
-          open,
-          high: Math.max(open, close) + spread,
-          low: Math.min(open, close) - spread,
-          close,
-        };
-      });
+      const lastAnimatedIndex = renderableData.length - 1;
 
-      seriesRef.current.aggregate.setData(candleData);
-    } else {
-      const aggregateData: LineData[] = renderableData.map((point) => ({
-        time: point.time,
-        value: Number.isFinite(aggregateValue(point, weights)) ? aggregateValue(point, weights) : 0,
-      }));
-      seriesRef.current.aggregate.setData(aggregateData);
+      for (let index = incrementalStartIndex; index < renderableData.length; index += 1) {
+        const point = renderableData[index];
+        if (index === lastAnimatedIndex) break;
+
+        seriesRef.current.aggregate.update(buildAggregatePoint(point, index, renderableData, weights, chartType, syntheticSeries));
+        seriesRef.current.mental?.update({ time: point.time, value: Number.isFinite(point.mental) ? point.mental : 0 });
+        seriesRef.current.physical?.update({ time: point.time, value: Number.isFinite(point.physical) ? point.physical : 0 });
+        seriesRef.current.moral?.update({ time: point.time, value: Number.isFinite(point.moral) ? point.moral : 0 });
+        seriesRef.current.financial?.update({ time: point.time, value: Number.isFinite(point.financial) ? point.financial : 0 });
+      }
+
+      const animatedPoint = renderableData[lastAnimatedIndex];
+      const previousPointForAnimation =
+        previousData[lastAnimatedIndex]?.time === animatedPoint.time
+          ? previousData[lastAnimatedIndex]
+          : previousData[previousData.length - 1] ?? animatedPoint;
+      const finalAggregatePoint = buildAggregatePoint(animatedPoint, lastAnimatedIndex, renderableData, weights, chartType, syntheticSeries);
+      const startTime = performance.now();
+      const durationMs = 420;
+
+      const updateAnimatedPoint = (progress: number) => {
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        const interpolate = (from: number, to: number) => from + (to - from) * easedProgress;
+
+        if (chartType === "candlestick") {
+          const finalCandle = finalAggregatePoint as CandlestickData;
+          const startClose = finalCandle.open;
+          seriesRef.current.aggregate.update({
+            time: animatedPoint.time,
+            open: finalCandle.open,
+            high: interpolate(finalCandle.open, finalCandle.high),
+            low: interpolate(finalCandle.open, finalCandle.low),
+            close: interpolate(startClose, finalCandle.close),
+          });
+        } else {
+          const finalLine = finalAggregatePoint as LineData;
+          const startValue = aggregateValue(previousPointForAnimation, weights);
+          seriesRef.current.aggregate.update({
+            time: animatedPoint.time,
+            value: interpolate(Number.isFinite(startValue) ? startValue : 0, Number.isFinite(finalLine.value) ? finalLine.value : 0),
+          });
+        }
+
+        seriesRef.current.mental?.update({ time: animatedPoint.time, value: interpolate(previousPointForAnimation.mental, animatedPoint.mental) });
+        seriesRef.current.physical?.update({ time: animatedPoint.time, value: interpolate(previousPointForAnimation.physical, animatedPoint.physical) });
+        seriesRef.current.moral?.update({ time: animatedPoint.time, value: interpolate(previousPointForAnimation.moral, animatedPoint.moral) });
+        seriesRef.current.financial?.update({ time: animatedPoint.time, value: interpolate(previousPointForAnimation.financial, animatedPoint.financial) });
+
+        if (currentVisibleRange) {
+          chartRef.current?.timeScale().setVisibleLogicalRange(currentVisibleRange);
+        }
+      };
+
+      const animateCandle = (timestamp: number) => {
+        const progress = Math.min((timestamp - startTime) / durationMs, 1);
+        updateAnimatedPoint(progress);
+
+        if (progress < 1) {
+          candleAnimationFrameRef.current = window.requestAnimationFrame(animateCandle);
+          return;
+        }
+
+        candleAnimationFrameRef.current = null;
+        seriesRef.current.aggregate.update(finalAggregatePoint);
+        seriesRef.current.mental?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.mental) ? animatedPoint.mental : 0 });
+        seriesRef.current.physical?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.physical) ? animatedPoint.physical : 0 });
+        seriesRef.current.moral?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.moral) ? animatedPoint.moral : 0 });
+        seriesRef.current.financial?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.financial) ? animatedPoint.financial : 0 });
+        if (currentVisibleRange) {
+          chartRef.current?.timeScale().setVisibleLogicalRange(currentVisibleRange);
+        }
+        requestMarkerFrame(4);
+      };
+
+      updateAnimatedPoint(0);
+      candleAnimationFrameRef.current = window.requestAnimationFrame(animateCandle);
+
+      plottedDataRef.current = renderableData;
+      previousWeightsRef.current = { ...weights };
+      previousChartTypeRef.current = chartType;
+
+      if (currentVisibleRange) {
+        chartRef.current.timeScale().setVisibleLogicalRange(currentVisibleRange);
+      }
+
+      requestMarkerFrame(4);
+      return;
     }
 
+    const aggregateData = renderableData.map((point, index) =>
+      buildAggregatePoint(point, index, renderableData, weights, chartType, syntheticSeries),
+    );
+
+    seriesRef.current.aggregate.setData(aggregateData);
     seriesRef.current.mental?.setData(
       renderableData.map((point) => ({ time: point.time, value: Number.isFinite(point.mental) ? point.mental : 0 })),
     );
@@ -604,11 +771,19 @@ export default function LifeChart({
       renderableData.map((point) => ({ time: point.time, value: Number.isFinite(point.financial) ? point.financial : 0 })),
     );
 
+    plottedDataRef.current = renderableData;
+    previousWeightsRef.current = { ...weights };
+    previousChartTypeRef.current = chartType;
+
     requestAnimationFrame(() => {
       if (!chartRef.current) return;
 
       try {
-        applyVisibleTimeframe();
+        if (currentVisibleRange) {
+          chartRef.current.timeScale().setVisibleLogicalRange(currentVisibleRange);
+        } else {
+          applyVisibleTimeframe();
+        }
       } catch {
         chartRef.current.timeScale().fitContent();
       }
