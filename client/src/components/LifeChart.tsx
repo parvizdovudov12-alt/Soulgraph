@@ -110,6 +110,7 @@ type SeriesRefs = {
 };
 
 type AggregatePoint = CandlestickData | LineData;
+type NumericRange = { from: number; to: number };
 
 function deduplicateData<T extends { time: Time }>(input: T[]): T[] {
   const seen = new Map<number, T>();
@@ -199,6 +200,40 @@ function buildAggregatePoint(
     low: Math.min(open, close) - spread,
     close,
   };
+}
+
+function captureSeriesScaleState(series: any) {
+  const priceScale = series?.priceScale?.();
+  if (!priceScale) {
+    return null;
+  }
+
+  return {
+    range: priceScale.getVisibleRange?.() as NumericRange | null,
+    options: priceScale.options?.() as { autoScale?: boolean } | undefined,
+  };
+}
+
+function freezeSeriesScale(series: any, range: NumericRange | null) {
+  const priceScale = series?.priceScale?.();
+  if (!priceScale || !range) {
+    return;
+  }
+
+  priceScale.applyOptions?.({ autoScale: false });
+  priceScale.setVisibleRange?.(range);
+}
+
+function restoreSeriesScale(series: any, range: NumericRange | null, autoScale?: boolean) {
+  const priceScale = series?.priceScale?.();
+  if (!priceScale) {
+    return;
+  }
+
+  if (range) {
+    priceScale.setVisibleRange?.(range);
+  }
+  priceScale.applyOptions?.({ autoScale: autoScale ?? true });
 }
 
 function buildEventStickerLabel(event: NewsEvent, language: "ru" | "en") {
@@ -639,6 +674,11 @@ export default function LifeChart({
         minBarSpacing: minBarSpacingByTimeframe[timeframe],
       },
     });
+    restoreSeriesScale(seriesRef.current.aggregate, null, true);
+    restoreSeriesScale(seriesRef.current.mental, null, true);
+    restoreSeriesScale(seriesRef.current.physical, null, true);
+    restoreSeriesScale(seriesRef.current.moral, null, true);
+    restoreSeriesScale(seriesRef.current.financial, null, true);
 
     requestAnimationFrame(applyVisibleTimeframe);
     requestMarkerFrame();
@@ -661,6 +701,29 @@ export default function LifeChart({
         window.cancelAnimationFrame(candleAnimationFrameRef.current);
         candleAnimationFrameRef.current = null;
       }
+
+      const aggregateScaleState = captureSeriesScaleState(seriesRef.current.aggregate);
+      const mentalScaleState = captureSeriesScaleState(seriesRef.current.mental);
+      const physicalScaleState = captureSeriesScaleState(seriesRef.current.physical);
+      const moralScaleState = captureSeriesScaleState(seriesRef.current.moral);
+      const financialScaleState = captureSeriesScaleState(seriesRef.current.financial);
+
+      freezeSeriesScale(seriesRef.current.aggregate, aggregateScaleState?.range ?? null);
+      freezeSeriesScale(seriesRef.current.mental, mentalScaleState?.range ?? null);
+      freezeSeriesScale(seriesRef.current.physical, physicalScaleState?.range ?? null);
+      freezeSeriesScale(seriesRef.current.moral, moralScaleState?.range ?? null);
+      freezeSeriesScale(seriesRef.current.financial, financialScaleState?.range ?? null);
+
+      const restoreFrozenRanges = () => {
+        if (currentVisibleRange) {
+          chartRef.current?.timeScale().setVisibleLogicalRange(currentVisibleRange);
+        }
+        freezeSeriesScale(seriesRef.current.aggregate, aggregateScaleState?.range ?? null);
+        freezeSeriesScale(seriesRef.current.mental, mentalScaleState?.range ?? null);
+        freezeSeriesScale(seriesRef.current.physical, physicalScaleState?.range ?? null);
+        freezeSeriesScale(seriesRef.current.moral, moralScaleState?.range ?? null);
+        freezeSeriesScale(seriesRef.current.financial, financialScaleState?.range ?? null);
+      };
 
       const lastAnimatedIndex = renderableData.length - 1;
 
@@ -712,9 +775,7 @@ export default function LifeChart({
         seriesRef.current.moral?.update({ time: animatedPoint.time, value: interpolate(previousPointForAnimation.moral, animatedPoint.moral) });
         seriesRef.current.financial?.update({ time: animatedPoint.time, value: interpolate(previousPointForAnimation.financial, animatedPoint.financial) });
 
-        if (currentVisibleRange) {
-          chartRef.current?.timeScale().setVisibleLogicalRange(currentVisibleRange);
-        }
+        restoreFrozenRanges();
       };
 
       const animateCandle = (timestamp: number) => {
@@ -732,9 +793,7 @@ export default function LifeChart({
         seriesRef.current.physical?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.physical) ? animatedPoint.physical : 0 });
         seriesRef.current.moral?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.moral) ? animatedPoint.moral : 0 });
         seriesRef.current.financial?.update({ time: animatedPoint.time, value: Number.isFinite(animatedPoint.financial) ? animatedPoint.financial : 0 });
-        if (currentVisibleRange) {
-          chartRef.current?.timeScale().setVisibleLogicalRange(currentVisibleRange);
-        }
+        restoreFrozenRanges();
         requestMarkerFrame(4);
       };
 
@@ -745,9 +804,7 @@ export default function LifeChart({
       previousWeightsRef.current = { ...weights };
       previousChartTypeRef.current = chartType;
 
-      if (currentVisibleRange) {
-        chartRef.current.timeScale().setVisibleLogicalRange(currentVisibleRange);
-      }
+      restoreFrozenRanges();
 
       requestMarkerFrame(4);
       return;
@@ -756,6 +813,12 @@ export default function LifeChart({
     const aggregateData = renderableData.map((point, index) =>
       buildAggregatePoint(point, index, renderableData, weights, chartType, syntheticSeries),
     );
+
+    restoreSeriesScale(seriesRef.current.aggregate, null, true);
+    restoreSeriesScale(seriesRef.current.mental, null, true);
+    restoreSeriesScale(seriesRef.current.physical, null, true);
+    restoreSeriesScale(seriesRef.current.moral, null, true);
+    restoreSeriesScale(seriesRef.current.financial, null, true);
 
     seriesRef.current.aggregate.setData(aggregateData);
     seriesRef.current.mental?.setData(
