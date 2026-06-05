@@ -62,7 +62,6 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
           day: "день",
           week: "неделю",
           month: "месяц",
-          quarter: "квартал",
           year: "год",
           allPeriod: "весь период",
           taskCompleted: "Задача выполнена",
@@ -86,7 +85,6 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
           day: "day",
           week: "week",
           month: "month",
-          quarter: "quarter",
           year: "year",
           allPeriod: "all time",
           taskCompleted: "Task completed",
@@ -294,12 +292,10 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
         return t.week;
       case "1M":
         return t.month;
-      case "3M":
-        return t.quarter;
       case "1Y":
         return t.year;
     }
-  }, [timeframe, t.allPeriod, t.day, t.month, t.quarter, t.week, t.year]);
+  }, [timeframe, t.allPeriod, t.day, t.month, t.week, t.year]);
 
   const analysisEvents = useMemo(() => {
     if (newsEvents.length === 0) return [];
