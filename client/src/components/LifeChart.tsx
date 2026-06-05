@@ -14,7 +14,7 @@ import ChartTooltip from "./ChartTooltip";
 import { Button } from "@/components/ui/button";
 import { formatPeriodLabel, timeframeToSeconds, type Timeframe } from "@/lib/dateUtils";
 import { useLanguage } from "@/lib/i18n";
-import { Expand, Minus, Plus } from "lucide-react";
+import { BarChart3, Camera, Crosshair, Expand, LineChart, Magnet, Maximize2, Minus, Move, Pencil, Plus, Ruler, Settings, Smile } from "lucide-react";
 
 export interface StateData {
   time: Time;
@@ -67,17 +67,17 @@ interface LifeChartProps {
 }
 
 const CHART_COLORS = {
-  shell: "#12161d",
-  panel: "#0f1319",
-  border: "rgba(255,255,255,0.08)",
-  grid: "rgba(255,255,255,0.05)",
+  shell: "#0f1015",
+  panel: "#0f1015",
+  border: "rgba(42,46,57,0.95)",
+  grid: "rgba(42,46,57,0.72)",
   text: "#E5E9F0",
   muted: "#8F98AC",
-  positive: "#F3B35A",
+  positive: "#22AB94",
   positiveAlt: "#6FA8FF",
   negative: "#F0886A",
-  gold: "#34C98B",
-  blue: "#E15B64",
+  gold: "#22AB94",
+  blue: "#F23645",
   mental: "#B388FF",
   physical: "#58B8FF",
   moral: "#F4C259",
@@ -400,6 +400,25 @@ export default function LifeChart({
     const changePercent = previous === 0 ? (current === 0 ? 0 : 100) : (change / Math.abs(previous)) * 100;
 
     return { current, previous, change, changePercent, max, min, open, close };
+  }, [renderableData, weights]);
+
+  const volumeBars = useMemo(() => {
+    const bars = renderableData.slice(-72).map((point, index, source) => {
+      const value = aggregateValue(point, weights);
+      const previous = index > 0 ? aggregateValue(source[index - 1], weights) : value;
+      const rawVolume = Math.max(Math.abs(value - previous), 0.12);
+
+      return {
+        value: rawVolume,
+        positive: value >= previous,
+      };
+    });
+    const maxVolume = Math.max(...bars.map((bar) => bar.value), 1);
+
+    return bars.map((bar) => ({
+      ...bar,
+      height: Math.max(10, Math.min(100, (bar.value / maxVolume) * 100)),
+    }));
   }, [renderableData, weights]);
 
   const visibleLegendItems = (Object.keys(stateLabels) as VisibleStateKey[]).filter((key) => visibleStates[key]);
@@ -965,6 +984,18 @@ export default function LifeChart({
     language === "ru"
       ? {
           stateDynamics: "Динамика состояния",
+          chartTab: "График",
+          overviewTab: "Обзор",
+          dataTab: "Данные",
+          newsTab: "Лента событий",
+          analysisTab: "Анализ",
+          standard: "Стандартный",
+          depth: "Глубина",
+          ohlcOpen: "ОТКР",
+          ohlcHigh: "МАКС",
+          ohlcLow: "МИН",
+          ohlcClose: "ЗАКР",
+          volume: "Объем SOUL",
           live: "Онлайн",
           indexLabel: "индекс",
           aggregate: "Сводный курс по всем зонам",
@@ -973,6 +1004,18 @@ export default function LifeChart({
         }
       : {
           stateDynamics: "State dynamics",
+          chartTab: "Chart",
+          overviewTab: "Overview",
+          dataTab: "Data",
+          newsTab: "Event feed",
+          analysisTab: "Analysis",
+          standard: "Standard",
+          depth: "Depth",
+          ohlcOpen: "O",
+          ohlcHigh: "H",
+          ohlcLow: "L",
+          ohlcClose: "C",
+          volume: "SOUL volume",
           live: "Live",
           indexLabel: "index",
           aggregate: "Combined direction across all areas",
@@ -981,54 +1024,62 @@ export default function LifeChart({
         };
 
   return (
-    <div className="flex h-full min-h-[560px] flex-col rounded-[24px] border border-white/8 bg-[#12161d] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] lg:min-h-0">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 px-4 py-4 sm:px-5">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[#8f98ac]">{copy.stateDynamics}</p>
-          <div className="mt-4 flex flex-wrap items-start gap-x-4 gap-y-3">
-            <p className="text-[2.1rem] leading-none font-semibold text-[#f3d19b] sm:text-[2.5rem] lg:text-[3.05rem]">{aggregateStats.current.toFixed(2)}</p>
-            <div className="min-w-[112px] sm:min-w-[132px]">
-              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-white/72">{tokenName} {copy.indexLabel}</p>
-              <p className={`mt-1 text-[14px] sm:text-[15px] lg:text-[17px] font-semibold ${changeIsPositive ? "text-[#34C98B]" : "text-[#E15B64]"}`}>
-                {changeIsPositive ? "+" : ""}
-                {aggregateStats.change.toFixed(2)} ({changeIsPositive ? "+" : ""}
-                {aggregateStats.changePercent.toFixed(2)}%)
-              </p>
-            </div>
-          </div>
+    <div className="flex h-full min-h-[560px] flex-col overflow-hidden rounded-sm border border-[#2a2e39] bg-[#0f1015] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:min-h-0">
+      <div className="flex h-10 items-center justify-between border-b border-[#2a2e39] bg-[#111217] px-3 text-[12px] font-semibold text-[#9aa4b2]">
+        <div className="flex h-full items-center gap-5 overflow-x-auto">
+          {[copy.chartTab, copy.overviewTab, copy.dataTab, copy.newsTab, copy.analysisTab].map((tab, index) => (
+            <button
+              key={tab}
+              type="button"
+              className={`relative h-full whitespace-nowrap transition hover:text-white ${index === 0 ? "text-white" : ""}`}
+            >
+              {tab}
+              {index === 0 ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#f59e0b]" /> : null}
+            </button>
+          ))}
         </div>
+        <div className="hidden items-center gap-4 md:flex">
+          <span>{copy.standard}</span>
+          <span className="text-[#f59e0b]">Trading View</span>
+          <span>{copy.depth}</span>
+          <Maximize2 className="h-3.5 w-3.5" />
+        </div>
+      </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2a2e39] bg-[#101116] px-3 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {onTimeframeChange && (
-            <div className="inline-flex rounded-2xl border border-white/8 bg-white/[0.03] p-1">
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#9aa4b2]">
               {timeframeOptions.map((option) => {
                 const active = timeframe === option.value;
                 return (
-                  <Button
+                  <button
                     key={option.value}
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 rounded-xl px-2.5 text-[10px] font-semibold tracking-[0.12em] sm:px-3 sm:text-[11px] sm:tracking-[0.14em]"
-                    style={{
-                      backgroundColor: active ? "rgba(243,179,90,0.12)" : "transparent",
-                      color: active ? CHART_COLORS.gold : CHART_COLORS.muted,
-                      boxShadow: active ? "inset 0 0 0 1px rgba(243,179,90,0.22)" : "none",
-                    }}
+                    className={`rounded px-2 py-1 transition hover:bg-white/[0.06] hover:text-white ${active ? "bg-[#f59e0b]/12 text-[#f59e0b]" : ""}`}
                     onClick={() => onTimeframeChange(option.value)}
                     data-testid={`button-chart-timeframe-${option.value.toLowerCase()}`}
                   >
                     {option.label}
-                  </Button>
+                  </button>
                 );
               })}
             </div>
           )}
 
+          <div className="mx-1 h-4 w-px bg-[#2a2e39]" />
+          {[BarChart3, LineChart, Settings, Camera].map((Icon, index) => (
+            <button key={index} type="button" className="flex h-7 w-7 items-center justify-center rounded text-[#9aa4b2] transition hover:bg-white/[0.06] hover:text-white">
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => zoomChart("out")}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/8 bg-white/[0.03] text-white/78 transition hover:bg-white/[0.06] sm:h-10 sm:w-10"
+            className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2e39] bg-[#171922] text-[#c8d1dc] transition hover:bg-[#20232d]"
             data-testid="button-chart-zoom-out"
             title={language === "ru" ? "Отдалить" : "Zoom out"}
           >
@@ -1037,7 +1088,7 @@ export default function LifeChart({
           <button
             type="button"
             onClick={() => zoomChart("in")}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/8 bg-white/[0.03] text-white/78 transition hover:bg-white/[0.06] sm:h-10 sm:w-10"
+            className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2e39] bg-[#171922] text-[#c8d1dc] transition hover:bg-[#20232d]"
             data-testid="button-chart-zoom-in"
             title={language === "ru" ? "Приблизить" : "Zoom in"}
           >
@@ -1046,7 +1097,7 @@ export default function LifeChart({
           <button
             type="button"
             onClick={fitFullChart}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/8 bg-white/[0.03] text-white/78 sm:h-10 sm:w-10"
+            className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2e39] bg-[#171922] text-[#c8d1dc] transition hover:bg-[#20232d]"
             title={language === "ru" ? "Показать весь график" : "Fit chart"}
           >
             <Expand className="h-4 w-4" />
@@ -1054,16 +1105,19 @@ export default function LifeChart({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/6 px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2a2e39] bg-[#101116] px-4 py-2 sm:px-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[18px] font-semibold text-white sm:text-[20px] lg:text-2xl">{tokenName}/USDT</span>
           <span className="flex items-center gap-1 text-xs text-white/70 sm:text-sm">
             <span className="h-2.5 w-2.5 rounded-full bg-[#36c98b]" />
             {copy.live}
           </span>
+          <span className="hidden text-[11px] font-semibold text-[#7f8795] sm:inline">
+            {aggregateStats.current.toFixed(2)} · {copy.stateDynamics}
+          </span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="hidden flex-wrap items-center justify-end gap-2 md:flex">
           {visibleLegendItems.length > 0 ? (
             visibleLegendItems.map((key) => (
               <div
@@ -1086,17 +1140,45 @@ export default function LifeChart({
         </div>
       </div>
 
-      <div className="border-b border-white/6 px-4 py-2 text-[11px] leading-relaxed text-[#8f98ac] sm:px-5">
-        {copy.hint}
+      <div className="border-b border-[#2a2e39] bg-[#101116] px-4 py-2 text-[11px] leading-relaxed text-[#8f98ac] sm:px-5">
+        <span>{tokenName}USDT · 1Д · SoulGraph </span>
+        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcOpen}</span> <span className="text-white/80">{aggregateStats.open.toFixed(2)}</span>
+        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcHigh}</span> <span className="text-[#22AB94]">{aggregateStats.max.toFixed(2)}</span>
+        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcLow}</span> <span className="text-[#F23645]">{aggregateStats.min.toFixed(2)}</span>
+        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcClose}</span>{" "}
+        <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{aggregateStats.close.toFixed(2)}</span>
       </div>
 
-      <div className="relative min-h-[380px] flex-1 overflow-hidden sm:min-h-[420px] lg:min-h-0">
+      <div className="relative min-h-[430px] flex-1 overflow-hidden bg-[#0f1015] sm:min-h-[520px] lg:min-h-0">
+        <div className="absolute left-0 top-0 z-20 hidden h-full w-10 flex-col items-center gap-2 border-r border-[#2a2e39] bg-[#101116]/95 py-3 md:flex">
+          {[Crosshair, Move, LineChart, Ruler, Pencil, Smile, Magnet, Settings].map((Icon, index) => (
+            <button key={index} type="button" className="flex h-7 w-7 items-center justify-center rounded text-[#9aa4b2] transition hover:bg-white/[0.06] hover:text-white">
+              <Icon className="h-4 w-4" />
+            </button>
+          ))}
+        </div>
         <div
           ref={chartContainerRef}
-          className="h-full w-full touch-pan-x touch-pan-y"
+          className="h-full w-full touch-pan-x touch-pan-y md:pl-10"
           style={{ touchAction: "pan-x pan-y pinch-zoom" }}
           data-testid="chart-container"
         />
+
+        <div className="pointer-events-none absolute bottom-7 left-10 right-1 z-10 hidden h-[22%] items-end gap-[2px] px-3 opacity-55 md:flex">
+          <div className="absolute left-3 top-0 text-[11px] text-[#8f98ac]">
+            {copy.volume} <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{Math.abs(aggregateStats.change).toFixed(2)}K</span>
+          </div>
+          {volumeBars.map((bar, index) => (
+            <div
+              key={index}
+              className="min-w-[3px] flex-1 rounded-t-[1px]"
+              style={{
+                height: `${bar.height}%`,
+                backgroundColor: bar.positive ? "rgba(34,171,148,0.52)" : "rgba(242,54,69,0.52)",
+              }}
+            />
+          ))}
+        </div>
 
         <div className="pointer-events-none absolute inset-0 z-10">
           <div className="pointer-events-none relative h-full w-full">{renderNewsMarkers()}</div>
