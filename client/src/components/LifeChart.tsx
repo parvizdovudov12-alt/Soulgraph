@@ -1023,25 +1023,25 @@ export default function LifeChart({
         };
 
   return (
-    <div className="flex h-full min-h-[560px] flex-col overflow-hidden rounded-sm border border-white/10 bg-black shadow-[0_18px_70px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.045)] lg:min-h-0">
-      <div className="flex h-10 items-center justify-between border-b border-white/10 bg-black px-3 text-[12px] font-semibold text-[#8a94a6]">
+    <div className="flex h-[72vh] min-h-[430px] max-h-[680px] flex-col overflow-hidden rounded-sm border border-white/10 bg-black shadow-[0_18px_70px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.045)] sm:min-h-[560px] lg:h-full lg:min-h-0 lg:max-h-none">
+      <div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 bg-black px-2 text-[12px] font-semibold text-[#8a94a6] sm:h-10 sm:px-3">
         <div className="relative flex h-full items-center text-white">
           <span>{copy.chartTab}</span>
           <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#22ab94]" />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-black px-3 py-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-black px-2 py-1.5 sm:px-3 sm:py-2">
+        <div className="min-w-0 flex-1 overflow-x-auto">
           {onTimeframeChange && (
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#8a94a6]">
+            <div className="flex w-max items-center gap-1 text-[11px] font-semibold text-[#8a94a6]">
               {timeframeOptions.map((option) => {
                 const active = timeframe === option.value;
                 return (
                   <button
                     key={option.value}
                     type="button"
-                    className={`rounded px-2 py-1 transition hover:bg-white/8 hover:text-white ${active ? "bg-[#22ab94]/18 text-[#34f0bc]" : ""}`}
+                    className={`h-7 shrink-0 rounded px-2 transition hover:bg-white/10 hover:text-white ${active ? "bg-[#22ab94]/18 text-[#34f0bc]" : ""}`}
                     onClick={() => onTimeframeChange(option.value)}
                     data-testid={`button-chart-timeframe-${option.value.toLowerCase()}`}
                   >
@@ -1053,41 +1053,41 @@ export default function LifeChart({
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => zoomChart("out")}
-            className="flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-[#050505] text-[#d8dee9] transition hover:border-[#22ab94]/70 hover:bg-[#0b1512] hover:text-white"
+            className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-[#050505] text-[#d8dee9] transition hover:border-[#22ab94]/70 hover:bg-[#0b1512] hover:text-white sm:h-8 sm:w-8"
             data-testid="button-chart-zoom-out"
             title={language === "ru" ? "Отдалить" : "Zoom out"}
           >
-            <Minus className="h-4 w-4" />
+            <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
           <button
             type="button"
             onClick={() => zoomChart("in")}
-            className="flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-[#050505] text-[#d8dee9] transition hover:border-[#22ab94]/70 hover:bg-[#0b1512] hover:text-white"
+            className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-[#050505] text-[#d8dee9] transition hover:border-[#22ab94]/70 hover:bg-[#0b1512] hover:text-white sm:h-8 sm:w-8"
             data-testid="button-chart-zoom-in"
             title={language === "ru" ? "Приблизить" : "Zoom in"}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
           <button
             type="button"
             onClick={fitFullChart}
-            className="flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-[#050505] text-[#d8dee9] transition hover:border-[#22ab94]/70 hover:bg-[#0b1512] hover:text-white"
+            className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-[#050505] text-[#d8dee9] transition hover:border-[#22ab94]/70 hover:bg-[#0b1512] hover:text-white sm:h-8 sm:w-8"
             title={language === "ru" ? "Показать весь график" : "Fit chart"}
           >
-            <Expand className="h-4 w-4" />
+            <Expand className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-2 sm:px-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[18px] font-semibold text-white sm:text-[20px] lg:text-2xl">{tokenName}/USDT</span>
-          <span className="flex items-center gap-1 text-xs text-white/70 sm:text-sm">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#36c98b]" />
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-black px-2 py-1.5 sm:px-5 sm:py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[16px] font-semibold text-white sm:text-[20px] lg:text-2xl">{tokenName}/USDT</span>
+          <span className="flex shrink-0 items-center gap-1 text-[11px] text-white/70 sm:text-sm">
+            <span className="h-2 w-2 rounded-full bg-[#36c98b] sm:h-2.5 sm:w-2.5" />
             {copy.live}
           </span>
           <span className="hidden text-[11px] font-semibold text-[#8a94a6] sm:inline">
@@ -1118,16 +1118,18 @@ export default function LifeChart({
         </div>
       </div>
 
-      <div className="border-b border-white/10 bg-black px-4 py-2 text-[11px] leading-relaxed text-[#8a94a6] sm:px-5">
-        <span>{tokenName}USDT · 1Д · SoulGraph </span>
-        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcOpen}</span> <span className="text-white/85">{aggregateStats.open.toFixed(2)}</span>
-        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcHigh}</span> <span className="text-[#22AB94]">{aggregateStats.max.toFixed(2)}</span>
-        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcLow}</span> <span className="text-[#F23645]">{aggregateStats.min.toFixed(2)}</span>
-        <span className="ml-2 text-[#9aa4b2]">{copy.ohlcClose}</span>{" "}
-        <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{aggregateStats.close.toFixed(2)}</span>
+      <div className="shrink-0 overflow-x-auto border-b border-white/10 bg-black px-2 py-1.5 text-[10px] leading-none text-[#8a94a6] sm:px-5 sm:py-2 sm:text-[11px]">
+        <div className="w-max whitespace-nowrap">
+          <span>{tokenName}USDT · 1Д · SoulGraph </span>
+          <span className="ml-2 text-[#9aa4b2]">{copy.ohlcOpen}</span> <span className="text-white/85">{aggregateStats.open.toFixed(2)}</span>
+          <span className="ml-2 text-[#9aa4b2]">{copy.ohlcHigh}</span> <span className="text-[#22AB94]">{aggregateStats.max.toFixed(2)}</span>
+          <span className="ml-2 text-[#9aa4b2]">{copy.ohlcLow}</span> <span className="text-[#F23645]">{aggregateStats.min.toFixed(2)}</span>
+          <span className="ml-2 text-[#9aa4b2]">{copy.ohlcClose}</span>{" "}
+          <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{aggregateStats.close.toFixed(2)}</span>
+        </div>
       </div>
 
-      <div className="relative min-h-[430px] flex-1 overflow-hidden bg-black sm:min-h-[520px] lg:min-h-0">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
         <div
           ref={chartContainerRef}
           className="h-full w-full touch-pan-x touch-pan-y"
@@ -1156,7 +1158,7 @@ export default function LifeChart({
         </div>
 
         {news.length === 0 && (
-          <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 text-xs text-[#b8c0cc] backdrop-blur-sm">
+          <div className="pointer-events-none absolute left-2 right-2 top-2 rounded border border-white/10 bg-black/80 px-2 py-1.5 text-[11px] text-[#b8c0cc] backdrop-blur-sm sm:left-4 sm:right-auto sm:top-4 sm:rounded-full sm:px-3 sm:text-xs">
             {copy.empty}
           </div>
         )}
