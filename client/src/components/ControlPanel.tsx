@@ -134,8 +134,6 @@ export default function ControlPanel({
 
         <PremiumSection isAuthenticated={isAuthenticated} />
 
-        <PortfolioSection isAuthenticated={isAuthenticated} />
-
         <GoalSection
           t={t}
           goal={goal}
@@ -190,6 +188,8 @@ export default function ControlPanel({
         <section className="rounded-lg border border-border bg-background/50 p-2" data-testid="human-state-balance">
           <HumanStateModel {...humanState} activeZone={activeFocusZone} />
         </section>
+
+        <PortfolioSection isAuthenticated={isAuthenticated} />
       </div>
     </aside>
   );
