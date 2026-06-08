@@ -7,6 +7,9 @@ import {
   type InsertUser,
   type InsertUserProfile,
   type NewsEvent as DBNewsEvent,
+  type PortfolioAsset,
+  type PortfolioAssetInput,
+  type PortfolioTransaction,
   type StateData as DBStateData,
   type Subscription,
   type User,
@@ -74,10 +77,45 @@ function mapNewsEvent(row: any): DBNewsEvent {
   };
 }
 
+function mapPortfolioAsset(row: any): PortfolioAsset {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    symbol: row.symbol,
+    name: row.name,
+    type: row.type,
+    quantity: Number(row.quantity),
+    entryPrice: Number(row.entry_price),
+    currentPrice: Number(row.current_price),
+    createdAt: row.created_at ? new Date(row.created_at) : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at) : null,
+  };
+}
+
+function mapPortfolioTransaction(row: any): PortfolioTransaction {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    assetId: row.asset_id ?? null,
+    symbol: row.symbol,
+    side: row.side,
+    quantity: Number(row.quantity),
+    price: Number(row.price),
+    portfolioValue: Number(row.portfolio_value),
+    createdAt: row.created_at ? new Date(row.created_at) : null,
+  };
+}
+
 function normalizeTaskImpactValue(value: unknown) {
   const numeric = typeof value === "number" ? value : Number(value ?? 0);
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(-1000, Math.min(1000, Math.round(numeric)));
+}
+
+function normalizeMoneyValue(value: unknown) {
+  const numeric = typeof value === "number" ? value : Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(1_000_000_000, numeric));
 }
 
 function normalizeTaskImpact(impact: any) {
@@ -197,6 +235,10 @@ export interface IStorage {
   createNewsEvent(userId: string, event: Omit<InsertNewsEvent, "userId">): Promise<DBNewsEvent>;
   deleteNewsEvent(userId: string, eventId: string): Promise<void>;
   deleteAllUserNewsEvents(userId: string): Promise<void>;
+  getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
+  createPortfolioAsset(userId: string, asset: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
+  updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined>;
+  deletePortfolioAsset(userId: string, assetId: string): Promise<void>;
   getUserDailyTasks(userId: string): Promise<DBDailyTask[]>;
   createDailyTask(userId: string, task: InsertDailyTask): Promise<DBDailyTask>;
   completeDailyTask(userId: string, taskId: string, dayKey: string): Promise<DBDailyTask | undefined>;
@@ -226,6 +268,8 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users = new Map<string, User>();
   private newsEvents = new Map<string, DBNewsEvent>();
+  private portfolioAssets = new Map<string, PortfolioAsset>();
+  private portfolioTransactions = new Map<string, PortfolioTransaction>();
   private stateData = new Map<string, DBStateData>();
   private dailyTasks = new Map<string, DBDailyTask>();
   private userProfilesMap = new Map<string, UserProfile>();
@@ -402,6 +446,97 @@ export class MemStorage implements IStorage {
         this.newsEvents.delete(id);
       }
     }
+  }
+
+  async getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }> {
+    return {
+      assets: Array.from(this.portfolioAssets.values())
+        .filter((asset) => asset.userId === userId)
+        .sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0)),
+      transactions: Array.from(this.portfolioTransactions.values())
+        .filter((transaction) => transaction.userId === userId)
+        .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0)),
+    };
+  }
+
+  private getPortfolioValue(userId: string) {
+    return Array.from(this.portfolioAssets.values())
+      .filter((asset) => asset.userId === userId)
+      .reduce((sum, asset) => sum + asset.quantity * asset.currentPrice, 0);
+  }
+
+  async createPortfolioAsset(userId: string, input: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+    const now = new Date();
+    const asset: PortfolioAsset = {
+      id: randomUUID(),
+      userId,
+      symbol: input.symbol.toUpperCase(),
+      name: input.name?.trim() || input.symbol.toUpperCase(),
+      type: input.type,
+      quantity: normalizeMoneyValue(input.quantity),
+      entryPrice: normalizeMoneyValue(input.entryPrice),
+      currentPrice: normalizeMoneyValue(input.currentPrice),
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.portfolioAssets.set(asset.id, asset);
+
+    const transaction: PortfolioTransaction = {
+      id: randomUUID(),
+      userId,
+      assetId: asset.id,
+      symbol: asset.symbol,
+      side: "buy",
+      quantity: asset.quantity,
+      price: asset.entryPrice,
+      portfolioValue: this.getPortfolioValue(userId),
+      createdAt: now,
+    };
+    this.portfolioTransactions.set(transaction.id, transaction);
+    return { ...(await this.getUserPortfolio(userId)), transaction };
+  }
+
+  async updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined> {
+    const asset = this.portfolioAssets.get(assetId);
+    if (!asset || asset.userId !== userId) return undefined;
+    const now = new Date();
+    const updated: PortfolioAsset = {
+      ...asset,
+      currentPrice: normalizeMoneyValue(currentPrice),
+      updatedAt: now,
+    };
+    this.portfolioAssets.set(assetId, updated);
+    const transaction: PortfolioTransaction = {
+      id: randomUUID(),
+      userId,
+      assetId,
+      symbol: updated.symbol,
+      side: "update",
+      quantity: updated.quantity,
+      price: updated.currentPrice,
+      portfolioValue: this.getPortfolioValue(userId),
+      createdAt: now,
+    };
+    this.portfolioTransactions.set(transaction.id, transaction);
+    return { ...(await this.getUserPortfolio(userId)), transaction };
+  }
+
+  async deletePortfolioAsset(userId: string, assetId: string): Promise<void> {
+    const asset = this.portfolioAssets.get(assetId);
+    if (!asset || asset.userId !== userId) return;
+    this.portfolioAssets.delete(assetId);
+    const transaction: PortfolioTransaction = {
+      id: randomUUID(),
+      userId,
+      assetId: null,
+      symbol: asset.symbol,
+      side: "sell",
+      quantity: asset.quantity,
+      price: asset.currentPrice,
+      portfolioValue: this.getPortfolioValue(userId),
+      createdAt: new Date(),
+    };
+    this.portfolioTransactions.set(transaction.id, transaction);
   }
 
   async getUserDailyTasks(userId: string): Promise<DBDailyTask[]> {
@@ -637,6 +772,35 @@ export class PostgresStorage implements IStorage {
       await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions (user_id)`);
       await client.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_status_expires_at ON subscriptions (status, expires_at)`);
       await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_telegram_charge ON subscriptions (telegram_payment_charge_id) WHERE telegram_payment_charge_id IS NOT NULL`);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS portfolio_assets (
+          id varchar PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          symbol text NOT NULL,
+          name text NOT NULL,
+          type text NOT NULL,
+          quantity double precision NOT NULL,
+          entry_price double precision NOT NULL,
+          current_price double precision NOT NULL,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_portfolio_assets_user_id ON portfolio_assets (user_id)`);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS portfolio_transactions (
+          id varchar PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          asset_id varchar REFERENCES portfolio_assets(id) ON DELETE SET NULL,
+          symbol text NOT NULL,
+          side text NOT NULL,
+          quantity double precision NOT NULL,
+          price double precision NOT NULL,
+          portfolio_value double precision NOT NULL,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_id ON portfolio_transactions (user_id, created_at)`);
       await client.query(`
         CREATE TABLE IF NOT EXISTS daily_tasks (
           id varchar PRIMARY KEY,
@@ -928,6 +1092,149 @@ export class PostgresStorage implements IStorage {
   async deleteAllUserNewsEvents(userId: string): Promise<void> {
     await withClient(async (client) => {
       await client.query("delete from news_events where user_id = $1", [userId]);
+    });
+  }
+
+  async getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }> {
+    return withClient(async (client) => {
+      const [assetsResult, transactionsResult] = await Promise.all([
+        client.query(
+          `select *
+           from portfolio_assets
+           where user_id = $1
+           order by updated_at desc, created_at desc`,
+          [userId]
+        ),
+        client.query(
+          `select *
+           from portfolio_transactions
+           where user_id = $1
+           order by created_at asc`,
+          [userId]
+        ),
+      ]);
+
+      return {
+        assets: assetsResult.rows.map(mapPortfolioAsset),
+        transactions: transactionsResult.rows.map(mapPortfolioTransaction),
+      };
+    });
+  }
+
+  async createPortfolioAsset(userId: string, input: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+    return withClient(async (client) => {
+      await client.query("begin");
+      try {
+        const assetResult = await client.query(
+          `insert into portfolio_assets (id, user_id, symbol, name, type, quantity, entry_price, current_price)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)
+           returning *`,
+          [
+            randomUUID(),
+            userId,
+            input.symbol.toUpperCase(),
+            input.name?.trim() || input.symbol.toUpperCase(),
+            input.type,
+            normalizeMoneyValue(input.quantity),
+            normalizeMoneyValue(input.entryPrice),
+            normalizeMoneyValue(input.currentPrice),
+          ]
+        );
+        const asset = mapPortfolioAsset(assetResult.rows[0]);
+        const valueResult = await client.query(
+          "select coalesce(sum(quantity * current_price), 0) as value from portfolio_assets where user_id = $1",
+          [userId]
+        );
+        const transactionResult = await client.query(
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
+           values ($1, $2, $3, $4, 'buy', $5, $6, $7)
+           returning *`,
+          [randomUUID(), userId, asset.id, asset.symbol, asset.quantity, asset.entryPrice, Number(valueResult.rows[0]?.value ?? 0)]
+        );
+        const assetsResult = await client.query(
+          `select * from portfolio_assets where user_id = $1 order by updated_at desc, created_at desc`,
+          [userId]
+        );
+        await client.query("commit");
+        return {
+          assets: assetsResult.rows.map(mapPortfolioAsset),
+          transaction: mapPortfolioTransaction(transactionResult.rows[0]),
+        };
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      }
+    });
+  }
+
+  async updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined> {
+    return withClient(async (client) => {
+      await client.query("begin");
+      try {
+        const assetResult = await client.query(
+          `update portfolio_assets
+           set current_price = $3,
+               updated_at = now()
+           where id = $1 and user_id = $2
+           returning *`,
+          [assetId, userId, normalizeMoneyValue(currentPrice)]
+        );
+        if (!assetResult.rows[0]) {
+          await client.query("rollback");
+          return undefined;
+        }
+        const asset = mapPortfolioAsset(assetResult.rows[0]);
+        const valueResult = await client.query(
+          "select coalesce(sum(quantity * current_price), 0) as value from portfolio_assets where user_id = $1",
+          [userId]
+        );
+        const transactionResult = await client.query(
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
+           values ($1, $2, $3, $4, 'update', $5, $6, $7)
+           returning *`,
+          [randomUUID(), userId, asset.id, asset.symbol, asset.quantity, asset.currentPrice, Number(valueResult.rows[0]?.value ?? 0)]
+        );
+        const assetsResult = await client.query(
+          `select * from portfolio_assets where user_id = $1 order by updated_at desc, created_at desc`,
+          [userId]
+        );
+        await client.query("commit");
+        return {
+          assets: assetsResult.rows.map(mapPortfolioAsset),
+          transaction: mapPortfolioTransaction(transactionResult.rows[0]),
+        };
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      }
+    });
+  }
+
+  async deletePortfolioAsset(userId: string, assetId: string): Promise<void> {
+    await withClient(async (client) => {
+      await client.query("begin");
+      try {
+        const assetResult = await client.query("select * from portfolio_assets where id = $1 and user_id = $2", [assetId, userId]);
+        if (!assetResult.rows[0]) {
+          await client.query("rollback");
+          return;
+        }
+        const asset = mapPortfolioAsset(assetResult.rows[0]);
+        await client.query("delete from portfolio_assets where id = $1 and user_id = $2", [assetId, userId]);
+        const valueResult = await client.query(
+          "select coalesce(sum(quantity * current_price), 0) as value from portfolio_assets where user_id = $1",
+          [userId]
+        );
+        await client.query(
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
+           values ($1, $2, null, $3, 'sell', $4, $5, $6)`,
+          [randomUUID(), userId, asset.symbol, asset.quantity, asset.currentPrice, Number(valueResult.rows[0]?.value ?? 0)]
+        );
+        await client.query("commit");
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      }
     });
   }
 

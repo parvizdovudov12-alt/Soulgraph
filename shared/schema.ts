@@ -1,5 +1,5 @@
 ﻿import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, timestamp, boolean, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -80,6 +80,49 @@ export const insertNewsEventSchema = createInsertSchema(newsEvents).omit({
 
 export type InsertNewsEvent = z.infer<typeof insertNewsEventSchema>;
 export type NewsEvent = typeof newsEvents.$inferSelect;
+
+export const portfolioAssets = pgTable("portfolio_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  quantity: doublePrecision("quantity").notNull(),
+  entryPrice: doublePrecision("entry_price").notNull(),
+  currentPrice: doublePrecision("current_price").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const portfolioTransactions = pgTable("portfolio_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assetId: varchar("asset_id").references(() => portfolioAssets.id, { onDelete: "set null" }),
+  symbol: text("symbol").notNull(),
+  side: text("side").notNull(),
+  quantity: doublePrecision("quantity").notNull(),
+  price: doublePrecision("price").notNull(),
+  portfolioValue: doublePrecision("portfolio_value").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const portfolioAssetInputSchema = z.object({
+  symbol: z.string().trim().min(1).max(16),
+  name: z.string().trim().max(80).optional().nullable(),
+  type: z.enum(["crypto", "stock", "etf", "gold"]),
+  quantity: z.number().positive().max(1_000_000_000),
+  entryPrice: z.number().nonnegative().max(1_000_000_000),
+  currentPrice: z.number().nonnegative().max(1_000_000_000),
+});
+
+export const portfolioPriceUpdateSchema = z.object({
+  currentPrice: z.number().nonnegative().max(1_000_000_000),
+});
+
+export type PortfolioAsset = typeof portfolioAssets.$inferSelect;
+export type PortfolioTransaction = typeof portfolioTransactions.$inferSelect;
+export type PortfolioAssetInput = z.infer<typeof portfolioAssetInputSchema>;
+export type PortfolioPriceUpdateInput = z.infer<typeof portfolioPriceUpdateSchema>;
 
 export const dailyTasks = pgTable("daily_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

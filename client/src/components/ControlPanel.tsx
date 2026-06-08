@@ -7,6 +7,7 @@ import { GoalSection } from "./control-panel/GoalSection";
 import { IndicatorsSection } from "./control-panel/IndicatorsSection";
 import { LevelSection } from "./control-panel/LevelSection";
 import { PremiumSection } from "./control-panel/PremiumSection";
+import { PortfolioSection } from "./control-panel/PortfolioSection";
 import { ProfileSection } from "./control-panel/ProfileSection";
 import { getControlPanelText, getPeriodActionLabel } from "./control-panel/translations";
 import { useTwoFactor } from "./control-panel/useTwoFactor";
@@ -132,6 +133,8 @@ export default function ControlPanel({
         <LevelSection t={t} levelProgress={levelProgress} />
 
         <PremiumSection isAuthenticated={isAuthenticated} />
+
+        <PortfolioSection isAuthenticated={isAuthenticated} />
 
         <GoalSection
           t={t}

@@ -1,7 +1,7 @@
 ﻿import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDailyTaskSchema, insertNewsEventSchema, insertStateDataSchema, registerUserSchema, loginUserSchema, searchUsersSchema, updateProfileSchema } from "@shared/schema";
+import { insertDailyTaskSchema, insertNewsEventSchema, insertStateDataSchema, portfolioAssetInputSchema, portfolioPriceUpdateSchema, registerUserSchema, loginUserSchema, searchUsersSchema, updateProfileSchema } from "@shared/schema";
 import { PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
@@ -617,6 +617,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete news events:", error);
       res.status(500).json({ message: "Failed to delete events" });
+    }
+  });
+
+  app.get("/api/portfolio", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const portfolio = await storage.getUserPortfolio(req.session.userId);
+      res.json(portfolio);
+    } catch (error) {
+      console.error("Failed to fetch portfolio:", error);
+      res.status(500).json({ message: "Failed to fetch portfolio" });
+    }
+  });
+
+  app.post("/api/portfolio/assets", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const input = portfolioAssetInputSchema.parse({
+        ...req.body,
+        symbol: typeof req.body?.symbol === "string" ? req.body.symbol.trim().toUpperCase() : req.body?.symbol,
+        name: typeof req.body?.name === "string" ? req.body.name.trim() : req.body?.name,
+        quantity: Number(req.body?.quantity),
+        entryPrice: Number(req.body?.entryPrice),
+        currentPrice: Number(req.body?.currentPrice),
+      });
+      const result = await storage.createPortfolioAsset(req.session.userId, input);
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to add portfolio asset:", error);
+      res.status(400).json({ message: "Invalid portfolio asset data" });
+    }
+  });
+
+  app.patch("/api/portfolio/assets/:id/price", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (!isValidEntityId(req.params.id)) {
+        return res.status(400).json({ message: "Invalid asset id" });
+      }
+
+      const input = portfolioPriceUpdateSchema.parse({
+        currentPrice: Number(req.body?.currentPrice),
+      });
+      const result = await storage.updatePortfolioAssetPrice(req.session.userId, req.params.id, input.currentPrice);
+      if (!result) {
+        return res.status(404).json({ message: "Asset not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to update portfolio price:", error);
+      res.status(400).json({ message: "Invalid portfolio price data" });
+    }
+  });
+
+  app.delete("/api/portfolio/assets/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (!isValidEntityId(req.params.id)) {
+        return res.status(400).json({ message: "Invalid asset id" });
+      }
+
+      await storage.deletePortfolioAsset(req.session.userId, req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete portfolio asset:", error);
+      res.status(500).json({ message: "Failed to delete portfolio asset" });
     }
   });
 

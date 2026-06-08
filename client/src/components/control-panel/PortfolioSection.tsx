@@ -1,0 +1,311 @@
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { BriefcaseBusiness, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/lib/i18n";
+import type { PortfolioAsset, PortfolioTransaction } from "@shared/schema";
+
+type AssetType = "crypto" | "stock" | "etf" | "gold";
+
+interface PortfolioResponse {
+  assets: PortfolioAsset[];
+  transactions: PortfolioTransaction[];
+}
+
+const emptyPortfolio: PortfolioResponse = {
+  assets: [],
+  transactions: [],
+};
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: value >= 1000 ? 0 : 2,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(Number.isFinite(value) ? value : 0);
+}
+
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function buildLinePath(points: PortfolioTransaction[]) {
+  const values = points.map((point) => point.portfolioValue);
+  if (values.length === 0) return "";
+  if (values.length === 1) return "M 8 42 L 152 42";
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+
+  return values
+    .map((value, index) => {
+      const x = 8 + (index / (values.length - 1)) * 144;
+      const y = 52 - ((value - min) / span) * 44;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean }) {
+  const { language } = useLanguage();
+  const [symbol, setSymbol] = useState("");
+  const [name, setName] = useState("");
+  const [type, setType] = useState<AssetType>("crypto");
+  const [quantity, setQuantity] = useState("");
+  const [entryPrice, setEntryPrice] = useState("");
+  const [currentPrice, setCurrentPrice] = useState("");
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+
+  const t =
+    language === "ru"
+      ? {
+          title: "Портфель",
+          subtitle: "Активы как часть твоей траектории",
+          signIn: "Войди в аккаунт, чтобы портфель синхронизировался на телефоне и ПК.",
+          symbol: "Тикер",
+          name: "Название",
+          quantity: "Кол-во",
+          entry: "Вход",
+          current: "Текущая",
+          add: "Добавить",
+          value: "Стоимость",
+          pnl: "PnL",
+          allocation: "Распределение",
+          chart: "График стоимости",
+          history: "История сделок",
+          empty: "Добавь первый актив вручную.",
+          update: "Обновить",
+          delete: "Удалить",
+          crypto: "Крипта",
+          stock: "Акции",
+          etf: "ETF",
+          gold: "Золото",
+        }
+      : {
+          title: "Portfolio",
+          subtitle: "Assets as part of your trajectory",
+          signIn: "Sign in to sync portfolio across mobile and desktop.",
+          symbol: "Ticker",
+          name: "Name",
+          quantity: "Qty",
+          entry: "Entry",
+          current: "Current",
+          add: "Add",
+          value: "Value",
+          pnl: "PnL",
+          allocation: "Allocation",
+          chart: "Value chart",
+          history: "Trade history",
+          empty: "Add your first asset manually.",
+          update: "Update",
+          delete: "Delete",
+          crypto: "Crypto",
+          stock: "Stocks",
+          etf: "ETF",
+          gold: "Gold",
+        };
+
+  const portfolioQuery = useQuery<PortfolioResponse>({
+    queryKey: ["/api/portfolio"],
+    enabled: isAuthenticated,
+  });
+  const portfolio = portfolioQuery.data ?? emptyPortfolio;
+
+  const totals = useMemo(() => {
+    const cost = portfolio.assets.reduce((sum, asset) => sum + asset.quantity * asset.entryPrice, 0);
+    const value = portfolio.assets.reduce((sum, asset) => sum + asset.quantity * asset.currentPrice, 0);
+    const pnl = value - cost;
+    const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0;
+    return { cost, value, pnl, pnlPercent };
+  }, [portfolio.assets]);
+
+  const addAssetMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/portfolio/assets", {
+        symbol,
+        name,
+        type,
+        quantity: Number(quantity),
+        entryPrice: Number(entryPrice),
+        currentPrice: Number(currentPrice || entryPrice),
+      }),
+    onSuccess: () => {
+      setSymbol("");
+      setName("");
+      setQuantity("");
+      setEntryPrice("");
+      setCurrentPrice("");
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
+    },
+  });
+
+  const updatePriceMutation = useMutation({
+    mutationFn: ({ assetId, price }: { assetId: string; price: number }) =>
+      apiRequest("PATCH", `/api/portfolio/assets/${assetId}/price`, { currentPrice: price }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
+    },
+  });
+
+  const deleteAssetMutation = useMutation({
+    mutationFn: (assetId: string) => apiRequest("DELETE", `/api/portfolio/assets/${assetId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
+    },
+  });
+
+  const canAdd =
+    symbol.trim().length > 0 &&
+    Number(quantity) > 0 &&
+    Number(entryPrice) >= 0 &&
+    Number(currentPrice || entryPrice) >= 0 &&
+    isAuthenticated;
+  const linePath = buildLinePath(portfolio.transactions);
+  const pnlIsPositive = totals.pnl >= 0;
+
+  return (
+    <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/70">{t.title}</p>
+          <p className="mt-1 text-xs text-white/58">{t.subtitle}</p>
+        </div>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-300 text-slate-950">
+          <BriefcaseBusiness className="h-4 w-4" />
+        </div>
+      </div>
+
+      {!isAuthenticated ? (
+        <p className="mt-3 rounded-md border border-white/10 bg-white/[0.03] p-2 text-xs leading-relaxed text-white/68">{t.signIn}</p>
+      ) : null}
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
+          <p className="text-[10px] uppercase tracking-wider text-white/42">{t.value}</p>
+          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(totals.value)}</p>
+        </div>
+        <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
+          <p className="text-[10px] uppercase tracking-wider text-white/42">{t.pnl}</p>
+          <p className={`mt-1 text-lg font-semibold leading-none ${pnlIsPositive ? "text-emerald-300" : "text-red-300"}`}>
+            {pnlIsPositive ? "+" : ""}
+            {formatMoney(totals.pnl)}
+          </p>
+          <p className={`mt-1 text-[11px] ${pnlIsPositive ? "text-emerald-300/75" : "text-red-300/75"}`}>
+            {pnlIsPositive ? "+" : ""}
+            {totals.pnlPercent.toFixed(2)}%
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} placeholder={t.symbol} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Select value={type} onValueChange={(nextType) => setType(nextType as AssetType)}>
+          <SelectTrigger className="h-8 border-white/10 bg-black/40 text-xs text-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="crypto">{t.crypto}</SelectItem>
+            <SelectItem value="stock">{t.stock}</SelectItem>
+            <SelectItem value="etf">{t.etf}</SelectItem>
+            <SelectItem value="gold">{t.gold}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t.name} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Input value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="decimal" placeholder={t.quantity} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Input value={entryPrice} onChange={(event) => setEntryPrice(event.target.value)} inputMode="decimal" placeholder={t.entry} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Input value={currentPrice} onChange={(event) => setCurrentPrice(event.target.value)} inputMode="decimal" placeholder={t.current} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+      </div>
+
+      <Button
+        type="button"
+        disabled={!canAdd || addAssetMutation.isPending}
+        onClick={() => addAssetMutation.mutate()}
+        className="mt-2 h-8 w-full bg-cyan-300 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        {t.add}
+      </Button>
+
+      <div className="mt-3 rounded-md border border-white/10 bg-black/35 p-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-wider text-white/45">{t.chart}</p>
+          <span className="text-[10px] text-white/35">{portfolio.transactions.length}</span>
+        </div>
+        <svg viewBox="0 0 160 60" className="mt-1 h-[72px] w-full overflow-visible">
+          <path d="M8 52 H152" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+          <path d="M8 30 H152" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+          {linePath ? <path d={linePath} fill="none" stroke={pnlIsPositive ? "#34d399" : "#f87171"} strokeLinecap="round" strokeWidth="2.5" /> : null}
+        </svg>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <p className="text-[10px] uppercase tracking-wider text-white/45">{t.allocation}</p>
+        {portfolio.assets.length === 0 ? <p className="text-xs text-white/45">{t.empty}</p> : null}
+        {portfolio.assets.map((asset) => {
+          const value = asset.quantity * asset.currentPrice;
+          const cost = asset.quantity * asset.entryPrice;
+          const pnl = value - cost;
+          const allocation = totals.value > 0 ? (value / totals.value) * 100 : 0;
+          const draft = priceDrafts[asset.id] ?? String(asset.currentPrice);
+          return (
+            <div key={asset.id} className="rounded-md border border-white/10 bg-white/[0.025] p-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-white">{asset.symbol}</p>
+                    <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase text-white/48">{asset.type}</span>
+                  </div>
+                  <p className="mt-1 truncate text-[11px] text-white/46">{asset.name} · {formatNumber(asset.quantity)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-white">{formatMoney(value)}</p>
+                  <p className={`text-[11px] ${pnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    {pnl >= 0 ? "+" : ""}
+                    {formatMoney(pnl)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-cyan-300" style={{ width: `${clampPercent(allocation)}%` }} />
+              </div>
+              <div className="mt-2 grid grid-cols-[1fr_auto_auto] gap-2">
+                <Input value={draft} onChange={(event) => setPriceDrafts((current) => ({ ...current, [asset.id]: event.target.value }))} inputMode="decimal" className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+                <Button type="button" size="icon" variant="outline" className="h-8 w-8 border-cyan-300/25 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20" onClick={() => updatePriceMutation.mutate({ assetId: asset.id, price: Number(draft) })}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span className="sr-only">{t.update}</span>
+                </Button>
+                <Button type="button" size="icon" variant="outline" className="h-8 w-8 border-red-300/25 bg-red-400/10 text-red-200 hover:bg-red-400/20" onClick={() => deleteAssetMutation.mutate(asset.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="sr-only">{t.delete}</span>
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {portfolio.transactions.length > 0 ? (
+        <div className="mt-3 space-y-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-white/45">{t.history}</p>
+          {portfolio.transactions.slice(-5).reverse().map((transaction) => (
+            <div key={transaction.id} className="flex items-center justify-between gap-2 rounded border border-white/8 bg-white/[0.02] px-2 py-1.5 text-[11px]">
+              <span className={transaction.side === "sell" ? "text-red-300" : transaction.side === "update" ? "text-cyan-200" : "text-emerald-300"}>
+                {transaction.side.toUpperCase()} {transaction.symbol}
+              </span>
+              <span className="text-white/48">{formatMoney(transaction.price)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
