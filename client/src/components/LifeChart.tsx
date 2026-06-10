@@ -542,6 +542,7 @@ export default function LifeChart({
       const rawVolume = Math.max(periodVolume?.value ?? Math.abs(close - open) / 8, 0.08);
 
       return {
+        time: point.time,
         value: rawVolume,
         eventCount: periodVolume?.events ?? 0,
         positive: close >= open,
@@ -1094,6 +1095,31 @@ export default function LifeChart({
     });
   };
 
+  const renderVolumeBars = () => {
+    const timeScale = chartRef.current?.timeScale();
+    if (!timeScale || volumeBars.length === 0) return null;
+
+    return volumeBars.map((bar, index) => {
+      const coordinate = timeScale.timeToCoordinate(bar.time);
+      if (coordinate === null || coordinate === undefined) return null;
+
+      return (
+        <div
+          key={`${bar.time}-${index}`}
+          className="absolute bottom-0 rounded-t-[1px] transition-[height] duration-300"
+          style={{
+            left: `${coordinate}px`,
+            width: "5px",
+            height: `${bar.height}%`,
+            transform: "translateX(-50%)",
+            backgroundColor: bar.positive ? "rgba(37,212,157,0.48)" : "rgba(255,79,93,0.48)",
+            boxShadow: bar.eventCount > 0 ? "0 0 8px rgba(34,171,148,0.18)" : "none",
+          }}
+        />
+      );
+    });
+  };
+
   const changeIsPositive = aggregateStats.change >= 0;
   const activeTimeframeLabel = timeframeOptions.find((option) => option.value === timeframe)?.label ?? timeframe;
   const copy =
@@ -1254,21 +1280,11 @@ export default function LifeChart({
           data-testid="chart-container"
         />
 
-        <div className="pointer-events-none absolute bottom-7 left-0 right-1 z-10 hidden h-[20%] items-end gap-[2px] px-3 opacity-75 md:flex">
+        <div className="pointer-events-none absolute bottom-7 left-0 right-0 z-10 hidden h-[20%] opacity-75 md:block">
           <div className="absolute left-3 top-0 text-[11px] text-[#8a94a6]">
             {copy.volume} <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{latestVolume.toFixed(2)}</span>
           </div>
-          {volumeBars.map((bar, index) => (
-            <div
-              key={index}
-              className="min-w-[2px] flex-1 rounded-t-[1px] transition-[height] duration-300"
-              style={{
-                height: `${bar.height}%`,
-                backgroundColor: bar.positive ? "rgba(37,212,157,0.48)" : "rgba(255,79,93,0.48)",
-                boxShadow: bar.eventCount > 0 ? "0 0 8px rgba(34,171,148,0.18)" : "none",
-              }}
-            />
-          ))}
+          <div className="absolute inset-x-0 bottom-0 top-5">{renderVolumeBars()}</div>
         </div>
 
         <div className="pointer-events-none absolute inset-0 z-10">
