@@ -328,19 +328,6 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         })}
       </div>
 
-      {portfolio.transactions.length > 0 ? (
-        <div className="mt-3 space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-white/45">{t.history}</p>
-          {portfolio.transactions.slice(-5).reverse().map((transaction) => (
-            <div key={transaction.id} className="flex items-center justify-between gap-2 rounded border border-white/8 bg-white/[0.02] px-2 py-1.5 text-[11px]">
-              <span className={transaction.side === "sell" ? "text-red-300" : transaction.side === "update" ? "text-cyan-200" : "text-emerald-300"}>
-                {transaction.side.toUpperCase()} {transaction.symbol}
-              </span>
-              <span className="text-white/48">{formatMoney(transaction.price)}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
     </section>
   );
 }
