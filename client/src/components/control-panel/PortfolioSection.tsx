@@ -86,11 +86,20 @@ function getAssetTypeLabel(type: string, labels: Record<AssetType, string>) {
   return labels[type as AssetType] ?? type;
 }
 
+function parseAmountInput(value: string) {
+  const normalized = value
+    .replace(/\s/g, "")
+    .replace(",", ".")
+    .replace(/[^0-9.-]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
 export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean }) {
   const { language } = useLanguage();
   const [name, setName] = useState("");
   const [type, setType] = useState<AssetType>("cash");
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [price, setPrice] = useState("");
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
 
@@ -111,6 +120,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           chart: "\u0413\u0440\u0430\u0444\u0438\u043a \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f",
           history: "\u0418\u0441\u0442\u043e\u0440\u0438\u044f",
           empty: "\u0414\u043e\u0431\u0430\u0432\u044c \u043f\u0435\u0440\u0432\u044b\u0439 \u0430\u043a\u0442\u0438\u0432.",
+          addError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0430\u043a\u0442\u0438\u0432. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043a\u043e\u043b-\u0432\u043e \u0438 \u0446\u0435\u043d\u0443.",
           update: "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c",
           delete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c",
           real_estate: "\u041d\u0435\u0434\u0432\u0438\u0436\u0438\u043c\u043e\u0441\u0442\u044c",
@@ -141,6 +151,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           chart: "Net worth chart",
           history: "History",
           empty: "Add your first asset.",
+          addError: "Could not add asset. Check quantity and price.",
           update: "Update",
           delete: "Delete",
           real_estate: "Real estate",
@@ -183,19 +194,22 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     return { value, count: portfolio.assets.length };
   }, [portfolio.assets]);
 
+  const quantityNumber = parseAmountInput(quantity);
+  const priceNumber = parseAmountInput(price);
+
   const addAssetMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/portfolio/assets", {
         symbol: name || typeLabels[type],
         name: name || typeLabels[type],
         type,
-        quantity: Number(quantity),
-        entryPrice: Number(price),
-        currentPrice: Number(price),
+        quantity: quantityNumber,
+        entryPrice: priceNumber,
+        currentPrice: priceNumber,
       }),
     onSuccess: () => {
       setName("");
-      setQuantity("");
+      setQuantity("1");
       setPrice("");
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
     },
@@ -216,7 +230,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     },
   });
 
-  const canAdd = Number(quantity) > 0 && Number(price) >= 0 && isAuthenticated;
+  const canAdd = quantityNumber > 0 && priceNumber >= 0 && isAuthenticated;
   const linePath = buildLinePath(portfolio.transactions);
 
   return (
@@ -273,6 +287,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t.add}
       </Button>
+      {addAssetMutation.isError ? <p className="mt-2 text-xs leading-relaxed text-red-200">{t.addError}</p> : null}
 
       <div className="mt-3 rounded-md border border-white/10 bg-black/35 p-2">
         <div className="flex items-center justify-between">
@@ -314,7 +329,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
               </div>
               <div className="mt-2 grid grid-cols-[1fr_auto_auto] gap-2">
                 <Input value={draft} onChange={(event) => setPriceDrafts((current) => ({ ...current, [asset.id]: event.target.value }))} inputMode="decimal" placeholder={t.price} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
-                <Button type="button" size="icon" variant="outline" className="h-8 w-8 border-cyan-300/25 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20" onClick={() => updatePriceMutation.mutate({ assetId: asset.id, nextPrice: Number(draft) })}>
+                <Button type="button" size="icon" variant="outline" className="h-8 w-8 border-cyan-300/25 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20" onClick={() => updatePriceMutation.mutate({ assetId: asset.id, nextPrice: parseAmountInput(draft) })}>
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span className="sr-only">{t.update}</span>
                 </Button>

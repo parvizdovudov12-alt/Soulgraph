@@ -31,6 +31,20 @@ function isSafeScore(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
 }
 
+function parseSafeNumber(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value
+      .replace(/\s/g, "")
+      .replace(",", ".")
+      .replace(/[^0-9.-]/g, "");
+    return Number(normalized);
+  }
+  return Number(value);
+}
+
 function isSafeEventMediaItem(value: unknown) {
   if (!value || typeof value !== "object") {
     return false;
@@ -644,9 +658,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         symbol: typeof req.body?.symbol === "string" ? req.body.symbol.trim().toUpperCase() : req.body?.symbol,
         name: typeof req.body?.name === "string" ? req.body.name.trim() : req.body?.name,
-        quantity: Number(req.body?.quantity),
-        entryPrice: Number(req.body?.entryPrice),
-        currentPrice: Number(req.body?.currentPrice),
+        quantity: parseSafeNumber(req.body?.quantity),
+        entryPrice: parseSafeNumber(req.body?.entryPrice),
+        currentPrice: parseSafeNumber(req.body?.currentPrice),
       });
       const result = await storage.createPortfolioAsset(req.session.userId, input);
       res.json(result);
@@ -667,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const input = portfolioPriceUpdateSchema.parse({
-        currentPrice: Number(req.body?.currentPrice),
+        currentPrice: parseSafeNumber(req.body?.currentPrice),
       });
       const result = await storage.updatePortfolioAssetPrice(req.session.userId, req.params.id, input.currentPrice);
       if (!result) {
