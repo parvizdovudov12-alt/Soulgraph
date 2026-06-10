@@ -498,7 +498,7 @@ export class MemStorage implements IStorage {
       userId,
       assetId: asset.id,
       symbol: asset.symbol,
-      side: "buy",
+      side: asset.quantity < 0 ? "loss" : "profit",
       quantity: asset.quantity,
       price: asset.entryPrice,
       portfolioValue: this.getPortfolioValue(userId),
@@ -1159,9 +1159,18 @@ export class PostgresStorage implements IStorage {
         );
         const transactionResult = await client.query(
           `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
-           values ($1, $2, $3, $4, 'buy', $5, $6, $7)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)
            returning *`,
-          [randomUUID(), userId, asset.id, asset.symbol, asset.quantity, asset.entryPrice, Number(valueResult.rows[0]?.value ?? 0)]
+          [
+            randomUUID(),
+            userId,
+            asset.id,
+            asset.symbol,
+            asset.quantity < 0 ? "loss" : "profit",
+            asset.quantity,
+            asset.entryPrice,
+            Number(valueResult.rows[0]?.value ?? 0),
+          ]
         );
         const assetsResult = await client.query(
           `select * from portfolio_assets where user_id = $1 order by updated_at desc, created_at desc`,

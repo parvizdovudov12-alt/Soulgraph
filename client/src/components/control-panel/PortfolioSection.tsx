@@ -339,7 +339,11 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   });
 
   const canAdd = priceNumber > 0 && isAuthenticated;
-  const candles = useMemo(() => buildPortfolioCandles(portfolio.transactions), [portfolio.transactions]);
+  const portfolioChartTransactions = useMemo(
+    () => portfolio.transactions.filter((transaction) => transaction.side === "profit" || transaction.side === "loss"),
+    [portfolio.transactions],
+  );
+  const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -423,7 +427,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       <div className="mt-3 rounded-md border border-emerald-400/15 bg-black p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex items-center justify-between">
           <p className="text-[10px] uppercase tracking-wider text-white/45">{t.chart}</p>
-          <span className="text-[10px] text-white/35">{portfolio.transactions.length}</span>
+          <span className="text-[10px] text-white/35">{portfolioChartTransactions.length}</span>
         </div>
         <PortfolioCandlestickChart candles={candles} />
       </div>
