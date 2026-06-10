@@ -519,23 +519,43 @@ export default function LifeChart({
   }, [renderableData, weights]);
 
   const volumeBars = useMemo(() => {
-    const bars = renderableData.slice(-72).map((point, index, source) => {
-      const value = aggregateValue(point, weights);
-      const previous = index > 0 ? aggregateValue(source[index - 1], weights) : value;
-      const rawVolume = Math.max(Math.abs(value - previous), 0.12);
+    const eventVolumeByTime = new Map<number, { value: number; events: number }>();
+    for (const event of chartNews) {
+      const groupedEvents = event.groupedEvents ?? [event];
+      const impactMagnitude = groupedEvents.reduce((sum, item) => (
+        sum +
+        Math.abs(item.impact.mental) +
+        Math.abs(item.impact.physical) +
+        Math.abs(item.impact.moral) +
+        Math.abs(item.impact.financial)
+      ), 0);
+      eventVolumeByTime.set(event.time as number, {
+        events: groupedEvents.length,
+        value: Math.max(groupedEvents.length, impactMagnitude / 20),
+      });
+    }
+
+    const bars = renderableData.slice(-96).map((point) => {
+      const close = point.ohlc?.close ?? aggregateValue(point, weights);
+      const open = point.ohlc?.open ?? close;
+      const periodVolume = eventVolumeByTime.get(point.time as number);
+      const rawVolume = Math.max(periodVolume?.value ?? Math.abs(close - open) / 8, 0.08);
 
       return {
         value: rawVolume,
-        positive: value >= previous,
+        eventCount: periodVolume?.events ?? 0,
+        positive: close >= open,
       };
     });
     const maxVolume = Math.max(...bars.map((bar) => bar.value), 1);
 
     return bars.map((bar) => ({
       ...bar,
-      height: Math.max(10, Math.min(100, (bar.value / maxVolume) * 100)),
+      height: Math.max(8, Math.min(100, (bar.value / maxVolume) * 100)),
     }));
-  }, [renderableData, weights]);
+  }, [chartNews, renderableData, weights]);
+
+  const latestVolume = volumeBars[volumeBars.length - 1]?.value ?? 0;
 
   const visibleLegendItems = (Object.keys(stateLabels) as VisibleStateKey[]).filter((key) => visibleStates[key]);
 
@@ -1234,17 +1254,18 @@ export default function LifeChart({
           data-testid="chart-container"
         />
 
-        <div className="pointer-events-none absolute bottom-7 left-0 right-1 z-10 hidden h-[22%] items-end gap-[2px] px-3 opacity-70 md:flex">
+        <div className="pointer-events-none absolute bottom-7 left-0 right-1 z-10 hidden h-[20%] items-end gap-[2px] px-3 opacity-75 md:flex">
           <div className="absolute left-3 top-0 text-[11px] text-[#8a94a6]">
-            {copy.volume} <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{Math.abs(aggregateStats.change).toFixed(2)}K</span>
+            {copy.volume} <span className={changeIsPositive ? "text-[#22AB94]" : "text-[#F23645]"}>{latestVolume.toFixed(2)}</span>
           </div>
           {volumeBars.map((bar, index) => (
             <div
               key={index}
-              className="min-w-[3px] flex-1 rounded-t-[1px]"
+              className="min-w-[2px] flex-1 rounded-t-[1px] transition-[height] duration-300"
               style={{
                 height: `${bar.height}%`,
-                backgroundColor: bar.positive ? "rgba(37,212,157,0.62)" : "rgba(255,79,93,0.62)",
+                backgroundColor: bar.positive ? "rgba(37,212,157,0.48)" : "rgba(255,79,93,0.48)",
+                boxShadow: bar.eventCount > 0 ? "0 0 8px rgba(34,171,148,0.18)" : "none",
               }}
             />
           ))}
