@@ -8,7 +8,19 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n";
 import type { PortfolioAsset, PortfolioTransaction } from "@shared/schema";
 
-type AssetType = "crypto" | "stock" | "etf" | "gold";
+type AssetType =
+  | "real_estate"
+  | "cash"
+  | "card"
+  | "transport"
+  | "children"
+  | "skins"
+  | "business"
+  | "work"
+  | "crypto"
+  | "stock"
+  | "etf"
+  | "gold";
 
 interface PortfolioResponse {
   assets: PortfolioAsset[];
@@ -20,6 +32,21 @@ const emptyPortfolio: PortfolioResponse = {
   transactions: [],
 };
 
+const assetTypes: AssetType[] = [
+  "real_estate",
+  "cash",
+  "card",
+  "transport",
+  "children",
+  "skins",
+  "business",
+  "work",
+  "crypto",
+  "stock",
+  "etf",
+  "gold",
+];
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -29,7 +56,7 @@ function formatMoney(value: number) {
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(Number.isFinite(value) ? value : 0);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(Number.isFinite(value) ? value : 0);
 }
 
 function clampPercent(value: number) {
@@ -55,64 +82,95 @@ function buildLinePath(points: PortfolioTransaction[]) {
     .join(" ");
 }
 
+function getAssetTypeLabel(type: string, labels: Record<AssetType, string>) {
+  return labels[type as AssetType] ?? type;
+}
+
 export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean }) {
   const { language } = useLanguage();
-  const [symbol, setSymbol] = useState("");
   const [name, setName] = useState("");
-  const [type, setType] = useState<AssetType>("crypto");
+  const [type, setType] = useState<AssetType>("cash");
   const [quantity, setQuantity] = useState("");
-  const [entryPrice, setEntryPrice] = useState("");
-  const [currentPrice, setCurrentPrice] = useState("");
+  const [price, setPrice] = useState("");
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
 
   const t =
     language === "ru"
       ? {
-          title: "Портфель",
-          subtitle: "Активы как часть твоей траектории",
-          signIn: "Войди в аккаунт, чтобы портфель синхронизировался на телефоне и ПК.",
-          symbol: "Тикер",
-          name: "Название",
-          quantity: "Кол-во",
-          entry: "Вход",
-          current: "Текущая",
-          add: "Добавить",
-          value: "Стоимость",
-          pnl: "PnL",
-          allocation: "Распределение",
-          chart: "График стоимости",
-          history: "История сделок",
-          empty: "Добавь первый актив вручную.",
-          update: "Обновить",
-          delete: "Удалить",
-          crypto: "Крипта",
-          stock: "Акции",
+          title: "\u041f\u043e\u0440\u0442\u0444\u0435\u043b\u044c",
+          subtitle: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u0430\u043a\u0442\u0438\u0432\u043e\u0432",
+          signIn: "\u0412\u043e\u0439\u0434\u0438 \u0432 \u0430\u043a\u043a\u0430\u0443\u043d\u0442, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0440\u0442\u0444\u0435\u043b\u044c \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u043b\u0441\u044f \u043d\u0430 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0435 \u0438 \u041f\u041a.",
+          category: "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f",
+          name: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435",
+          quantity: "\u041a\u043e\u043b-\u0432\u043e",
+          price: "\u0426\u0435\u043d\u0430",
+          add: "\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c",
+          value: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435",
+          assets: "\u0410\u043a\u0442\u0438\u0432\u043e\u0432",
+          allocation: "\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435",
+          chart: "\u0413\u0440\u0430\u0444\u0438\u043a \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f",
+          history: "\u0418\u0441\u0442\u043e\u0440\u0438\u044f",
+          empty: "\u0414\u043e\u0431\u0430\u0432\u044c \u043f\u0435\u0440\u0432\u044b\u0439 \u0430\u043a\u0442\u0438\u0432.",
+          update: "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c",
+          delete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c",
+          real_estate: "\u041d\u0435\u0434\u0432\u0438\u0436\u0438\u043c\u043e\u0441\u0442\u044c",
+          cash: "\u041d\u0430\u043b\u0438\u0447\u043d\u044b\u0435",
+          card: "\u041d\u0430 \u043a\u0430\u0440\u0442\u0435",
+          transport: "\u0422\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442",
+          children: "\u0414\u0435\u0442\u0438",
+          skins: "\u0421\u043a\u0438\u043d\u044b",
+          business: "\u0411\u0438\u0437\u043d\u0435\u0441",
+          work: "\u0420\u0430\u0431\u043e\u0442\u0430",
+          crypto: "\u041a\u0440\u0438\u043f\u0442\u0430",
+          stock: "\u0410\u043a\u0446\u0438\u0438",
           etf: "ETF",
-          gold: "Золото",
+          gold: "\u0417\u043e\u043b\u043e\u0442\u043e",
         }
       : {
           title: "Portfolio",
-          subtitle: "Assets as part of your trajectory",
+          subtitle: "Net worth and asset allocation",
           signIn: "Sign in to sync portfolio across mobile and desktop.",
-          symbol: "Ticker",
+          category: "Category",
           name: "Name",
           quantity: "Qty",
-          entry: "Entry",
-          current: "Current",
+          price: "Price",
           add: "Add",
-          value: "Value",
-          pnl: "PnL",
+          value: "Net worth",
+          assets: "Assets",
           allocation: "Allocation",
-          chart: "Value chart",
-          history: "Trade history",
-          empty: "Add your first asset manually.",
+          chart: "Net worth chart",
+          history: "History",
+          empty: "Add your first asset.",
           update: "Update",
           delete: "Delete",
+          real_estate: "Real estate",
+          cash: "Cash",
+          card: "Card",
+          transport: "Transport",
+          children: "Children",
+          skins: "Skins",
+          business: "Business",
+          work: "Work",
           crypto: "Crypto",
           stock: "Stocks",
           etf: "ETF",
           gold: "Gold",
         };
+
+  const typeLabels: Record<AssetType, string> = {
+    real_estate: t.real_estate,
+    cash: t.cash,
+    card: t.card,
+    transport: t.transport,
+    children: t.children,
+    skins: t.skins,
+    business: t.business,
+    work: t.work,
+    crypto: t.crypto,
+    stock: t.stock,
+    etf: t.etf,
+    gold: t.gold,
+  };
 
   const portfolioQuery = useQuery<PortfolioResponse>({
     queryKey: ["/api/portfolio"],
@@ -121,36 +179,31 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   const portfolio = portfolioQuery.data ?? emptyPortfolio;
 
   const totals = useMemo(() => {
-    const cost = portfolio.assets.reduce((sum, asset) => sum + asset.quantity * asset.entryPrice, 0);
     const value = portfolio.assets.reduce((sum, asset) => sum + asset.quantity * asset.currentPrice, 0);
-    const pnl = value - cost;
-    const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0;
-    return { cost, value, pnl, pnlPercent };
+    return { value, count: portfolio.assets.length };
   }, [portfolio.assets]);
 
   const addAssetMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/portfolio/assets", {
-        symbol,
-        name,
+        symbol: name || typeLabels[type],
+        name: name || typeLabels[type],
         type,
         quantity: Number(quantity),
-        entryPrice: Number(entryPrice),
-        currentPrice: Number(currentPrice || entryPrice),
+        entryPrice: Number(price),
+        currentPrice: Number(price),
       }),
     onSuccess: () => {
-      setSymbol("");
       setName("");
       setQuantity("");
-      setEntryPrice("");
-      setCurrentPrice("");
+      setPrice("");
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
     },
   });
 
   const updatePriceMutation = useMutation({
-    mutationFn: ({ assetId, price }: { assetId: string; price: number }) =>
-      apiRequest("PATCH", `/api/portfolio/assets/${assetId}/price`, { currentPrice: price }),
+    mutationFn: ({ assetId, nextPrice }: { assetId: string; nextPrice: number }) =>
+      apiRequest("PATCH", `/api/portfolio/assets/${assetId}/price`, { currentPrice: nextPrice }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
     },
@@ -163,14 +216,8 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     },
   });
 
-  const canAdd =
-    symbol.trim().length > 0 &&
-    Number(quantity) > 0 &&
-    Number(entryPrice) >= 0 &&
-    Number(currentPrice || entryPrice) >= 0 &&
-    isAuthenticated;
+  const canAdd = Number(quantity) > 0 && Number(price) >= 0 && isAuthenticated;
   const linePath = buildLinePath(portfolio.transactions);
-  const pnlIsPositive = totals.pnl >= 0;
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -188,41 +235,33 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         <p className="mt-3 rounded-md border border-white/10 bg-white/[0.03] p-2 text-xs leading-relaxed text-white/68">{t.signIn}</p>
       ) : null}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
         <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.value}</p>
           <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(totals.value)}</p>
         </div>
-        <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
-          <p className="text-[10px] uppercase tracking-wider text-white/42">{t.pnl}</p>
-          <p className={`mt-1 text-lg font-semibold leading-none ${pnlIsPositive ? "text-emerald-300" : "text-red-300"}`}>
-            {pnlIsPositive ? "+" : ""}
-            {formatMoney(totals.pnl)}
-          </p>
-          <p className={`mt-1 text-[11px] ${pnlIsPositive ? "text-emerald-300/75" : "text-red-300/75"}`}>
-            {pnlIsPositive ? "+" : ""}
-            {totals.pnlPercent.toFixed(2)}%
-          </p>
+        <div className="w-20 rounded-md border border-white/10 bg-white/[0.035] p-2 text-right">
+          <p className="text-[10px] uppercase tracking-wider text-white/42">{t.assets}</p>
+          <p className="mt-1 text-lg font-semibold leading-none text-cyan-200">{totals.count}</p>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Input value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} placeholder={t.symbol} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
         <Select value={type} onValueChange={(nextType) => setType(nextType as AssetType)}>
           <SelectTrigger className="h-8 border-white/10 bg-black/40 text-xs text-white">
-            <SelectValue />
+            <SelectValue placeholder={t.category} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="crypto">{t.crypto}</SelectItem>
-            <SelectItem value="stock">{t.stock}</SelectItem>
-            <SelectItem value="etf">{t.etf}</SelectItem>
-            <SelectItem value="gold">{t.gold}</SelectItem>
+            {assetTypes.map((assetType) => (
+              <SelectItem key={assetType} value={assetType}>
+                {typeLabels[assetType]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t.name} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
         <Input value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="decimal" placeholder={t.quantity} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
-        <Input value={entryPrice} onChange={(event) => setEntryPrice(event.target.value)} inputMode="decimal" placeholder={t.entry} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
-        <Input value={currentPrice} onChange={(event) => setCurrentPrice(event.target.value)} inputMode="decimal" placeholder={t.current} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" placeholder={t.price} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
       </div>
 
       <Button
@@ -243,7 +282,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         <svg viewBox="0 0 160 60" className="mt-1 h-[72px] w-full overflow-visible">
           <path d="M8 52 H152" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
           <path d="M8 30 H152" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-          {linePath ? <path d={linePath} fill="none" stroke={pnlIsPositive ? "#34d399" : "#f87171"} strokeLinecap="round" strokeWidth="2.5" /> : null}
+          {linePath ? <path d={linePath} fill="none" stroke="#34d399" strokeLinecap="round" strokeWidth="2.5" /> : null}
         </svg>
       </div>
 
@@ -252,34 +291,30 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         {portfolio.assets.length === 0 ? <p className="text-xs text-white/45">{t.empty}</p> : null}
         {portfolio.assets.map((asset) => {
           const value = asset.quantity * asset.currentPrice;
-          const cost = asset.quantity * asset.entryPrice;
-          const pnl = value - cost;
           const allocation = totals.value > 0 ? (value / totals.value) * 100 : 0;
           const draft = priceDrafts[asset.id] ?? String(asset.currentPrice);
+          const categoryLabel = getAssetTypeLabel(asset.type, typeLabels);
+
           return (
             <div key={asset.id} className="rounded-md border border-white/10 bg-white/[0.025] p-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-white">{asset.symbol}</p>
-                    <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase text-white/48">{asset.type}</span>
+                    <p className="truncate text-sm font-semibold text-white">{asset.name}</p>
+                    <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase text-white/48">{categoryLabel}</span>
                   </div>
-                  <p className="mt-1 truncate text-[11px] text-white/46">{asset.name} · {formatNumber(asset.quantity)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-white">{formatMoney(value)}</p>
-                  <p className={`text-[11px] ${pnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                    {pnl >= 0 ? "+" : ""}
-                    {formatMoney(pnl)}
+                  <p className="mt-1 truncate text-[11px] text-white/46">
+                    {formatNumber(asset.quantity)} x {formatMoney(asset.currentPrice)}
                   </p>
                 </div>
+                <p className="text-right text-sm font-semibold text-white">{formatMoney(value)}</p>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-cyan-300" style={{ width: `${clampPercent(allocation)}%` }} />
               </div>
               <div className="mt-2 grid grid-cols-[1fr_auto_auto] gap-2">
-                <Input value={draft} onChange={(event) => setPriceDrafts((current) => ({ ...current, [asset.id]: event.target.value }))} inputMode="decimal" className="h-8 border-white/10 bg-black/40 text-xs text-white" />
-                <Button type="button" size="icon" variant="outline" className="h-8 w-8 border-cyan-300/25 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20" onClick={() => updatePriceMutation.mutate({ assetId: asset.id, price: Number(draft) })}>
+                <Input value={draft} onChange={(event) => setPriceDrafts((current) => ({ ...current, [asset.id]: event.target.value }))} inputMode="decimal" placeholder={t.price} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+                <Button type="button" size="icon" variant="outline" className="h-8 w-8 border-cyan-300/25 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20" onClick={() => updatePriceMutation.mutate({ assetId: asset.id, nextPrice: Number(draft) })}>
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span className="sr-only">{t.update}</span>
                 </Button>

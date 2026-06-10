@@ -107,9 +107,22 @@ export const portfolioTransactions = pgTable("portfolio_transactions", {
 });
 
 export const portfolioAssetInputSchema = z.object({
-  symbol: z.string().trim().min(1).max(16),
+  symbol: z.string().trim().max(32).optional().nullable(),
   name: z.string().trim().max(80).optional().nullable(),
-  type: z.enum(["crypto", "stock", "etf", "gold"]),
+  type: z.enum([
+    "crypto",
+    "stock",
+    "etf",
+    "gold",
+    "real_estate",
+    "cash",
+    "card",
+    "transport",
+    "children",
+    "skins",
+    "business",
+    "work",
+  ]),
   quantity: z.number().positive().max(1_000_000_000),
   entryPrice: z.number().nonnegative().max(1_000_000_000),
   currentPrice: z.number().nonnegative().max(1_000_000_000),

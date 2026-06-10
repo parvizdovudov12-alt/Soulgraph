@@ -118,6 +118,11 @@ function normalizeMoneyValue(value: unknown) {
   return Math.max(0, Math.min(1_000_000_000, numeric));
 }
 
+function normalizePortfolioSymbol(input: PortfolioAssetInput) {
+  const rawSymbol = input.symbol?.trim() || input.name?.trim() || input.type;
+  return rawSymbol.toUpperCase().replace(/[^A-ZА-ЯЁ0-9 _.-]/gi, "").slice(0, 32) || input.type.toUpperCase();
+}
+
 function normalizeTaskImpact(impact: any) {
   return {
     mental: normalizeTaskImpactValue(impact?.mental),
@@ -467,11 +472,12 @@ export class MemStorage implements IStorage {
 
   async createPortfolioAsset(userId: string, input: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
     const now = new Date();
+    const symbol = normalizePortfolioSymbol(input);
     const asset: PortfolioAsset = {
       id: randomUUID(),
       userId,
-      symbol: input.symbol.toUpperCase(),
-      name: input.name?.trim() || input.symbol.toUpperCase(),
+      symbol,
+      name: input.name?.trim() || symbol,
       type: input.type,
       quantity: normalizeMoneyValue(input.quantity),
       entryPrice: normalizeMoneyValue(input.entryPrice),
@@ -1132,8 +1138,8 @@ export class PostgresStorage implements IStorage {
           [
             randomUUID(),
             userId,
-            input.symbol.toUpperCase(),
-            input.name?.trim() || input.symbol.toUpperCase(),
+            normalizePortfolioSymbol(input),
+            input.name?.trim() || normalizePortfolioSymbol(input),
             input.type,
             normalizeMoneyValue(input.quantity),
             normalizeMoneyValue(input.entryPrice),
