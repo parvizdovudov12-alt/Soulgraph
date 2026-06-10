@@ -282,13 +282,12 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe, weights: 
       financial: 0,
     } as StateData);
 
-  const windowSize = timeframe === "ALL" ? timeframeToSeconds("1Y") : timeframeToSeconds(timeframe);
+  const windowSize = timeframeToSeconds(timeframe);
   const pointsByTimeframe: Record<Timeframe, number> = {
-    ALL: 84,
-    "1D": 18,
-    "1W": 28,
-    "1M": 42,
-    "1Y": 84,
+    "30M": 48,
+    "1H": 48,
+    "4H": 42,
+    "1D": 40,
   };
   const points = pointsByTimeframe[timeframe];
   const step = Math.max(Math.floor(windowSize / points), 60 * 60);
@@ -311,7 +310,7 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe, weights: 
 
 function aggregateCandlesByTimeframe(input: StateData[], timeframe: Timeframe, weights: LifeChartProps["weights"]): StateData[] {
   const source = deduplicateData(input);
-  if (timeframe === "ALL" || source.length < 2) {
+  if (source.length < 2) {
     return source;
   }
 
@@ -368,10 +367,6 @@ function aggregateCandlesByTimeframe(input: StateData[], timeframe: Timeframe, w
 
 function aggregateEventsByTimeframe(events: NewsEvent[], timeframe: Timeframe): NewsEvent[] {
   const sortedEvents = [...events].sort((a, b) => (a.time as number) - (b.time as number));
-  if (timeframe === "ALL") {
-    return sortedEvents;
-  }
-
   const groups = new Map<number, NewsEvent[]>();
   for (const event of sortedEvents) {
     const key = getPeriodKey(event.time as number, timeframe);
@@ -412,7 +407,7 @@ export default function LifeChart({
   news,
   chartType = "candlestick",
   tokenName,
-  timeframe = "ALL",
+  timeframe = "1D",
   onTimeframeChange,
   onDeleteEvent,
   onDeleteAllDayEvents,
@@ -454,18 +449,16 @@ export default function LifeChart({
   const timeframeOptions: Array<{ value: Timeframe; label: string }> =
     language === "ru"
       ? [
-          { value: "ALL", label: "ВСЕ" },
+          { value: "30M", label: "30м" },
+          { value: "1H", label: "1ч" },
+          { value: "4H", label: "4ч" },
           { value: "1D", label: "1Д" },
-          { value: "1W", label: "1Н" },
-          { value: "1M", label: "1М" },
-          { value: "1Y", label: "1Г" },
         ]
       : [
-          { value: "ALL", label: "ALL" },
+          { value: "30M", label: "30m" },
+          { value: "1H", label: "1h" },
+          { value: "4H", label: "4h" },
           { value: "1D", label: "1D" },
-          { value: "1W", label: "1W" },
-          { value: "1M", label: "1M" },
-          { value: "1Y", label: "1Y" },
         ];
   const stateLabels = STATE_META[language];
 
@@ -476,25 +469,22 @@ export default function LifeChart({
     newsRef.current = chartNews;
   }, [chartNews]);
   const barSpacingByTimeframe: Record<Timeframe, number> = {
-    ALL: 8,
-    "1D": 28,
-    "1W": 18,
-    "1M": 10,
-    "1Y": 4,
+    "30M": 18,
+    "1H": 18,
+    "4H": 16,
+    "1D": 12,
   };
   const rightOffsetByTimeframe: Record<Timeframe, number> = {
-    ALL: 6,
-    "1D": 10,
-    "1W": 8,
-    "1M": 6,
-    "1Y": 3,
+    "30M": 8,
+    "1H": 8,
+    "4H": 7,
+    "1D": 6,
   };
   const minBarSpacingByTimeframe: Record<Timeframe, number> = {
-    ALL: 2,
-    "1D": 16,
-    "1W": 10,
-    "1M": 6,
-    "1Y": 2,
+    "30M": 8,
+    "1H": 8,
+    "4H": 7,
+    "1D": 5,
   };
   const aggregateStats = useMemo(() => {
     if (renderableData.length === 0) {
@@ -552,28 +542,7 @@ export default function LifeChart({
     const timeScale = chartRef.current?.timeScale();
     if (!timeScale || plottedDataRef.current.length === 0) return;
 
-    if (timeframe === "ALL") {
-      fitFullChart();
-      return;
-    }
-
-    const firstTime = plottedDataRef.current[0]?.time as number | undefined;
-    const lastTime = plottedDataRef.current[plottedDataRef.current.length - 1]?.time as number | undefined;
-    if (firstTime === undefined || lastTime === undefined) return;
-
-    const periodSeconds = timeframeToSeconds(timeframe);
-    const from = Math.max(firstTime, lastTime - periodSeconds);
-    const padding = Math.max(periodSeconds * 0.02, 60 * 60);
-    const to = lastTime + padding;
-
-    try {
-      timeScale.setVisibleRange({
-        from: from as Time,
-        to: to as Time,
-      });
-    } catch {
-      fitFullChart();
-    }
+    fitFullChart();
   };
 
   const zoomChart = (direction: "in" | "out") => {
@@ -1115,7 +1084,7 @@ export default function LifeChart({
           indexLabel: "индекс",
           aggregate: "Сводный курс по всем зонам",
           empty: "Добавь первое событие, чтобы график начал накапливать реальную динамику.",
-          hint: "Нажми на точку события, чтобы открыть запись. ВСЕ показывает весь период, 1Д/1Н/1М/1Г - выбранный отрезок.",
+          hint: "Нажми на точку события, чтобы открыть запись. 30м/1ч/4ч/1Д задают размер свечи.",
         }
       : {
           stateDynamics: "State dynamics",
@@ -1135,7 +1104,7 @@ export default function LifeChart({
           indexLabel: "index",
           aggregate: "Combined direction across all areas",
           empty: "Add the first event so the chart can start building real movement.",
-          hint: "Tap an event point to open its entry. ALL shows the full period; 1D/1W/1M/1Y show the selected range.",
+          hint: "Tap an event point to open its entry. 30m/1h/4h/1D set the candle size.",
         };
 
   return (

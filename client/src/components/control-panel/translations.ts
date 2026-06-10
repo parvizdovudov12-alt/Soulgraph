@@ -192,22 +192,18 @@ export function getControlPanelText(language: string, hasGoal: boolean): Control
 }
 
 export function getPeriodActionLabel(timeframe: Timeframe, language: string) {
-  if (timeframe === "ALL") {
-    return language === "ru" ? "Анализ всего периода" : "All-time analysis";
-  }
-
   const labels = {
     ru: {
-      "1D": "Анализ дня",
-      "1W": "Анализ недели",
-      "1M": "Анализ месяца",
-      "1Y": "Анализ года",
+      "30M": "\u0410\u043d\u0430\u043b\u0438\u0437 30 \u043c\u0438\u043d\u0443\u0442",
+      "1H": "\u0410\u043d\u0430\u043b\u0438\u0437 \u0447\u0430\u0441\u0430",
+      "4H": "\u0410\u043d\u0430\u043b\u0438\u0437 4 \u0447\u0430\u0441\u043e\u0432",
+      "1D": "\u0410\u043d\u0430\u043b\u0438\u0437 \u0434\u043d\u044f",
     },
     en: {
+      "30M": "30-minute analysis",
+      "1H": "Hour analysis",
+      "4H": "4-hour analysis",
       "1D": "Day analysis",
-      "1W": "Week analysis",
-      "1M": "Month analysis",
-      "1Y": "Year analysis",
     },
   } as const;
 

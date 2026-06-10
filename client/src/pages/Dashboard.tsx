@@ -34,7 +34,7 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [newsModalType, setNewsModalType] = useState<"positive" | "negative">("positive");
   const [chartType] = useState<"line" | "candlestick">("candlestick");
-  const [timeframe, setTimeframe] = useState<Timeframe>("ALL");
+  const [timeframe, setTimeframe] = useState<Timeframe>("1D");
   const [aiGoalAnalysis, setAiGoalAnalysis] = useState<AiGoalAnalysisResult | null>(null);
   const [aiGoalAnalysisError, setAiGoalAnalysisError] = useState<string | null>(null);
   const [draftTask, setDraftTask] = useState("");
@@ -284,22 +284,19 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
 
   const analysisPeriodLabel = useMemo(() => {
     switch (timeframe) {
-      case "ALL":
-        return t.allPeriod;
+      case "30M":
+        return language === "ru" ? "30 минут" : "30 minutes";
+      case "1H":
+        return language === "ru" ? "1 час" : "1 hour";
+      case "4H":
+        return language === "ru" ? "4 часа" : "4 hours";
       case "1D":
         return t.day;
-      case "1W":
-        return t.week;
-      case "1M":
-        return t.month;
-      case "1Y":
-        return t.year;
     }
-  }, [timeframe, t.allPeriod, t.day, t.month, t.week, t.year]);
+  }, [language, timeframe, t.day]);
 
   const analysisEvents = useMemo(() => {
     if (newsEvents.length === 0) return [];
-    if (timeframe === "ALL") return newsEvents;
     const latestEventTime = Math.max(...newsEvents.map((event) => Number(event.time)));
     const periodStart = latestEventTime - timeframeToSeconds(timeframe);
     return newsEvents.filter((event) => Number(event.time) >= periodStart);

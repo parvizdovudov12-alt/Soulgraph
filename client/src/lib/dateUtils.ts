@@ -62,6 +62,13 @@ export function getStartOfDay(unixSeconds: number): number {
   return Math.floor((startOfDay.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
+export function getStartOfIntradayInterval(unixSeconds: number, intervalMinutes: number): number {
+  const startOfDay = getStartOfDay(unixSeconds);
+  const intervalSeconds = intervalMinutes * 60;
+  const secondsSinceDayStart = Math.max(0, unixSeconds - startOfDay);
+  return startOfDay + Math.floor(secondsSinceDayStart / intervalSeconds) * intervalSeconds;
+}
+
 export function getStartOfMonth(unixSeconds: number): number {
   const moscowDate = toMoscowTime(unixSeconds);
   const startOfMonth = new Date(moscowDate.getUTCFullYear(), moscowDate.getUTCMonth(), 1);
@@ -86,20 +93,18 @@ export function getStartOfYear(unixSeconds: number): number {
   return Math.floor((startOfYear.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export type Timeframe = "ALL" | "1D" | "1W" | "1M" | "1Y";
+export type Timeframe = "30M" | "1H" | "4H" | "1D";
 
 export function timeframeToSeconds(timeframe: Timeframe): number {
   switch (timeframe) {
-    case "ALL":
-      return Number.MAX_SAFE_INTEGER;
+    case "30M":
+      return 30 * 60;
+    case "1H":
+      return 60 * 60;
+    case "4H":
+      return 4 * 60 * 60;
     case "1D":
       return 24 * 60 * 60;
-    case "1W":
-      return 7 * 24 * 60 * 60;
-    case "1M":
-      return 30 * 24 * 60 * 60;
-    case "1Y":
-      return 365 * 24 * 60 * 60;
   }
 }
 
@@ -178,30 +183,25 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
   const minutes = moscowDate.getUTCMinutes().toString().padStart(2, "0");
 
   switch (timeframe) {
-    case "ALL":
-      return `${day}.${month}.${year}`;
+    case "30M":
+    case "1H":
+    case "4H":
+      return `${day}.${month} ${hours}:${minutes}`;
     case "1D":
-      return `${hours}:${minutes}`;
-    case "1W":
-    case "1M":
-      return `${day}.${month}`;
-    case "1Y":
-      return `${month}.${year}`;
+      return `${day}.${month}.${year}`;
   }
 }
 
 export function getPeriodKey(unixSeconds: number, timeframe: Timeframe): number {
   switch (timeframe) {
+    case "30M":
+      return getStartOfIntradayInterval(unixSeconds, 30);
+    case "1H":
+      return getStartOfIntradayInterval(unixSeconds, 60);
+    case "4H":
+      return getStartOfIntradayInterval(unixSeconds, 240);
     case "1D":
       return getStartOfDay(unixSeconds);
-    case "1W":
-      return getStartOfWeek(unixSeconds);
-    case "1M":
-      return getStartOfMonth(unixSeconds);
-    case "1Y":
-      return getStartOfYear(unixSeconds);
-    case "ALL":
-      return unixSeconds;
   }
 }
 
