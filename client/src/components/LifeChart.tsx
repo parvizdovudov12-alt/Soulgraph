@@ -284,6 +284,7 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe, weights: 
 
   const windowSize = timeframeToSeconds(timeframe);
   const pointsByTimeframe: Record<Timeframe, number> = {
+    "1M": 60,
     "30M": 48,
     "1H": 48,
     "4H": 42,
@@ -449,12 +450,14 @@ export default function LifeChart({
   const timeframeOptions: Array<{ value: Timeframe; label: string }> =
     language === "ru"
       ? [
+          { value: "1M", label: "1м" },
           { value: "30M", label: "30м" },
           { value: "1H", label: "1ч" },
           { value: "4H", label: "4ч" },
           { value: "1D", label: "1Д" },
         ]
       : [
+          { value: "1M", label: "1m" },
           { value: "30M", label: "30m" },
           { value: "1H", label: "1h" },
           { value: "4H", label: "4h" },
@@ -469,18 +472,21 @@ export default function LifeChart({
     newsRef.current = chartNews;
   }, [chartNews]);
   const barSpacingByTimeframe: Record<Timeframe, number> = {
+    "1M": 16,
     "30M": 18,
     "1H": 18,
     "4H": 16,
     "1D": 12,
   };
   const rightOffsetByTimeframe: Record<Timeframe, number> = {
+    "1M": 8,
     "30M": 8,
     "1H": 8,
     "4H": 7,
     "1D": 6,
   };
   const minBarSpacingByTimeframe: Record<Timeframe, number> = {
+    "1M": 7,
     "30M": 8,
     "1H": 8,
     "4H": 7,
@@ -1084,7 +1090,7 @@ export default function LifeChart({
           indexLabel: "индекс",
           aggregate: "Сводный курс по всем зонам",
           empty: "Добавь первое событие, чтобы график начал накапливать реальную динамику.",
-          hint: "Нажми на точку события, чтобы открыть запись. 30м/1ч/4ч/1Д задают размер свечи.",
+          hint: "Нажми на точку события, чтобы открыть запись. 1м/30м/1ч/4ч/1Д задают размер свечи.",
         }
       : {
           stateDynamics: "State dynamics",
@@ -1104,7 +1110,7 @@ export default function LifeChart({
           indexLabel: "index",
           aggregate: "Combined direction across all areas",
           empty: "Add the first event so the chart can start building real movement.",
-          hint: "Tap an event point to open its entry. 30m/1h/4h/1D set the candle size.",
+          hint: "Tap an event point to open its entry. 1m/30m/1h/4h/1D set the candle size.",
         };
 
   return (

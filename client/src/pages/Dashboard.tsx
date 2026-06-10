@@ -284,6 +284,8 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
 
   const analysisPeriodLabel = useMemo(() => {
     switch (timeframe) {
+      case "1M":
+        return language === "ru" ? "1 минуту" : "1 minute";
       case "30M":
         return language === "ru" ? "30 минут" : "30 minutes";
       case "1H":

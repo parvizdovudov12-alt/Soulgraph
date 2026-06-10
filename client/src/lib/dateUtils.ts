@@ -93,10 +93,12 @@ export function getStartOfYear(unixSeconds: number): number {
   return Math.floor((startOfYear.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export type Timeframe = "30M" | "1H" | "4H" | "1D";
+export type Timeframe = "1M" | "30M" | "1H" | "4H" | "1D";
 
 export function timeframeToSeconds(timeframe: Timeframe): number {
   switch (timeframe) {
+    case "1M":
+      return 60;
     case "30M":
       return 30 * 60;
     case "1H":
@@ -183,6 +185,7 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
   const minutes = moscowDate.getUTCMinutes().toString().padStart(2, "0");
 
   switch (timeframe) {
+    case "1M":
     case "30M":
     case "1H":
     case "4H":
@@ -194,6 +197,8 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
 
 export function getPeriodKey(unixSeconds: number, timeframe: Timeframe): number {
   switch (timeframe) {
+    case "1M":
+      return getStartOfIntradayInterval(unixSeconds, 1);
     case "30M":
       return getStartOfIntradayInterval(unixSeconds, 30);
     case "1H":

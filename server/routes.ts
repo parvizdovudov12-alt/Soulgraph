@@ -992,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(402).json({ message: "Premium is required for AI goal analysis" });
       }
 
-      if (!["30M", "1H", "4H", "1D"].includes(timeframe)) {
+      if (!["1M", "30M", "1H", "4H", "1D"].includes(timeframe)) {
         return res.status(400).json({ message: "Invalid timeframe" });
       }
 
