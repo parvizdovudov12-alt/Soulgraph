@@ -118,6 +118,12 @@ function normalizeMoneyValue(value: unknown) {
   return Math.max(0, Math.min(1_000_000_000, numeric));
 }
 
+function normalizePortfolioQuantity(value: unknown) {
+  const numeric = typeof value === "number" ? value : Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(-1_000_000_000, Math.min(1_000_000_000, numeric));
+}
+
 function normalizePortfolioSymbol(input: PortfolioAssetInput) {
   const rawSymbol = input.symbol?.trim() || input.name?.trim() || input.type;
   return rawSymbol.toUpperCase().replace(/[^A-ZА-ЯЁ0-9 _.-]/gi, "").slice(0, 32) || input.type.toUpperCase();
@@ -479,7 +485,7 @@ export class MemStorage implements IStorage {
       symbol,
       name: input.name?.trim() || symbol,
       type: input.type,
-      quantity: normalizeMoneyValue(input.quantity),
+      quantity: normalizePortfolioQuantity(input.quantity),
       entryPrice: normalizeMoneyValue(input.entryPrice),
       currentPrice: normalizeMoneyValue(input.currentPrice),
       createdAt: now,
@@ -1141,7 +1147,7 @@ export class PostgresStorage implements IStorage {
             normalizePortfolioSymbol(input),
             input.name?.trim() || normalizePortfolioSymbol(input),
             input.type,
-            normalizeMoneyValue(input.quantity),
+            normalizePortfolioQuantity(input.quantity),
             normalizeMoneyValue(input.entryPrice),
             normalizeMoneyValue(input.currentPrice),
           ]

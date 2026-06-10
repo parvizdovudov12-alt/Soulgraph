@@ -123,7 +123,7 @@ export const portfolioAssetInputSchema = z.object({
     "business",
     "work",
   ]),
-  quantity: z.number().positive().max(1_000_000_000),
+  quantity: z.number().min(-1_000_000_000).max(1_000_000_000).refine((value) => value !== 0),
   entryPrice: z.number().nonnegative().max(1_000_000_000),
   currentPrice: z.number().nonnegative().max(1_000_000_000),
 });

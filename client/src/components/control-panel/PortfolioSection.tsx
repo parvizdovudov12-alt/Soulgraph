@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BriefcaseBusiness, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { BriefcaseBusiness, RefreshCw, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,14 @@ type PortfolioCurrency = "USD" | "RUB" | "EUR" | "AED" | "TRY" | "KZT" | "USDT";
 interface PortfolioResponse {
   assets: PortfolioAsset[];
   transactions: PortfolioTransaction[];
+}
+
+interface PortfolioCandle {
+  id: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
 }
 
 const emptyPortfolio: PortfolioResponse = {
@@ -81,24 +89,6 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
-function buildLinePath(points: PortfolioTransaction[]) {
-  const values = points.map((point) => point.portfolioValue);
-  if (values.length === 0) return "";
-  if (values.length === 1) return "M 8 42 L 152 42";
-
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-
-  return values
-    .map((value, index) => {
-      const x = 8 + (index / (values.length - 1)) * 144;
-      const y = 52 - ((value - min) / span) * 44;
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
-}
-
 function getAssetTypeLabel(type: string, labels: Record<AssetType, string>) {
   return labels[type as AssetType] ?? type;
 }
@@ -110,6 +100,93 @@ function parseAmountInput(value: string) {
     .replace(/[^0-9.-]/g, "");
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function buildPortfolioCandles(points: PortfolioTransaction[]): PortfolioCandle[] {
+  return points.map((point, index) => {
+    const close = Number(point.portfolioValue) || 0;
+    const previousClose = index > 0 ? Number(points[index - 1].portfolioValue) || 0 : close - (Number(point.quantity) || 0) * (Number(point.price) || 0);
+    const open = Number.isFinite(previousClose) ? previousClose : close;
+    return {
+      id: point.id,
+      open,
+      close,
+      high: Math.max(open, close),
+      low: Math.min(open, close),
+    };
+  });
+}
+
+function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) {
+  const width = 260;
+  const height = 124;
+  const top = 14;
+  const bottom = 108;
+  const left = 10;
+  const right = 248;
+  const visibleCandles = candles.slice(-28);
+  const values = visibleCandles.flatMap((candle) => [candle.high, candle.low]);
+  const min = values.length ? Math.min(...values) : 0;
+  const max = values.length ? Math.max(...values) : 1;
+  const span = max - min || 1;
+  const plotWidth = right - left;
+  const candleGap = visibleCandles.length > 1 ? plotWidth / (visibleCandles.length - 1) : plotWidth;
+  const candleBodyWidth = Math.max(3, Math.min(8, candleGap * 0.45));
+  const yFor = (value: number) => bottom - ((value - min) / span) * (bottom - top);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-[128px] w-full overflow-visible rounded-md bg-black">
+      <defs>
+        <linearGradient id="portfolioChartGlow" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stopColor="#07120e" />
+          <stop offset="100%" stopColor="#020403" />
+        </linearGradient>
+      </defs>
+      <rect width={width} height={height} fill="url(#portfolioChartGlow)" />
+      {[0, 1, 2, 3].map((line) => {
+        const y = top + line * ((bottom - top) / 3);
+        return <line key={`h-${line}`} x1="0" x2={width} y1={y} y2={y} stroke="rgba(255,255,255,0.07)" strokeWidth="1" />;
+      })}
+      {[0, 1, 2, 3, 4].map((line) => {
+        const x = left + line * (plotWidth / 4);
+        return <line key={`v-${line}`} x1={x} x2={x} y1="0" y2={height} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
+      })}
+      {visibleCandles.length === 0 ? (
+        <text x={width / 2} y={height / 2} fill="rgba(255,255,255,0.35)" fontSize="9" textAnchor="middle">
+          No data
+        </text>
+      ) : null}
+      {visibleCandles.map((candle, index) => {
+        const x = visibleCandles.length === 1 ? width / 2 : left + index * candleGap;
+        const openY = yFor(candle.open);
+        const closeY = yFor(candle.close);
+        const highY = yFor(candle.high);
+        const lowY = yFor(candle.low);
+        const isUp = candle.close >= candle.open;
+        const color = isUp ? "#22c98f" : "#ff5c66";
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(3, Math.abs(closeY - openY));
+
+        return (
+          <g key={candle.id}>
+            <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+            <rect
+              x={x - candleBodyWidth / 2}
+              y={bodyTop}
+              width={candleBodyWidth}
+              height={bodyHeight}
+              rx="1"
+              fill={color}
+              opacity="0.95"
+            />
+          </g>
+        );
+      })}
+      {visibleCandles.length ? (
+        <line x1="0" x2={width} y1={yFor(visibleCandles[visibleCandles.length - 1].close)} y2={yFor(visibleCandles[visibleCandles.length - 1].close)} stroke="#20e0a0" strokeWidth="1" strokeDasharray="2 3" opacity="0.8" />
+      ) : null}
+    </svg>
+  );
 }
 
 export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean }) {
@@ -132,7 +209,8 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           name: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435",
           quantity: "\u041a\u043e\u043b-\u0432\u043e",
           price: "\u0426\u0435\u043d\u0430",
-          add: "\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c",
+          profit: "\u041f\u0440\u0438\u0431\u044b\u043b\u044c",
+          loss: "\u0423\u0431\u044b\u0442\u043e\u043a",
           value: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435",
           assets: "\u0410\u043a\u0442\u0438\u0432\u043e\u0432",
           allocation: "\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435",
@@ -164,7 +242,8 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           name: "Name",
           quantity: "Qty",
           price: "Price",
-          add: "Add",
+          profit: "Profit",
+          loss: "Loss",
           value: "Net worth",
           assets: "Assets",
           allocation: "Allocation",
@@ -222,15 +301,19 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   const priceNumber = parseAmountInput(price);
 
   const addAssetMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (direction: "profit" | "loss") => {
+      const signedQuantity = direction === "loss" ? -Math.abs(quantityNumber) : Math.abs(quantityNumber);
+      return (
       apiRequest("POST", "/api/portfolio/assets", {
         symbol: name || typeLabels[type],
         name: name || typeLabels[type],
         type,
-        quantity: quantityNumber,
+        quantity: signedQuantity,
         entryPrice: priceNumber,
         currentPrice: priceNumber,
-      }),
+      })
+      );
+    },
     onSuccess: () => {
       setName("");
       setQuantity("");
@@ -255,7 +338,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   });
 
   const canAdd = quantityNumber > 0 && priceNumber >= 0 && isAuthenticated;
-  const linePath = buildLinePath(portfolio.transactions);
+  const candles = useMemo(() => buildPortfolioCandles(portfolio.transactions), [portfolio.transactions]);
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -314,27 +397,34 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" placeholder={t.price} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
       </div>
 
-      <Button
-        type="button"
-        disabled={!canAdd || addAssetMutation.isPending}
-        onClick={() => addAssetMutation.mutate()}
-        className="mt-2 h-8 w-full bg-cyan-300 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
-      >
-        <Plus className="mr-1.5 h-3.5 w-3.5" />
-        {t.add}
-      </Button>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          disabled={!canAdd || addAssetMutation.isPending}
+          onClick={() => addAssetMutation.mutate("profit")}
+          className="h-8 bg-emerald-400 text-xs font-semibold text-slate-950 hover:bg-emerald-300"
+        >
+          <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
+          {t.profit}
+        </Button>
+        <Button
+          type="button"
+          disabled={!canAdd || addAssetMutation.isPending}
+          onClick={() => addAssetMutation.mutate("loss")}
+          className="h-8 bg-red-400 text-xs font-semibold text-white hover:bg-red-300 hover:text-slate-950"
+        >
+          <TrendingDown className="mr-1.5 h-3.5 w-3.5" />
+          {t.loss}
+        </Button>
+      </div>
       {addAssetMutation.isError ? <p className="mt-2 text-xs leading-relaxed text-red-200">{t.addError}</p> : null}
 
-      <div className="mt-3 rounded-md border border-white/10 bg-black/35 p-2">
+      <div className="mt-3 rounded-md border border-emerald-400/15 bg-black p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex items-center justify-between">
           <p className="text-[10px] uppercase tracking-wider text-white/45">{t.chart}</p>
           <span className="text-[10px] text-white/35">{portfolio.transactions.length}</span>
         </div>
-        <svg viewBox="0 0 160 60" className="mt-1 h-[72px] w-full overflow-visible">
-          <path d="M8 52 H152" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-          <path d="M8 30 H152" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-          {linePath ? <path d={linePath} fill="none" stroke="#34d399" strokeLinecap="round" strokeWidth="2.5" /> : null}
-        </svg>
+        <PortfolioCandlestickChart candles={candles} />
       </div>
 
       <div className="mt-3 space-y-2">
