@@ -297,7 +297,8 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     return { value, count: portfolio.assets.length };
   }, [portfolio.assets]);
 
-  const quantityNumber = parseAmountInput(quantity);
+  const rawQuantityNumber = parseAmountInput(quantity);
+  const quantityNumber = rawQuantityNumber > 0 ? rawQuantityNumber : 1;
   const priceNumber = parseAmountInput(price);
 
   const addAssetMutation = useMutation({
@@ -337,7 +338,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     },
   });
 
-  const canAdd = quantityNumber > 0 && priceNumber >= 0 && isAuthenticated;
+  const canAdd = priceNumber > 0 && isAuthenticated;
   const candles = useMemo(() => buildPortfolioCandles(portfolio.transactions), [portfolio.transactions]);
 
   return (
