@@ -11,7 +11,7 @@ import {
 } from "lightweight-charts";
 import NewsPopup from "./NewsPopup";
 import ChartTooltip from "./ChartTooltip";
-import { formatPeriodLabel, timeframeToSeconds, type Timeframe } from "@/lib/dateUtils";
+import { formatPeriodLabel, getPeriodKey, timeframeToSeconds, type Timeframe } from "@/lib/dateUtils";
 import { useLanguage } from "@/lib/i18n";
 import { Expand, Minus, Plus } from "lucide-react";
 
@@ -21,6 +21,12 @@ export interface StateData {
   physical: number;
   moral: number;
   financial: number;
+  ohlc?: {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+  };
 }
 
 export interface NewsEvent {
@@ -189,6 +195,16 @@ function buildAggregatePoint(
     };
   }
 
+  if (point.ohlc) {
+    return {
+      time: point.time,
+      open: point.ohlc.open,
+      high: point.ohlc.high,
+      low: point.ohlc.low,
+      close: point.ohlc.close,
+    };
+  }
+
   const open = index > 0 ? aggregateValue(sourceData[index - 1], weights) : close;
   const spread = Math.max(Math.abs(close - open) * 0.3, syntheticSeries ? 0.06 : 0.32);
 
@@ -252,9 +268,9 @@ function buildEventStickerLabel(event: NewsEvent, language: "ru" | "en") {
   return event.type === "positive" ? "PS" : "NS";
 }
 
-function buildRenderableData(input: StateData[], timeframe: Timeframe): StateData[] {
+function buildRenderableData(input: StateData[], timeframe: Timeframe, weights: LifeChartProps["weights"]): StateData[] {
   const deduped = deduplicateData(input);
-  if (deduped.length >= 2) return deduped;
+  if (deduped.length >= 2) return aggregateCandlesByTimeframe(deduped, timeframe, weights);
 
   const source =
     deduped[0] ??
@@ -293,6 +309,102 @@ function buildRenderableData(input: StateData[], timeframe: Timeframe): StateDat
   });
 }
 
+function aggregateCandlesByTimeframe(input: StateData[], timeframe: Timeframe, weights: LifeChartProps["weights"]): StateData[] {
+  const source = deduplicateData(input);
+  if (timeframe === "ALL" || source.length < 2) {
+    return source;
+  }
+
+  const result: StateData[] = [];
+  let group: StateData[] = [];
+  let currentKey: number | null = null;
+  let previousPoint: StateData | null = null;
+
+  const flushGroup = () => {
+    if (group.length === 0 || currentKey === null) return;
+
+    const open = previousPoint ? aggregateValue(previousPoint, weights) : aggregateValue(group[0], weights);
+    const values = [open, ...group.map((point) => aggregateValue(point, weights))];
+    const last = group[group.length - 1];
+
+    result.push({
+      time: currentKey as Time,
+      mental: last.mental,
+      physical: last.physical,
+      moral: last.moral,
+      financial: last.financial,
+      ohlc: {
+        open,
+        high: Math.max(...values),
+        low: Math.min(...values),
+        close: values[values.length - 1],
+      },
+    });
+
+    previousPoint = last;
+  };
+
+  for (const point of source) {
+    const key = getPeriodKey(point.time as number, timeframe);
+    if (currentKey === null) {
+      currentKey = key;
+      group = [point];
+      continue;
+    }
+
+    if (key !== currentKey) {
+      flushGroup();
+      currentKey = key;
+      group = [point];
+      continue;
+    }
+
+    group.push(point);
+  }
+
+  flushGroup();
+  return result;
+}
+
+function aggregateEventsByTimeframe(events: NewsEvent[], timeframe: Timeframe): NewsEvent[] {
+  const sortedEvents = [...events].sort((a, b) => (a.time as number) - (b.time as number));
+  if (timeframe === "ALL") {
+    return sortedEvents;
+  }
+
+  const groups = new Map<number, NewsEvent[]>();
+  for (const event of sortedEvents) {
+    const key = getPeriodKey(event.time as number, timeframe);
+    groups.set(key, [...(groups.get(key) ?? []), event]);
+  }
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([time, group]) => {
+      const impact = group.reduce(
+        (total, event) => ({
+          mental: total.mental + event.impact.mental,
+          physical: total.physical + event.impact.physical,
+          moral: total.moral + event.impact.moral,
+          financial: total.financial + event.impact.financial,
+        }),
+        { mental: 0, physical: 0, moral: 0, financial: 0 },
+      );
+      const totalImpact = impact.mental + impact.physical + impact.moral + impact.financial;
+      const first = group[0];
+
+      return {
+        ...first,
+        id: `period-${time}`,
+        time: time as Time,
+        type: totalImpact >= 0 ? "positive" : "negative",
+        text: group.length === 1 ? first.text : `${group.length} events`,
+        impact,
+        groupedEvents: group,
+      };
+    });
+}
+
 export default function LifeChart({
   data,
   visibleStates,
@@ -328,10 +440,6 @@ export default function LifeChart({
   const [tooltipEvent, setTooltipEvent] = useState<NewsEvent | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    newsRef.current = news;
-  }, [news]);
-
   const requestMarkerFrame = (extraFrames = 0) => {
     if (markerFrameRequestRef.current !== null) return;
     markerFrameRequestRef.current = window.requestAnimationFrame(() => {
@@ -361,7 +469,12 @@ export default function LifeChart({
         ];
   const stateLabels = STATE_META[language];
 
-  const renderableData = useMemo(() => buildRenderableData(data, timeframe), [data, timeframe]);
+  const renderableData = useMemo(() => buildRenderableData(data, timeframe, weights), [data, timeframe, weights]);
+  const chartNews = useMemo(() => aggregateEventsByTimeframe(news, timeframe), [news, timeframe]);
+
+  useEffect(() => {
+    newsRef.current = chartNews;
+  }, [chartNews]);
   const barSpacingByTimeframe: Record<Timeframe, number> = {
     ALL: 8,
     "1D": 28,
@@ -388,13 +501,15 @@ export default function LifeChart({
       return { current: 0, previous: 0, change: 0, changePercent: 0, max: 0, min: 0, open: 0, close: 0 };
     }
 
-    const values = renderableData.map((point) => aggregateValue(point, weights));
+    const values = renderableData.map((point) => point.ohlc?.close ?? aggregateValue(point, weights));
+    const highs = renderableData.map((point) => point.ohlc?.high ?? aggregateValue(point, weights));
+    const lows = renderableData.map((point) => point.ohlc?.low ?? aggregateValue(point, weights));
     const current = values[values.length - 1] ?? 0;
     const previous = values[Math.max(values.length - 2, 0)] ?? current;
-    const open = values[0] ?? current;
+    const open = renderableData[0]?.ohlc?.open ?? values[0] ?? current;
     const close = current;
-    const max = Math.max(...values);
-    const min = Math.min(...values);
+    const max = Math.max(...highs);
+    const min = Math.min(...lows);
     const change = current - previous;
     const changePercent = previous === 0 ? (current === 0 ? 0 : 100) : (change / Math.abs(previous)) * 100;
 
@@ -885,7 +1000,7 @@ export default function LifeChart({
 
   useEffect(() => {
     requestMarkerFrame(5);
-  }, [news]);
+  }, [chartNews]);
 
   useEffect(() => {
     seriesRef.current.mental?.applyOptions({ visible: visibleStates.mental });
@@ -897,8 +1012,8 @@ export default function LifeChart({
   useEffect(() => {
     if (!seriesRef.current.aggregate) return;
 
-    if (chartType === "line" && news.length > 0 && typeof (seriesRef.current.aggregate as any)?.setMarkers === "function") {
-      const markers: SeriesMarker<Time>[] = news.map((event) => ({
+    if (chartType === "line" && chartNews.length > 0 && typeof (seriesRef.current.aggregate as any)?.setMarkers === "function") {
+      const markers: SeriesMarker<Time>[] = chartNews.map((event) => ({
         time: event.time,
         position: event.type === "positive" ? "aboveBar" : "belowBar",
         color: event.type === "positive" ? CHART_COLORS.financial : CHART_COLORS.negative,
@@ -912,12 +1027,12 @@ export default function LifeChart({
         console.warn("Failed to set markers:", error);
       }
     }
-  }, [news, chartType]);
+  }, [chartNews, chartType]);
 
   const renderNewsMarkers = () => {
     if (!chartRef.current || plottedDataRef.current.length === 0) return null;
 
-    return news.map((event, index) => {
+    return chartNews.map((event, index) => {
       const eventTime = event.time as number;
       const price =
         plottedDataRef.current.find((point) => point.time === event.time) ??
@@ -979,6 +1094,7 @@ export default function LifeChart({
   };
 
   const changeIsPositive = aggregateStats.change >= 0;
+  const activeTimeframeLabel = timeframeOptions.find((option) => option.value === timeframe)?.label ?? timeframe;
   const copy =
     language === "ru"
       ? {
@@ -1120,7 +1236,7 @@ export default function LifeChart({
 
       <div className="shrink-0 overflow-x-auto border-b border-white/10 bg-black px-2 py-1.5 text-[10px] leading-none text-[#8a94a6] sm:px-5 sm:py-2 sm:text-[11px]">
         <div className="w-max whitespace-nowrap">
-          <span>{tokenName}USDT · 1Д · SoulGraph </span>
+          <span>{tokenName}USDT · {activeTimeframeLabel} · SoulGraph </span>
           <span className="ml-2 text-[#9aa4b2]">{copy.ohlcOpen}</span> <span className="text-white/85">{aggregateStats.open.toFixed(2)}</span>
           <span className="ml-2 text-[#9aa4b2]">{copy.ohlcHigh}</span> <span className="text-[#22AB94]">{aggregateStats.max.toFixed(2)}</span>
           <span className="ml-2 text-[#9aa4b2]">{copy.ohlcLow}</span> <span className="text-[#F23645]">{aggregateStats.min.toFixed(2)}</span>
@@ -1157,7 +1273,7 @@ export default function LifeChart({
           <div className="pointer-events-none relative h-full w-full">{renderNewsMarkers()}</div>
         </div>
 
-        {news.length === 0 && (
+        {chartNews.length === 0 && (
           <div className="pointer-events-none absolute left-2 right-2 top-2 rounded border border-white/10 bg-black/80 px-2 py-1.5 text-[11px] text-[#b8c0cc] backdrop-blur-sm sm:left-4 sm:right-auto sm:top-4 sm:rounded-full sm:px-3 sm:text-xs">
             {copy.empty}
           </div>

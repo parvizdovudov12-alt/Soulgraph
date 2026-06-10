@@ -190,6 +190,21 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
   }
 }
 
-export function getPeriodBucket(unixSeconds: number, _timeframe: string): number {
-  return getStartOfDay(unixSeconds);
+export function getPeriodKey(unixSeconds: number, timeframe: Timeframe): number {
+  switch (timeframe) {
+    case "1D":
+      return getStartOfDay(unixSeconds);
+    case "1W":
+      return getStartOfWeek(unixSeconds);
+    case "1M":
+      return getStartOfMonth(unixSeconds);
+    case "1Y":
+      return getStartOfYear(unixSeconds);
+    case "ALL":
+      return unixSeconds;
+  }
+}
+
+export function getPeriodBucket(unixSeconds: number, timeframe: Timeframe): number {
+  return getPeriodKey(unixSeconds, timeframe);
 }
