@@ -99,7 +99,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   const { language } = useLanguage();
   const [name, setName] = useState("");
   const [type, setType] = useState<AssetType>("cash");
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
 
@@ -209,7 +209,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       }),
     onSuccess: () => {
       setName("");
-      setQuantity("1");
+      setQuantity("");
       setPrice("");
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
     },
