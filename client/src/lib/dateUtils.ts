@@ -62,9 +62,8 @@ export function getStartOfDay(unixSeconds: number): number {
   return Math.floor((startOfDay.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export function getStartOfIntradayInterval(unixSeconds: number, intervalMinutes: number): number {
+export function getStartOfIntradayInterval(unixSeconds: number, intervalSeconds: number): number {
   const startOfDay = getStartOfDay(unixSeconds);
-  const intervalSeconds = intervalMinutes * 60;
   const secondsSinceDayStart = Math.max(0, unixSeconds - startOfDay);
   return startOfDay + Math.floor(secondsSinceDayStart / intervalSeconds) * intervalSeconds;
 }
@@ -93,10 +92,12 @@ export function getStartOfYear(unixSeconds: number): number {
   return Math.floor((startOfYear.getTime() - 3 * 60 * 60 * 1000) / 1000);
 }
 
-export type Timeframe = "1M" | "30M" | "1H" | "4H" | "1D";
+export type Timeframe = "30S" | "1M" | "30M" | "1H" | "4H" | "1D";
 
 export function timeframeToSeconds(timeframe: Timeframe): number {
   switch (timeframe) {
+    case "30S":
+      return 30;
     case "1M":
       return 60;
     case "30M":
@@ -185,6 +186,7 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
   const minutes = moscowDate.getUTCMinutes().toString().padStart(2, "0");
 
   switch (timeframe) {
+    case "30S":
     case "1M":
     case "30M":
     case "1H":
@@ -197,14 +199,16 @@ export function formatPeriodLabel(unixSeconds: number, timeframe: Timeframe, _la
 
 export function getPeriodKey(unixSeconds: number, timeframe: Timeframe): number {
   switch (timeframe) {
-    case "1M":
-      return getStartOfIntradayInterval(unixSeconds, 1);
-    case "30M":
+    case "30S":
       return getStartOfIntradayInterval(unixSeconds, 30);
-    case "1H":
+    case "1M":
       return getStartOfIntradayInterval(unixSeconds, 60);
+    case "30M":
+      return getStartOfIntradayInterval(unixSeconds, 30 * 60);
+    case "1H":
+      return getStartOfIntradayInterval(unixSeconds, 60 * 60);
     case "4H":
-      return getStartOfIntradayInterval(unixSeconds, 240);
+      return getStartOfIntradayInterval(unixSeconds, 4 * 60 * 60);
     case "1D":
       return getStartOfDay(unixSeconds);
   }

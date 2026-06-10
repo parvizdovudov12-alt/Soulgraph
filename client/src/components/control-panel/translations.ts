@@ -194,6 +194,7 @@ export function getControlPanelText(language: string, hasGoal: boolean): Control
 export function getPeriodActionLabel(timeframe: Timeframe, language: string) {
   const labels = {
     ru: {
+      "30S": "\u0410\u043d\u0430\u043b\u0438\u0437 30 \u0441\u0435\u043a\u0443\u043d\u0434",
       "1M": "\u0410\u043d\u0430\u043b\u0438\u0437 1 \u043c\u0438\u043d\u0443\u0442\u044b",
       "30M": "\u0410\u043d\u0430\u043b\u0438\u0437 30 \u043c\u0438\u043d\u0443\u0442",
       "1H": "\u0410\u043d\u0430\u043b\u0438\u0437 \u0447\u0430\u0441\u0430",
@@ -201,6 +202,7 @@ export function getPeriodActionLabel(timeframe: Timeframe, language: string) {
       "1D": "\u0410\u043d\u0430\u043b\u0438\u0437 \u0434\u043d\u044f",
     },
     en: {
+      "30S": "30-second analysis",
       "1M": "1-minute analysis",
       "30M": "30-minute analysis",
       "1H": "Hour analysis",
