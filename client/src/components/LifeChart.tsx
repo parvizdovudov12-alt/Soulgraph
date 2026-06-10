@@ -1246,7 +1246,7 @@ export default function LifeChart({
 
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-black px-2 py-1.5 sm:px-5 sm:py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-[16px] font-semibold text-white sm:text-[20px] lg:text-2xl">{tokenName}/USDT</span>
+          <span className="truncate text-[16px] font-semibold text-white sm:text-[20px] lg:text-2xl">{tokenName}</span>
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-white/70 sm:text-sm">
             <span className="h-2 w-2 rounded-full bg-[#36c98b] sm:h-2.5 sm:w-2.5" />
             {copy.live}
@@ -1281,7 +1281,7 @@ export default function LifeChart({
 
       <div className="shrink-0 overflow-x-auto border-b border-white/10 bg-black px-2 py-1.5 text-[10px] leading-none text-[#8a94a6] sm:px-5 sm:py-2 sm:text-[11px]">
         <div className="w-max whitespace-nowrap">
-          <span>{tokenName}USDT · {activeTimeframeLabel} · SoulGraph </span>
+          <span>{tokenName} · {activeTimeframeLabel} · SoulGraph </span>
           <span className="ml-2 text-[#9aa4b2]">{copy.ohlcOpen}</span> <span className="text-white/85">{aggregateStats.open.toFixed(2)}</span>
           <span className="ml-2 text-[#9aa4b2]">{copy.ohlcHigh}</span> <span className="text-[#22AB94]">{aggregateStats.max.toFixed(2)}</span>
           <span className="ml-2 text-[#9aa4b2]">{copy.ohlcLow}</span> <span className="text-[#F23645]">{aggregateStats.min.toFixed(2)}</span>

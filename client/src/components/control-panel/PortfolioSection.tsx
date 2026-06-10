@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BriefcaseBusiness, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ type AssetType =
   | "stock"
   | "etf"
   | "gold";
+
+type PortfolioCurrency = "USD" | "RUB" | "EUR" | "AED" | "TRY" | "KZT" | "USDT";
 
 interface PortfolioResponse {
   assets: PortfolioAsset[];
@@ -47,12 +49,27 @@ const assetTypes: AssetType[] = [
   "gold",
 ];
 
-function formatMoney(value: number) {
+const portfolioCurrencies: PortfolioCurrency[] = ["USD", "RUB", "EUR", "AED", "TRY", "KZT", "USDT"];
+
+function getStoredPortfolioCurrency(): PortfolioCurrency {
+  if (typeof window === "undefined") return "USD";
+  const storedCurrency = window.localStorage.getItem("soulgraph_portfolio_currency");
+  return portfolioCurrencies.includes(storedCurrency as PortfolioCurrency) ? (storedCurrency as PortfolioCurrency) : "USD";
+}
+
+function formatMoney(value: number, currency: PortfolioCurrency) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+  if (currency === "USDT") {
+    return `${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: safeValue >= 1000 ? 0 : 2,
+    }).format(safeValue)} USDT`;
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: value >= 1000 ? 0 : 2,
-  }).format(Number.isFinite(value) ? value : 0);
+  }).format(safeValue);
 }
 
 function formatNumber(value: number) {
@@ -99,6 +116,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   const { language } = useLanguage();
   const [name, setName] = useState("");
   const [type, setType] = useState<AssetType>("cash");
+  const [currency, setCurrency] = useState<PortfolioCurrency>(() => getStoredPortfolioCurrency());
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
@@ -110,6 +128,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           subtitle: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u0430\u043a\u0442\u0438\u0432\u043e\u0432",
           signIn: "\u0412\u043e\u0439\u0434\u0438 \u0432 \u0430\u043a\u043a\u0430\u0443\u043d\u0442, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0440\u0442\u0444\u0435\u043b\u044c \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u043b\u0441\u044f \u043d\u0430 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0435 \u0438 \u041f\u041a.",
           category: "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f",
+          currency: "\u0412\u0430\u043b\u044e\u0442\u0430",
           name: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435",
           quantity: "\u041a\u043e\u043b-\u0432\u043e",
           price: "\u0426\u0435\u043d\u0430",
@@ -141,6 +160,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           subtitle: "Net worth and asset allocation",
           signIn: "Sign in to sync portfolio across mobile and desktop.",
           category: "Category",
+          currency: "Currency",
           name: "Name",
           quantity: "Qty",
           price: "Price",
@@ -182,6 +202,10 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     etf: t.etf,
     gold: t.gold,
   };
+
+  useEffect(() => {
+    window.localStorage.setItem("soulgraph_portfolio_currency", currency);
+  }, [currency]);
 
   const portfolioQuery = useQuery<PortfolioResponse>({
     queryKey: ["/api/portfolio"],
@@ -252,7 +276,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
         <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.value}</p>
-          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(totals.value)}</p>
+          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(totals.value, currency)}</p>
         </div>
         <div className="w-20 rounded-md border border-white/10 bg-white/[0.035] p-2 text-right">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.assets}</p>
@@ -269,6 +293,18 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
             {assetTypes.map((assetType) => (
               <SelectItem key={assetType} value={assetType}>
                 {typeLabels[assetType]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={currency} onValueChange={(nextCurrency) => setCurrency(nextCurrency as PortfolioCurrency)}>
+          <SelectTrigger className="h-8 border-white/10 bg-black/40 text-xs text-white">
+            <SelectValue placeholder={t.currency} />
+          </SelectTrigger>
+          <SelectContent>
+            {portfolioCurrencies.map((portfolioCurrency) => (
+              <SelectItem key={portfolioCurrency} value={portfolioCurrency}>
+                {portfolioCurrency}
               </SelectItem>
             ))}
           </SelectContent>
@@ -319,10 +355,10 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
                     <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase text-white/48">{categoryLabel}</span>
                   </div>
                   <p className="mt-1 truncate text-[11px] text-white/46">
-                    {formatNumber(asset.quantity)} x {formatMoney(asset.currentPrice)}
+                    {formatNumber(asset.quantity)} x {formatMoney(asset.currentPrice, currency)}
                   </p>
                 </div>
-                <p className="text-right text-sm font-semibold text-white">{formatMoney(value)}</p>
+                <p className="text-right text-sm font-semibold text-white">{formatMoney(value, currency)}</p>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-cyan-300" style={{ width: `${clampPercent(allocation)}%` }} />
