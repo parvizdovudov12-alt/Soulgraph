@@ -1098,18 +1098,36 @@ export default function LifeChart({
   const renderVolumeBars = () => {
     const timeScale = chartRef.current?.timeScale();
     if (!timeScale || volumeBars.length === 0) return null;
+    const chartWidth = chartContainerRef.current?.clientWidth ?? 0;
+    const coordinates = volumeBars
+      .map((bar) => ({
+        ...bar,
+        coordinate: timeScale.timeToCoordinate(bar.time),
+      }))
+      .filter((bar): bar is typeof bar & { coordinate: number } => (
+        typeof bar.coordinate === "number" &&
+        Number.isFinite(bar.coordinate) &&
+        bar.coordinate >= 0 &&
+        bar.coordinate <= chartWidth
+      ));
 
-    return volumeBars.map((bar, index) => {
-      const coordinate = timeScale.timeToCoordinate(bar.time);
-      if (coordinate === null || coordinate === undefined) return null;
+    return coordinates.map((bar, index) => {
+      const previousCoordinate = coordinates[index - 1]?.coordinate;
+      const nextCoordinate = coordinates[index + 1]?.coordinate;
+      const spacing = Math.min(
+        previousCoordinate === undefined ? Number.POSITIVE_INFINITY : Math.abs(bar.coordinate - previousCoordinate),
+        nextCoordinate === undefined ? Number.POSITIVE_INFINITY : Math.abs(nextCoordinate - bar.coordinate),
+      );
+      const fallbackWidth = barSpacingByTimeframe[timeframe] * 0.72;
+      const barWidth = Math.max(3, Math.min(18, (Number.isFinite(spacing) ? spacing : fallbackWidth) * 0.72));
 
       return (
         <div
           key={`${bar.time}-${index}`}
           className="absolute bottom-0 rounded-t-[1px] transition-[height] duration-300"
           style={{
-            left: `${coordinate}px`,
-            width: "5px",
+            left: `${bar.coordinate}px`,
+            width: `${barWidth}px`,
             height: `${bar.height}%`,
             transform: "translateX(-50%)",
             backgroundColor: bar.positive ? "rgba(37,212,157,0.48)" : "rgba(255,79,93,0.48)",
