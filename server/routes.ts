@@ -682,7 +682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid portfolio movement data" });
       }
 
-      const result = await storage.createPortfolioMovement(req.session.userId, direction, amount);
+      const currency = typeof req.body?.currency === "string" ? req.body.currency.trim().toUpperCase() : undefined;
+      const result = await storage.createPortfolioMovement(req.session.userId, direction, amount, currency);
       res.json(result);
     } catch (error) {
       console.error("Failed to add portfolio movement:", error);

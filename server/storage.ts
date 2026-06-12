@@ -124,6 +124,15 @@ function normalizePortfolioQuantity(value: unknown) {
   return Math.max(-1_000_000_000, Math.min(1_000_000_000, numeric));
 }
 
+function normalizePortfolioCurrency(value: unknown) {
+  const currency = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return ["USD", "RUB", "EUR", "AED", "TRY", "KZT", "USDT"].includes(currency) ? currency : "RUB";
+}
+
+function getPortfolioMovementSymbol(currency: unknown) {
+  return `PORTFOLIO_${normalizePortfolioCurrency(currency)}`;
+}
+
 function normalizePortfolioSymbol(input: PortfolioAssetInput) {
   const rawSymbol = input.symbol?.trim() || input.name?.trim() || input.type;
   return rawSymbol.toUpperCase().replace(/[^A-ZА-ЯЁ0-9 _.-]/gi, "").slice(0, 32) || input.type.toUpperCase();
@@ -248,7 +257,7 @@ export interface IStorage {
   deleteAllUserNewsEvents(userId: string): Promise<void>;
   getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   createPortfolioAsset(userId: string, asset: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
-  createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
+  createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency?: string): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
   deletePortfolioMovement(userId: string, movementId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined>;
   deletePortfolioAsset(userId: string, assetId: string): Promise<void>;
@@ -510,11 +519,12 @@ export class MemStorage implements IStorage {
     return { ...(await this.getUserPortfolio(userId)), transaction };
   }
 
-  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency = "RUB"): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
     const now = new Date();
     const normalizedAmount = normalizeMoneyValue(amount);
+    const symbol = getPortfolioMovementSymbol(currency);
     const transactions = Array.from(this.portfolioTransactions.values())
-      .filter((transaction) => transaction.userId === userId && (transaction.side === "profit" || transaction.side === "loss"))
+      .filter((transaction) => transaction.userId === userId && transaction.symbol === symbol && (transaction.side === "profit" || transaction.side === "loss"))
       .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
     const previousValue = transactions[transactions.length - 1]?.portfolioValue ?? 0;
     const signedAmount = direction === "loss" ? -normalizedAmount : normalizedAmount;
@@ -522,7 +532,7 @@ export class MemStorage implements IStorage {
       id: randomUUID(),
       userId,
       assetId: null,
-      symbol: "PORTFOLIO",
+      symbol,
       side: direction,
       quantity: direction === "loss" ? -1 : 1,
       price: normalizedAmount,
@@ -539,8 +549,9 @@ export class MemStorage implements IStorage {
       return this.getUserPortfolio(userId);
     }
     this.portfolioTransactions.delete(movementId);
+    const symbol = movement.symbol;
     const movements = Array.from(this.portfolioTransactions.values())
-      .filter((transaction) => transaction.userId === userId && (transaction.side === "profit" || transaction.side === "loss"))
+      .filter((transaction) => transaction.userId === userId && transaction.symbol === symbol && (transaction.side === "profit" || transaction.side === "loss"))
       .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
     let balance = 0;
     for (const transaction of movements) {
@@ -1234,28 +1245,30 @@ export class PostgresStorage implements IStorage {
     });
   }
 
-  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency = "RUB"): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
     return withClient(async (client) => {
       await client.query("begin");
       try {
         const normalizedAmount = normalizeMoneyValue(amount);
+        const symbol = getPortfolioMovementSymbol(currency);
         const previousResult = await client.query(
           `select portfolio_value
            from portfolio_transactions
-           where user_id = $1 and side in ('profit', 'loss')
+           where user_id = $1 and symbol = $2 and side in ('profit', 'loss')
            order by created_at desc
            limit 1`,
-          [userId]
+          [userId, symbol]
         );
         const previousValue = Number(previousResult.rows[0]?.portfolio_value ?? 0);
         const signedAmount = direction === "loss" ? -normalizedAmount : normalizedAmount;
         const transactionResult = await client.query(
           `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
-           values ($1, $2, null, 'PORTFOLIO', $3, $4, $5, $6)
+           values ($1, $2, null, $3, $4, $5, $6, $7)
            returning *`,
           [
             randomUUID(),
             userId,
+            symbol,
             direction,
             direction === "loss" ? -1 : 1,
             normalizedAmount,
@@ -1283,7 +1296,7 @@ export class PostgresStorage implements IStorage {
       await client.query("begin");
       try {
         const existing = await client.query(
-          `select id from portfolio_transactions where id = $1 and user_id = $2 and side in ('profit', 'loss')`,
+          `select id, symbol from portfolio_transactions where id = $1 and user_id = $2 and side in ('profit', 'loss')`,
           [movementId, userId]
         );
         if (!existing.rows[0]) {
@@ -1292,12 +1305,13 @@ export class PostgresStorage implements IStorage {
         }
 
         await client.query(`delete from portfolio_transactions where id = $1 and user_id = $2`, [movementId, userId]);
+        const symbol = existing.rows[0].symbol;
         const movementsResult = await client.query(
           `select id, side, price
            from portfolio_transactions
-           where user_id = $1 and side in ('profit', 'loss')
+           where user_id = $1 and symbol = $2 and side in ('profit', 'loss')
            order by created_at asc, id asc`,
-          [userId]
+          [userId, symbol]
         );
         let balance = 0;
         for (const row of movementsResult.rows) {

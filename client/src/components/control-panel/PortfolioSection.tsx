@@ -59,22 +59,29 @@ const assetTypes: AssetType[] = [
 ];
 
 const portfolioCurrencies: PortfolioCurrency[] = ["USD", "RUB", "EUR", "AED", "TRY", "KZT", "USDT"];
+const portfolioCurrencyStorageKey = "soulgraph_portfolio_currency";
+const portfolioCurrencyVersionKey = "soulgraph_portfolio_currency_v2";
 
 function getStoredPortfolioCurrency(): PortfolioCurrency {
-  if (typeof window === "undefined") return "USD";
-  const storedCurrency = window.localStorage.getItem("soulgraph_portfolio_currency");
-  return portfolioCurrencies.includes(storedCurrency as PortfolioCurrency) ? (storedCurrency as PortfolioCurrency) : "USD";
+  if (typeof window === "undefined") return "RUB";
+  const storedCurrency = window.localStorage.getItem(portfolioCurrencyStorageKey);
+  const hasCurrencyV2 = window.localStorage.getItem(portfolioCurrencyVersionKey) === "true";
+  if (!hasCurrencyV2 && storedCurrency === "USD") {
+    return "RUB";
+  }
+  return portfolioCurrencies.includes(storedCurrency as PortfolioCurrency) ? (storedCurrency as PortfolioCurrency) : "RUB";
 }
 
 function formatMoney(value: number, currency: PortfolioCurrency) {
   const safeValue = Number.isFinite(value) ? value : 0;
+  const locale = currency === "RUB" ? "ru-RU" : "en-US";
   if (currency === "USDT") {
     return `${new Intl.NumberFormat("en-US", {
       maximumFractionDigits: safeValue >= 1000 ? 0 : 2,
     }).format(safeValue)} USDT`;
   }
 
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: value >= 1000 ? 0 : 2,
@@ -312,7 +319,8 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   };
 
   useEffect(() => {
-    window.localStorage.setItem("soulgraph_portfolio_currency", currency);
+    window.localStorage.setItem(portfolioCurrencyStorageKey, currency);
+    window.localStorage.setItem(portfolioCurrencyVersionKey, "true");
   }, [currency]);
 
   const portfolioQuery = useQuery<PortfolioResponse>({
@@ -336,6 +344,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       return apiRequest("POST", "/api/portfolio/movements", {
         direction,
         amount,
+        currency,
       });
     },
     onSuccess: () => {
@@ -369,13 +378,14 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   });
 
   const canAdd = priceNumber > 0 && isAuthenticated;
+  const portfolioSymbol = `PORTFOLIO_${currency}`;
   const portfolioChartTransactions = useMemo(
-    () => portfolio.transactions.filter((transaction) => transaction.symbol === "PORTFOLIO" && (transaction.side === "profit" || transaction.side === "loss")),
-    [portfolio.transactions],
+    () => portfolio.transactions.filter((transaction) => transaction.symbol === portfolioSymbol && (transaction.side === "profit" || transaction.side === "loss")),
+    [portfolio.transactions, portfolioSymbol],
   );
   const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
   const movementBalance = portfolioChartTransactions[portfolioChartTransactions.length - 1]?.portfolioValue ?? 0;
-  const displayedTotal = totals.value + movementBalance;
+  const displayedTotal = movementBalance;
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -431,7 +441,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         </Select>
         <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t.name} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
         <Input value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="decimal" placeholder={t.quantity} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
-        <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" placeholder={t.price} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" placeholder={`${t.price} ${currency}`} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-2">
