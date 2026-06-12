@@ -690,6 +690,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/portfolio/movements/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (!isValidEntityId(req.params.id)) {
+        return res.status(400).json({ message: "Invalid movement id" });
+      }
+
+      const result = await storage.deletePortfolioMovement(req.session.userId, req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to delete portfolio movement:", error);
+      res.status(500).json({ message: "Failed to delete portfolio movement" });
+    }
+  });
+
   app.patch("/api/portfolio/assets/:id/price", async (req, res) => {
     try {
       if (!req.session.userId) {

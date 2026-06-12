@@ -249,6 +249,7 @@ export interface IStorage {
   getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   createPortfolioAsset(userId: string, asset: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
   createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
+  deletePortfolioMovement(userId: string, movementId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined>;
   deletePortfolioAsset(userId: string, assetId: string): Promise<void>;
   getUserDailyTasks(userId: string): Promise<DBDailyTask[]>;
@@ -530,6 +531,27 @@ export class MemStorage implements IStorage {
     };
     this.portfolioTransactions.set(transaction.id, transaction);
     return { ...(await this.getUserPortfolio(userId)), transaction };
+  }
+
+  async deletePortfolioMovement(userId: string, movementId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }> {
+    const movement = this.portfolioTransactions.get(movementId);
+    if (!movement || movement.userId !== userId || (movement.side !== "profit" && movement.side !== "loss")) {
+      return this.getUserPortfolio(userId);
+    }
+    this.portfolioTransactions.delete(movementId);
+    const movements = Array.from(this.portfolioTransactions.values())
+      .filter((transaction) => transaction.userId === userId && (transaction.side === "profit" || transaction.side === "loss"))
+      .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
+    let balance = 0;
+    for (const transaction of movements) {
+      const amount = Math.abs(transaction.price);
+      balance += transaction.side === "loss" ? -amount : amount;
+      this.portfolioTransactions.set(transaction.id, {
+        ...transaction,
+        portfolioValue: balance,
+      });
+    }
+    return this.getUserPortfolio(userId);
   }
 
   async updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined> {
@@ -1248,6 +1270,50 @@ export class PostgresStorage implements IStorage {
         return {
           assets: assetsResult.rows.map(mapPortfolioAsset),
           transaction: mapPortfolioTransaction(transactionResult.rows[0]),
+        };
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      }
+    });
+  }
+
+  async deletePortfolioMovement(userId: string, movementId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }> {
+    return withClient(async (client) => {
+      await client.query("begin");
+      try {
+        const existing = await client.query(
+          `select id from portfolio_transactions where id = $1 and user_id = $2 and side in ('profit', 'loss')`,
+          [movementId, userId]
+        );
+        if (!existing.rows[0]) {
+          await client.query("rollback");
+          return this.getUserPortfolio(userId);
+        }
+
+        await client.query(`delete from portfolio_transactions where id = $1 and user_id = $2`, [movementId, userId]);
+        const movementsResult = await client.query(
+          `select id, side, price
+           from portfolio_transactions
+           where user_id = $1 and side in ('profit', 'loss')
+           order by created_at asc, id asc`,
+          [userId]
+        );
+        let balance = 0;
+        for (const row of movementsResult.rows) {
+          const amount = Math.abs(Number(row.price ?? 0));
+          balance += row.side === "loss" ? -amount : amount;
+          await client.query(`update portfolio_transactions set portfolio_value = $1 where id = $2`, [balance, row.id]);
+        }
+
+        const [assetsResult, transactionsResult] = await Promise.all([
+          client.query(`select * from portfolio_assets where user_id = $1 order by updated_at desc, created_at desc`, [userId]),
+          client.query(`select * from portfolio_transactions where user_id = $1 order by created_at asc, id asc`, [userId]),
+        ]);
+        await client.query("commit");
+        return {
+          assets: assetsResult.rows.map(mapPortfolioAsset),
+          transactions: transactionsResult.rows.map(mapPortfolioTransaction),
         };
       } catch (error) {
         await client.query("rollback");

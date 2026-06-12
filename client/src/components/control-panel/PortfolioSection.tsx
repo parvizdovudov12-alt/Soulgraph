@@ -35,6 +35,7 @@ interface PortfolioCandle {
   high: number;
   low: number;
   close: number;
+  side: string;
 }
 
 const emptyPortfolio: PortfolioResponse = {
@@ -113,6 +114,7 @@ function buildPortfolioCandles(points: PortfolioTransaction[]): PortfolioCandle[
       close,
       high: Math.max(open, close),
       low: Math.min(open, close),
+      side: point.side,
     };
   });
 }
@@ -125,7 +127,9 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
   const left = 10;
   const right = 258;
   const axisX = 266;
-  const visibleCandles = candles.slice(-36);
+  const candleGap = 10;
+  const maxVisible = Math.max(1, Math.floor((right - left) / candleGap) + 1);
+  const visibleCandles = candles.slice(-maxVisible);
   const values = visibleCandles.flatMap((candle) => [candle.high, candle.low]);
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 1;
@@ -134,8 +138,7 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
   const scaleMax = max + padding;
   const span = scaleMax - scaleMin || 1;
   const plotWidth = right - left;
-  const candleGap = visibleCandles.length > 1 ? plotWidth / (visibleCandles.length - 1) : plotWidth;
-  const candleBodyWidth = Math.max(3, Math.min(8, candleGap * 0.45));
+  const candleBodyWidth = 5;
   const yFor = (value: number) => bottom - ((value - scaleMin) / span) * (bottom - top);
   const lastClose = visibleCandles[visibleCandles.length - 1]?.close ?? 0;
 
@@ -175,12 +178,12 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
         </>
       ) : null}
       {visibleCandles.map((candle, index) => {
-        const x = visibleCandles.length === 1 ? width / 2 : left + index * candleGap;
+        const x = left + index * candleGap;
         const openY = yFor(candle.open);
         const closeY = yFor(candle.close);
         const highY = yFor(candle.high);
         const lowY = yFor(candle.low);
-        const isUp = candle.close >= candle.open;
+        const isUp = candle.side === "profit" || candle.close >= candle.open;
         const color = isUp ? "#22c98f" : "#ff5c66";
         const bodyTop = Math.min(openY, closeY);
         const bodyHeight = Math.max(3, Math.abs(closeY - openY));
@@ -242,6 +245,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           history: "\u0418\u0441\u0442\u043e\u0440\u0438\u044f",
           empty: "\u0414\u043e\u0431\u0430\u0432\u044c \u043f\u0435\u0440\u0432\u044b\u0439 \u0430\u043a\u0442\u0438\u0432.",
           addError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0430\u043a\u0442\u0438\u0432. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043a\u043e\u043b-\u0432\u043e \u0438 \u0446\u0435\u043d\u0443.",
+          records: "\u0417\u0430\u043f\u0438\u0441\u0438",
           update: "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c",
           delete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c",
           real_estate: "\u041d\u0435\u0434\u0432\u0438\u0436\u0438\u043c\u043e\u0441\u0442\u044c",
@@ -275,6 +279,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           history: "History",
           empty: "Add your first asset.",
           addError: "Could not add asset. Check quantity and price.",
+          records: "Records",
           update: "Update",
           delete: "Delete",
           real_estate: "Real estate",
@@ -356,9 +361,16 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     },
   });
 
+  const deleteMovementMutation = useMutation({
+    mutationFn: (movementId: string) => apiRequest("DELETE", `/api/portfolio/movements/${movementId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
+    },
+  });
+
   const canAdd = priceNumber > 0 && isAuthenticated;
   const portfolioChartTransactions = useMemo(
-    () => portfolio.transactions.filter((transaction) => transaction.side === "profit" || transaction.side === "loss"),
+    () => portfolio.transactions.filter((transaction) => transaction.symbol === "PORTFOLIO" && (transaction.side === "profit" || transaction.side === "loss")),
     [portfolio.transactions],
   );
   const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
@@ -450,6 +462,34 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           <span className="text-[10px] text-white/35">{portfolioChartTransactions.length}</span>
         </div>
         <PortfolioCandlestickChart candles={candles} />
+        {portfolioChartTransactions.length ? (
+          <div className="mt-2 space-y-1.5">
+            <p className="text-[10px] uppercase tracking-wider text-white/40">{t.records}</p>
+            {portfolioChartTransactions.slice(-6).reverse().map((transaction) => {
+              const isProfit = transaction.side === "profit";
+              return (
+                <div key={transaction.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded border border-white/10 bg-white/[0.025] px-2 py-1.5">
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold ${isProfit ? "text-emerald-300" : "text-red-300"}`}>
+                      {isProfit ? t.profit : t.loss} {formatMoney(Math.abs(transaction.price), currency)}
+                    </p>
+                    <p className="truncate text-[10px] text-white/38">{formatMoney(transaction.portfolioValue, currency)}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7 border-red-300/25 bg-red-400/10 text-red-200 hover:bg-red-400/20"
+                    onClick={() => deleteMovementMutation.mutate(transaction.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="sr-only">{t.delete}</span>
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-3 space-y-2">
