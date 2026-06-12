@@ -357,18 +357,23 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   const priceNumber = parseAmountInput(price);
 
   const addAssetMutation = useMutation({
-    mutationFn: (direction: "profit" | "loss") => {
+    mutationFn: async (direction: "profit" | "loss") => {
       const amount = quantityNumber > 1 ? quantityNumber * priceNumber : priceNumber;
-      return apiRequest("POST", "/api/portfolio/movements", {
+      const response = await apiRequest("POST", "/api/portfolio/movements", {
         direction,
         amount,
         currency,
       });
+      return response.json() as Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       setName("");
       setQuantity("");
       setPrice("");
+      queryClient.setQueryData<PortfolioResponse>(["/api/portfolio"], (current) => ({
+        assets: result.assets,
+        transactions: [...(current?.transactions ?? []), result.transaction],
+      }));
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
     },
   });
@@ -389,8 +394,12 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   });
 
   const deleteMovementMutation = useMutation({
-    mutationFn: (movementId: string) => apiRequest("DELETE", `/api/portfolio/movements/${movementId}`, {}),
-    onSuccess: () => {
+    mutationFn: async (movementId: string) => {
+      const response = await apiRequest("DELETE", `/api/portfolio/movements/${movementId}`, {});
+      return response.json() as Promise<PortfolioResponse>;
+    },
+    onSuccess: (portfolioResult) => {
+      queryClient.setQueryData<PortfolioResponse>(["/api/portfolio"], portfolioResult);
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
     },
   });
