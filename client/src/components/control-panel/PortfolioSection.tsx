@@ -61,6 +61,15 @@ const assetTypes: AssetType[] = [
 const portfolioCurrencies: PortfolioCurrency[] = ["USD", "RUB", "EUR", "AED", "TRY", "KZT", "USDT"];
 const portfolioCurrencyStorageKey = "soulgraph_portfolio_currency";
 const portfolioCurrencyVersionKey = "soulgraph_portfolio_currency_v2";
+const portfolioUsdRates: Record<PortfolioCurrency, number> = {
+  USD: 1,
+  USDT: 1,
+  RUB: 0.011,
+  EUR: 1.08,
+  AED: 0.272,
+  TRY: 0.031,
+  KZT: 0.002,
+};
 
 function getStoredPortfolioCurrency(): PortfolioCurrency {
   if (typeof window === "undefined") return "RUB";
@@ -90,6 +99,15 @@ function formatMoney(value: number, currency: PortfolioCurrency) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(Number.isFinite(value) ? value : 0);
+}
+
+function getMovementCurrency(symbol: string): PortfolioCurrency | null {
+  const currency = symbol.replace("PORTFOLIO_", "");
+  return portfolioCurrencies.includes(currency as PortfolioCurrency) ? (currency as PortfolioCurrency) : null;
+}
+
+function convertToUsd(value: number, currency: PortfolioCurrency) {
+  return value * portfolioUsdRates[currency];
 }
 
 function clampPercent(value: number) {
@@ -245,7 +263,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           price: "\u0426\u0435\u043d\u0430",
           profit: "\u041f\u0440\u0438\u0431\u044b\u043b\u044c",
           loss: "\u0423\u0431\u044b\u0442\u043e\u043a",
-          value: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435",
+          value: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 USD",
           assets: "\u0410\u043a\u0442\u0438\u0432\u043e\u0432",
           allocation: "\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435",
           chart: "\u0413\u0440\u0430\u0444\u0438\u043a \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f",
@@ -279,7 +297,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           price: "Price",
           profit: "Profit",
           loss: "Loss",
-          value: "Net worth",
+          value: "Net worth USD",
           assets: "Assets",
           allocation: "Allocation",
           chart: "Net worth chart",
@@ -384,8 +402,19 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     [portfolio.transactions, portfolioSymbol],
   );
   const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
-  const movementBalance = portfolioChartTransactions[portfolioChartTransactions.length - 1]?.portfolioValue ?? 0;
-  const displayedTotal = movementBalance;
+  const displayedTotalUsd = useMemo(() => {
+    const latestByCurrency = new Map<PortfolioCurrency, number>();
+    for (const transaction of portfolio.transactions) {
+      if (transaction.side !== "profit" && transaction.side !== "loss") continue;
+      const movementCurrency = getMovementCurrency(transaction.symbol);
+      if (!movementCurrency) continue;
+      latestByCurrency.set(movementCurrency, transaction.portfolioValue);
+    }
+    return Array.from(latestByCurrency.entries()).reduce(
+      (sum, [movementCurrency, value]) => sum + convertToUsd(value, movementCurrency),
+      0,
+    );
+  }, [portfolio.transactions]);
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -406,7 +435,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
         <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.value}</p>
-          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(displayedTotal, currency)}</p>
+          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(displayedTotalUsd, "USD")}</p>
         </div>
         <div className="w-20 rounded-md border border-white/10 bg-white/[0.035] p-2 text-right">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.assets}</p>
