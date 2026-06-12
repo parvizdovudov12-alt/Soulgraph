@@ -118,21 +118,26 @@ function buildPortfolioCandles(points: PortfolioTransaction[]): PortfolioCandle[
 }
 
 function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) {
-  const width = 260;
+  const width = 300;
   const height = 124;
   const top = 14;
   const bottom = 108;
   const left = 10;
-  const right = 248;
-  const visibleCandles = candles.slice(-28);
+  const right = 258;
+  const axisX = 266;
+  const visibleCandles = candles.slice(-36);
   const values = visibleCandles.flatMap((candle) => [candle.high, candle.low]);
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 1;
-  const span = max - min || 1;
+  const padding = Math.max(1, Math.abs(max - min) * 0.12);
+  const scaleMin = min - padding;
+  const scaleMax = max + padding;
+  const span = scaleMax - scaleMin || 1;
   const plotWidth = right - left;
   const candleGap = visibleCandles.length > 1 ? plotWidth / (visibleCandles.length - 1) : plotWidth;
   const candleBodyWidth = Math.max(3, Math.min(8, candleGap * 0.45));
-  const yFor = (value: number) => bottom - ((value - min) / span) * (bottom - top);
+  const yFor = (value: number) => bottom - ((value - scaleMin) / span) * (bottom - top);
+  const lastClose = visibleCandles[visibleCandles.length - 1]?.close ?? 0;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-[128px] w-full overflow-visible rounded-md bg-black">
@@ -155,6 +160,19 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
         <text x={width / 2} y={height / 2} fill="rgba(255,255,255,0.35)" fontSize="9" textAnchor="middle">
           No data
         </text>
+      ) : null}
+      {visibleCandles.length ? (
+        <>
+          <text x={axisX} y={yFor(scaleMax) + 4} fill="rgba(255,255,255,0.45)" fontSize="8">
+            {scaleMax.toFixed(0)}
+          </text>
+          <text x={axisX} y={yFor((scaleMax + scaleMin) / 2) + 3} fill="rgba(255,255,255,0.38)" fontSize="8">
+            {((scaleMax + scaleMin) / 2).toFixed(0)}
+          </text>
+          <text x={axisX} y={yFor(scaleMin)} fill="rgba(255,255,255,0.45)" fontSize="8">
+            {scaleMin.toFixed(0)}
+          </text>
+        </>
       ) : null}
       {visibleCandles.map((candle, index) => {
         const x = visibleCandles.length === 1 ? width / 2 : left + index * candleGap;
@@ -183,7 +201,13 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
         );
       })}
       {visibleCandles.length ? (
-        <line x1="0" x2={width} y1={yFor(visibleCandles[visibleCandles.length - 1].close)} y2={yFor(visibleCandles[visibleCandles.length - 1].close)} stroke="#20e0a0" strokeWidth="1" strokeDasharray="2 3" opacity="0.8" />
+        <>
+          <line x1="0" x2={right} y1={yFor(lastClose)} y2={yFor(lastClose)} stroke="#20e0a0" strokeWidth="1" strokeDasharray="2 3" opacity="0.8" />
+          <rect x={right + 2} y={yFor(lastClose) - 6} width="38" height="12" rx="2" fill="#20e0a0" />
+          <text x={right + 5} y={yFor(lastClose) + 3} fill="#03110c" fontSize="8" fontWeight="700">
+            {lastClose.toFixed(0)}
+          </text>
+        </>
       ) : null}
     </svg>
   );
@@ -303,17 +327,11 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
 
   const addAssetMutation = useMutation({
     mutationFn: (direction: "profit" | "loss") => {
-      const signedQuantity = direction === "loss" ? -Math.abs(quantityNumber) : Math.abs(quantityNumber);
-      return (
-      apiRequest("POST", "/api/portfolio/assets", {
-        symbol: name || typeLabels[type],
-        name: name || typeLabels[type],
-        type,
-        quantity: signedQuantity,
-        entryPrice: priceNumber,
-        currentPrice: priceNumber,
-      })
-      );
+      const amount = quantityNumber > 1 ? quantityNumber * priceNumber : priceNumber;
+      return apiRequest("POST", "/api/portfolio/movements", {
+        direction,
+        amount,
+      });
     },
     onSuccess: () => {
       setName("");
@@ -344,6 +362,8 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     [portfolio.transactions],
   );
   const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
+  const movementBalance = portfolioChartTransactions[portfolioChartTransactions.length - 1]?.portfolioValue ?? 0;
+  const displayedTotal = totals.value + movementBalance;
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -364,7 +384,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
         <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.value}</p>
-          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(totals.value, currency)}</p>
+          <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(displayedTotal, currency)}</p>
         </div>
         <div className="w-20 rounded-md border border-white/10 bg-white/[0.035] p-2 text-right">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.assets}</p>

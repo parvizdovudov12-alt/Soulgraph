@@ -248,6 +248,7 @@ export interface IStorage {
   deleteAllUserNewsEvents(userId: string): Promise<void>;
   getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   createPortfolioAsset(userId: string, asset: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
+  createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
   updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined>;
   deletePortfolioAsset(userId: string, assetId: string): Promise<void>;
   getUserDailyTasks(userId: string): Promise<DBDailyTask[]>;
@@ -502,6 +503,29 @@ export class MemStorage implements IStorage {
       quantity: asset.quantity,
       price: asset.entryPrice,
       portfolioValue: this.getPortfolioValue(userId),
+      createdAt: now,
+    };
+    this.portfolioTransactions.set(transaction.id, transaction);
+    return { ...(await this.getUserPortfolio(userId)), transaction };
+  }
+
+  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+    const now = new Date();
+    const normalizedAmount = normalizeMoneyValue(amount);
+    const transactions = Array.from(this.portfolioTransactions.values())
+      .filter((transaction) => transaction.userId === userId && (transaction.side === "profit" || transaction.side === "loss"))
+      .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
+    const previousValue = transactions[transactions.length - 1]?.portfolioValue ?? 0;
+    const signedAmount = direction === "loss" ? -normalizedAmount : normalizedAmount;
+    const transaction: PortfolioTransaction = {
+      id: randomUUID(),
+      userId,
+      assetId: null,
+      symbol: "PORTFOLIO",
+      side: direction,
+      quantity: direction === "loss" ? -1 : 1,
+      price: normalizedAmount,
+      portfolioValue: previousValue + signedAmount,
       createdAt: now,
     };
     this.portfolioTransactions.set(transaction.id, transaction);
@@ -1170,6 +1194,50 @@ export class PostgresStorage implements IStorage {
             asset.quantity,
             asset.entryPrice,
             Number(valueResult.rows[0]?.value ?? 0),
+          ]
+        );
+        const assetsResult = await client.query(
+          `select * from portfolio_assets where user_id = $1 order by updated_at desc, created_at desc`,
+          [userId]
+        );
+        await client.query("commit");
+        return {
+          assets: assetsResult.rows.map(mapPortfolioAsset),
+          transaction: mapPortfolioTransaction(transactionResult.rows[0]),
+        };
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      }
+    });
+  }
+
+  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+    return withClient(async (client) => {
+      await client.query("begin");
+      try {
+        const normalizedAmount = normalizeMoneyValue(amount);
+        const previousResult = await client.query(
+          `select portfolio_value
+           from portfolio_transactions
+           where user_id = $1 and side in ('profit', 'loss')
+           order by created_at desc
+           limit 1`,
+          [userId]
+        );
+        const previousValue = Number(previousResult.rows[0]?.portfolio_value ?? 0);
+        const signedAmount = direction === "loss" ? -normalizedAmount : normalizedAmount;
+        const transactionResult = await client.query(
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
+           values ($1, $2, null, 'PORTFOLIO', $3, $4, $5, $6)
+           returning *`,
+          [
+            randomUUID(),
+            userId,
+            direction,
+            direction === "loss" ? -1 : 1,
+            normalizedAmount,
+            previousValue + signedAmount,
           ]
         );
         const assetsResult = await client.query(

@@ -670,6 +670,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/portfolio/movements", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const direction = req.body?.direction === "loss" ? "loss" : req.body?.direction === "profit" ? "profit" : null;
+      const amount = parseSafeNumber(req.body?.amount);
+      if (!direction || !Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
+        return res.status(400).json({ message: "Invalid portfolio movement data" });
+      }
+
+      const result = await storage.createPortfolioMovement(req.session.userId, direction, amount);
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to add portfolio movement:", error);
+      res.status(400).json({ message: "Invalid portfolio movement data" });
+    }
+  });
+
   app.patch("/api/portfolio/assets/:id/price", async (req, res) => {
     try {
       if (!req.session.userId) {
