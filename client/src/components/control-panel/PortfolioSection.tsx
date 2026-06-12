@@ -429,6 +429,20 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       0,
     );
   }, [allPortfolioMovements]);
+  const currencyBalances = useMemo(() => {
+    const latestByCurrency = new Map<PortfolioCurrency, number>();
+    for (const transaction of allPortfolioMovements) {
+      const movementCurrency = getMovementCurrency(transaction.symbol);
+      if (!movementCurrency) continue;
+      latestByCurrency.set(movementCurrency, transaction.portfolioValue);
+    }
+    return portfolioCurrencies
+      .map((movementCurrency) => ({
+        currency: movementCurrency,
+        value: latestByCurrency.get(movementCurrency) ?? 0,
+      }))
+      .filter((entry) => entry.value !== 0);
+  }, [allPortfolioMovements]);
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -450,6 +464,15 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         <div className="rounded-md border border-white/10 bg-white/[0.035] p-2">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.value}</p>
           <p className="mt-1 text-lg font-semibold leading-none text-white">{formatMoney(displayedTotalUsd, "USD")}</p>
+          {currencyBalances.length ? (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {currencyBalances.map((entry) => (
+                <span key={entry.currency} className="rounded border border-white/10 bg-black/35 px-1.5 py-0.5 text-[10px] font-semibold text-white/70">
+                  {entry.currency} {formatMoney(entry.value, entry.currency)}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="w-20 rounded-md border border-white/10 bg-white/[0.035] p-2 text-right">
           <p className="text-[10px] uppercase tracking-wider text-white/42">{t.assets}</p>
