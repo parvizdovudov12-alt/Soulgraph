@@ -271,6 +271,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           empty: "\u0414\u043e\u0431\u0430\u0432\u044c \u043f\u0435\u0440\u0432\u044b\u0439 \u0430\u043a\u0442\u0438\u0432.",
           addError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0430\u043a\u0442\u0438\u0432. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043a\u043e\u043b-\u0432\u043e \u0438 \u0446\u0435\u043d\u0443.",
           records: "\u0417\u0430\u043f\u0438\u0441\u0438",
+          allRecords: "\u0412\u0441\u0435 \u0437\u0430\u043f\u0438\u0441\u0438, \u0432\u043b\u0438\u044f\u044e\u0449\u0438\u0435 \u043d\u0430 USD",
           update: "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c",
           delete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c",
           real_estate: "\u041d\u0435\u0434\u0432\u0438\u0436\u0438\u043c\u043e\u0441\u0442\u044c",
@@ -305,6 +306,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           empty: "Add your first asset.",
           addError: "Could not add asset. Check quantity and price.",
           records: "Records",
+          allRecords: "All records affecting USD",
           update: "Update",
           delete: "Delete",
           real_estate: "Real estate",
@@ -406,15 +408,18 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
 
   const canAdd = priceNumber > 0 && isAuthenticated;
   const portfolioSymbol = `PORTFOLIO_${currency}`;
+  const allPortfolioMovements = useMemo(
+    () => portfolio.transactions.filter((transaction) => getMovementCurrency(transaction.symbol) && (transaction.side === "profit" || transaction.side === "loss")),
+    [portfolio.transactions],
+  );
   const portfolioChartTransactions = useMemo(
-    () => portfolio.transactions.filter((transaction) => transaction.symbol === portfolioSymbol && (transaction.side === "profit" || transaction.side === "loss")),
-    [portfolio.transactions, portfolioSymbol],
+    () => allPortfolioMovements.filter((transaction) => transaction.symbol === portfolioSymbol),
+    [allPortfolioMovements, portfolioSymbol],
   );
   const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
   const displayedTotalUsd = useMemo(() => {
     const latestByCurrency = new Map<PortfolioCurrency, number>();
-    for (const transaction of portfolio.transactions) {
-      if (transaction.side !== "profit" && transaction.side !== "loss") continue;
+    for (const transaction of allPortfolioMovements) {
       const movementCurrency = getMovementCurrency(transaction.symbol);
       if (!movementCurrency) continue;
       latestByCurrency.set(movementCurrency, transaction.portfolioValue);
@@ -423,7 +428,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       (sum, [movementCurrency, value]) => sum + convertToUsd(value, movementCurrency),
       0,
     );
-  }, [portfolio.transactions]);
+  }, [allPortfolioMovements]);
 
   return (
     <section className="rounded-lg border border-cyan-400/20 bg-[#050709] p-3 shadow-[0_0_0_1px_rgba(34,211,238,0.04),0_14px_36px_rgba(0,0,0,0.28)]" data-testid="portfolio-section">
@@ -510,18 +515,21 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           <span className="text-[10px] text-white/35">{portfolioChartTransactions.length}</span>
         </div>
         <PortfolioCandlestickChart candles={candles} />
-        {portfolioChartTransactions.length ? (
+        {allPortfolioMovements.length ? (
           <div className="mt-2 space-y-1.5">
-            <p className="text-[10px] uppercase tracking-wider text-white/40">{t.records}</p>
-            {portfolioChartTransactions.slice(-6).reverse().map((transaction) => {
+            <p className="text-[10px] uppercase tracking-wider text-white/40">{t.allRecords}</p>
+            {allPortfolioMovements.slice(-8).reverse().map((transaction) => {
               const isProfit = transaction.side === "profit";
+              const movementCurrency = getMovementCurrency(transaction.symbol) ?? currency;
               return (
                 <div key={transaction.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded border border-white/10 bg-white/[0.025] px-2 py-1.5">
                   <div className="min-w-0">
                     <p className={`text-xs font-semibold ${isProfit ? "text-emerald-300" : "text-red-300"}`}>
-                      {isProfit ? t.profit : t.loss} {formatMoney(Math.abs(transaction.price), currency)}
+                      {isProfit ? t.profit : t.loss} {formatMoney(Math.abs(transaction.price), movementCurrency)}
                     </p>
-                    <p className="truncate text-[10px] text-white/38">{formatMoney(transaction.portfolioValue, currency)}</p>
+                    <p className="truncate text-[10px] text-white/38">
+                      {movementCurrency} {formatMoney(transaction.portfolioValue, movementCurrency)}
+                    </p>
                   </div>
                   <Button
                     type="button"
