@@ -36,6 +36,8 @@ interface PortfolioCandle {
   low: number;
   close: number;
   side: string;
+  amount: number;
+  currency: PortfolioCurrency;
 }
 
 const emptyPortfolio: PortfolioResponse = {
@@ -142,6 +144,8 @@ function buildPortfolioUsdCandles(points: PortfolioTransaction[]): PortfolioCand
         high: previousTotal,
         low: previousTotal,
         side: point.side,
+        amount: 0,
+        currency: "USD",
       };
     }
 
@@ -160,11 +164,14 @@ function buildPortfolioUsdCandles(points: PortfolioTransaction[]): PortfolioCand
       high: Math.max(open, close),
       low: Math.min(open, close),
       side: point.side,
+      amount: Math.abs(Number(point.price) || 0),
+      currency: movementCurrency,
     };
   });
 }
 
-function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) {
+function PortfolioCandlestickChart({ candles, profitLabel, lossLabel }: { candles: PortfolioCandle[]; profitLabel: string; lossLabel: string }) {
+  const [activeCandleId, setActiveCandleId] = useState<string | null>(null);
   const width = 300;
   const height = 124;
   const top = 14;
@@ -186,9 +193,14 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
   const candleBodyWidth = 5;
   const yFor = (value: number) => bottom - ((value - scaleMin) / span) * (bottom - top);
   const lastClose = visibleCandles[visibleCandles.length - 1]?.close ?? 0;
+  const activeCandle = visibleCandles.find((candle) => candle.id === activeCandleId) ?? null;
+  const activeIndex = activeCandle ? visibleCandles.findIndex((candle) => candle.id === activeCandle.id) : -1;
+  const activeX = activeIndex >= 0 ? left + activeIndex * candleGap : left;
+  const tooltipX = Math.max(8, Math.min(width - 124, activeX + 8));
+  const tooltipY = activeCandle ? Math.max(8, Math.min(height - 54, yFor(activeCandle.high) - 48)) : 8;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-[128px] w-full overflow-visible rounded-md bg-black">
+    <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-[128px] w-full overflow-visible rounded-md bg-black" onMouseLeave={() => setActiveCandleId(null)}>
       <defs>
         <linearGradient id="portfolioChartGlow" x1="0" x2="1" y1="0" y2="1">
           <stop offset="0%" stopColor="#07120e" />
@@ -234,7 +246,12 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
         const bodyHeight = Math.max(3, Math.abs(closeY - openY));
 
         return (
-          <g key={candle.id}>
+          <g
+            key={candle.id}
+            className="cursor-pointer"
+            onClick={() => setActiveCandleId((current) => (current === candle.id ? null : candle.id))}
+            onMouseEnter={() => setActiveCandleId(candle.id)}
+          >
             <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth="1.4" strokeLinecap="round" />
             <rect
               x={x - candleBodyWidth / 2}
@@ -245,6 +262,7 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
               fill={color}
               opacity="0.95"
             />
+            <rect x={x - 5} y={top} width="10" height={bottom - top} fill="transparent" />
           </g>
         );
       })}
@@ -256,6 +274,20 @@ function PortfolioCandlestickChart({ candles }: { candles: PortfolioCandle[] }) 
             {lastClose.toFixed(0)}
           </text>
         </>
+      ) : null}
+      {activeCandle ? (
+        <g>
+          <rect x={tooltipX} y={tooltipY} width="116" height="46" rx="5" fill="#10161d" stroke="rgba(255,255,255,0.16)" />
+          <text x={tooltipX + 7} y={tooltipY + 13} fill={activeCandle.side === "profit" ? "#22c98f" : "#ff5c66"} fontSize="8" fontWeight="700">
+            {activeCandle.side === "profit" ? profitLabel : lossLabel}
+          </text>
+          <text x={tooltipX + 7} y={tooltipY + 27} fill="rgba(255,255,255,0.82)" fontSize="8">
+            {formatMoney(activeCandle.amount, activeCandle.currency)}
+          </text>
+          <text x={tooltipX + 7} y={tooltipY + 39} fill="rgba(255,255,255,0.55)" fontSize="8">
+            USD {formatMoney(activeCandle.close, "USD")}
+          </text>
+        </g>
       ) : null}
     </svg>
   );
@@ -552,7 +584,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           <p className="text-[10px] uppercase tracking-wider text-white/45">{t.chart}</p>
           <span className="text-[10px] text-white/35">{allPortfolioMovements.length}</span>
         </div>
-        <PortfolioCandlestickChart candles={candles} />
+        <PortfolioCandlestickChart candles={candles} profitLabel={t.profit} lossLabel={t.loss} />
         {allPortfolioMovements.length ? (
           <div className="mt-2 space-y-1.5">
             <p className="text-[10px] uppercase tracking-wider text-white/40">{t.allRecords}</p>
