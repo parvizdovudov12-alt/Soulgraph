@@ -128,11 +128,31 @@ function parseAmountInput(value: string) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-function buildPortfolioCandles(points: PortfolioTransaction[]): PortfolioCandle[] {
-  return points.map((point, index) => {
-    const close = Number(point.portfolioValue) || 0;
-    const previousClose = index > 0 ? Number(points[index - 1].portfolioValue) || 0 : close - (Number(point.quantity) || 0) * (Number(point.price) || 0);
-    const open = Number.isFinite(previousClose) ? previousClose : close;
+function buildPortfolioUsdCandles(points: PortfolioTransaction[]): PortfolioCandle[] {
+  const balancesByCurrency = new Map<PortfolioCurrency, number>();
+  let previousTotal = 0;
+
+  return points.map((point) => {
+    const movementCurrency = getMovementCurrency(point.symbol);
+    if (!movementCurrency) {
+      return {
+        id: point.id,
+        open: previousTotal,
+        close: previousTotal,
+        high: previousTotal,
+        low: previousTotal,
+        side: point.side,
+      };
+    }
+
+    balancesByCurrency.set(movementCurrency, Number(point.portfolioValue) || 0);
+    const close = Array.from(balancesByCurrency.entries()).reduce(
+      (sum, [currency, value]) => sum + convertToUsd(value, currency),
+      0,
+    );
+    const open = previousTotal;
+    previousTotal = close;
+
     return {
       id: point.id,
       open,
@@ -266,7 +286,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           value: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 USD",
           assets: "\u0410\u043a\u0442\u0438\u0432\u043e\u0432",
           allocation: "\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435",
-          chart: "\u0413\u0440\u0430\u0444\u0438\u043a \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f",
+          chart: "\u0413\u0440\u0430\u0444\u0438\u043a \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f USD",
           history: "\u0418\u0441\u0442\u043e\u0440\u0438\u044f",
           empty: "\u0414\u043e\u0431\u0430\u0432\u044c \u043f\u0435\u0440\u0432\u044b\u0439 \u0430\u043a\u0442\u0438\u0432.",
           addError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0430\u043a\u0442\u0438\u0432. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043a\u043e\u043b-\u0432\u043e \u0438 \u0446\u0435\u043d\u0443.",
@@ -301,7 +321,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           value: "Net worth USD",
           assets: "Assets",
           allocation: "Allocation",
-          chart: "Net worth chart",
+          chart: "Net worth chart USD",
           history: "History",
           empty: "Add your first asset.",
           addError: "Could not add asset. Check quantity and price.",
@@ -407,16 +427,11 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   });
 
   const canAdd = priceNumber > 0 && isAuthenticated;
-  const portfolioSymbol = `PORTFOLIO_${currency}`;
   const allPortfolioMovements = useMemo(
     () => portfolio.transactions.filter((transaction) => getMovementCurrency(transaction.symbol) && (transaction.side === "profit" || transaction.side === "loss")),
     [portfolio.transactions],
   );
-  const portfolioChartTransactions = useMemo(
-    () => allPortfolioMovements.filter((transaction) => transaction.symbol === portfolioSymbol),
-    [allPortfolioMovements, portfolioSymbol],
-  );
-  const candles = useMemo(() => buildPortfolioCandles(portfolioChartTransactions), [portfolioChartTransactions]);
+  const candles = useMemo(() => buildPortfolioUsdCandles(allPortfolioMovements), [allPortfolioMovements]);
   const displayedTotalUsd = useMemo(() => {
     const latestByCurrency = new Map<PortfolioCurrency, number>();
     for (const transaction of allPortfolioMovements) {
@@ -535,7 +550,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
       <div className="mt-3 rounded-md border border-emerald-400/15 bg-black p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex items-center justify-between">
           <p className="text-[10px] uppercase tracking-wider text-white/45">{t.chart}</p>
-          <span className="text-[10px] text-white/35">{portfolioChartTransactions.length}</span>
+          <span className="text-[10px] text-white/35">{allPortfolioMovements.length}</span>
         </div>
         <PortfolioCandlestickChart candles={candles} />
         {allPortfolioMovements.length ? (
