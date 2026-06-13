@@ -313,6 +313,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           name: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435",
           quantity: "\u041a\u043e\u043b-\u0432\u043e",
           price: "\u0426\u0435\u043d\u0430",
+          addFamily: "\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u0435\u043c\u044c\u044e",
           profit: "\u041f\u0440\u0438\u0431\u044b\u043b\u044c",
           loss: "\u0423\u0431\u044b\u0442\u043e\u043a",
           value: "\u041e\u0431\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 USD",
@@ -348,6 +349,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           name: "Name",
           quantity: "Qty",
           price: "Price",
+          addFamily: "Add family",
           profit: "Profit",
           loss: "Loss",
           value: "Net worth USD",
@@ -432,6 +434,30 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
     },
   });
 
+  const addFamilyAssetMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/portfolio/assets", {
+        symbol: typeLabels.children,
+        name: name || typeLabels.children,
+        type: "children",
+        quantity: 1,
+        entryPrice: 0,
+        currentPrice: 0,
+      });
+      return response.json() as Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
+    },
+    onSuccess: (result) => {
+      setName("");
+      setQuantity("");
+      setPrice("");
+      queryClient.setQueryData<PortfolioResponse>(["/api/portfolio"], (current) => ({
+        assets: result.assets,
+        transactions: [...(current?.transactions ?? []), result.transaction],
+      }));
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
+    },
+  });
+
   const updatePriceMutation = useMutation({
     mutationFn: ({ assetId, nextPrice }: { assetId: string; nextPrice: number }) =>
       apiRequest("PATCH", `/api/portfolio/assets/${assetId}/price`, { currentPrice: nextPrice }),
@@ -459,6 +485,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
   });
 
   const canAdd = priceNumber > 0 && isAuthenticated;
+  const canAddFamilyWithoutPrice = type === "children" && isAuthenticated && !(priceNumber > 0);
   const allPortfolioMovements = useMemo(
     () => portfolio.transactions.filter((transaction) => getMovementCurrency(transaction.symbol) && (transaction.side === "profit" || transaction.side === "loss")),
     [portfolio.transactions],
@@ -577,6 +604,16 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           {t.loss}
         </Button>
       </div>
+      {canAddFamilyWithoutPrice ? (
+        <Button
+          type="button"
+          disabled={addFamilyAssetMutation.isPending}
+          onClick={() => addFamilyAssetMutation.mutate()}
+          className="mt-2 h-8 w-full bg-cyan-300 text-xs font-semibold text-slate-950 hover:bg-cyan-200"
+        >
+          {t.addFamily}
+        </Button>
+      ) : null}
       {addAssetMutation.isError ? <p className="mt-2 text-xs leading-relaxed text-red-200">{t.addError}</p> : null}
 
       <div className="mt-3 rounded-md border border-emerald-400/15 bg-black p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
