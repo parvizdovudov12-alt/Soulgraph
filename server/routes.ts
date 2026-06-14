@@ -31,6 +31,21 @@ function isSafeScore(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
 }
 
+function buildMissedTaskImpact(impact: { mental: number; physical: number; moral: number; financial: number }) {
+  const negativeImpact = {
+    mental: impact.mental === 0 ? 0 : -Math.abs(impact.mental),
+    physical: impact.physical === 0 ? 0 : -Math.abs(impact.physical),
+    moral: impact.moral === 0 ? 0 : -Math.abs(impact.moral),
+    financial: impact.financial === 0 ? 0 : -Math.abs(impact.financial),
+  };
+
+  if (Object.values(negativeImpact).every((value) => value === 0)) {
+    negativeImpact.mental = -1;
+  }
+
+  return negativeImpact;
+}
+
 function parseSafeNumber(value: unknown) {
   if (typeof value === "number") {
     return value;
@@ -790,6 +805,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to create daily task:", error);
       res.status(400).json({ message: "Invalid daily task data" });
+    }
+  });
+
+  app.patch("/api/daily-tasks/overdue", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const previousDayKey = typeof req.body?.previousDayKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.previousDayKey)
+        ? req.body.previousDayKey
+        : null;
+      if (!previousDayKey) {
+        return res.status(400).json({ message: "Valid previousDayKey is required" });
+      }
+
+      const overdueTasks = await storage.markDailyTasksOverdue(req.session.userId, previousDayKey);
+      const overdueEvents = [];
+
+      for (const task of overdueTasks) {
+        const missedAt = Math.floor(new Date(`${previousDayKey}T23:59:00`).getTime() / 1000);
+        const event = await storage.createNewsEvent(req.session.userId, {
+          type: "negative",
+          time: Number.isFinite(missedAt) ? missedAt : Math.floor(Date.now() / 1000),
+          text: `Не выполнена задача: ${task.text}`,
+          impactMental: buildMissedTaskImpact(task.impact).mental,
+          impactPhysical: buildMissedTaskImpact(task.impact).physical,
+          impactMoral: buildMissedTaskImpact(task.impact).moral,
+          impactFinancial: buildMissedTaskImpact(task.impact).financial,
+          media: null,
+        });
+        overdueEvents.push(event);
+      }
+
+      const tasks = await storage.getUserDailyTasks(req.session.userId);
+      res.json({ tasks, overdueEvents });
+    } catch (error) {
+      console.error("Failed to mark overdue daily tasks:", error);
+      res.status(500).json({ message: "Failed to mark overdue daily tasks" });
     }
   });
 

@@ -16,7 +16,7 @@ import { timeframeToSeconds } from "@/lib/dateUtils";
 import { analyzeGoalProgress } from "@/lib/goalCoach";
 import { useLanguage } from "@/lib/i18n";
 import { calculateLevelProgress } from "@/lib/levelSystem";
-import { getLocalDayKey, mergeDashboardEvents, normalizeTaskImpact, readLocalDashboardState, updateLocalDashboardState, type DailyTask, type TaskImpact } from "@/lib/localDashboardState";
+import { getLocalDayKey, getPreviousLocalDayKey, mergeDashboardEvents, normalizeTaskImpact, readLocalDashboardState, updateLocalDashboardState, type DailyTask, type TaskImpact } from "@/lib/localDashboardState";
 import type { SubscriptionResponse } from "@/lib/premium";
 import type { AiGoalAnalysisResult } from "@/components/ControlPanel";
 
@@ -44,6 +44,7 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
     moral: 0,
     financial: 0,
   });
+  const [overdueCheckKey, setOverdueCheckKey] = useState<string | null>(null);
 
   const t =
     language === "ru"
@@ -509,6 +510,16 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
     },
   });
 
+  const markDailyTasksOverdueMutation = useMutation({
+    mutationFn: async (payload: { previousDayKey: string }) => (
+      apiRequest("PATCH", "/api/daily-tasks/overdue", { previousDayKey: payload.previousDayKey })
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/news-events"] });
+    },
+  });
+
   const pinDailyTaskMutation = useMutation({
     mutationFn: async (payload: { taskId: string; pinned: boolean }) => (
       apiRequest("PATCH", `/api/daily-tasks/${payload.taskId}/pin`, { pinned: payload.pinned })
@@ -533,6 +544,7 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
   });
 
   const todayKey = getLocalDayKey();
+  const previousDayKey = getPreviousLocalDayKey();
   const dailyTasks = isAuthenticated ? (dailyTasksQuery.data ?? []) : localState.dailyTasks;
   const isGoalCompleted = Boolean(
     effectiveGoal.trim() &&
@@ -542,6 +554,84 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
     () => calculateLevelProgress({ events: newsEvents, tasks: dailyTasks, language }),
     [newsEvents, dailyTasks, language],
   );
+
+  useEffect(() => {
+    if (overdueCheckKey === previousDayKey) {
+      return;
+    }
+
+    if (isAuthenticated) {
+      if (!dailyTasksQuery.isSuccess || markDailyTasksOverdueMutation.isPending) {
+        return;
+      }
+      setOverdueCheckKey(previousDayKey);
+      markDailyTasksOverdueMutation.mutate({ previousDayKey });
+      return;
+    }
+
+    setOverdueCheckKey(previousDayKey);
+    setLocalState(updateLocalDashboardState((current) => {
+      const pendingEvents = [...current.pendingEvents];
+      const dailyTasks = current.dailyTasks.map((task) => {
+        const missedDates = task.missedDates ?? [];
+        const createdDayKey = task.createdAt.slice(0, 10);
+        const alreadyHandled = task.completedDates.includes(previousDayKey)
+          || missedDates.includes(previousDayKey)
+          || missedDates.length > 0
+          || createdDayKey > previousDayKey;
+
+        if (alreadyHandled) {
+          return task;
+        }
+
+        const negativeImpact = {
+          mental: task.impact.mental === 0 ? 0 : -Math.abs(task.impact.mental),
+          physical: task.impact.physical === 0 ? 0 : -Math.abs(task.impact.physical),
+          moral: task.impact.moral === 0 ? 0 : -Math.abs(task.impact.moral),
+          financial: task.impact.financial === 0 ? 0 : -Math.abs(task.impact.financial),
+        };
+        if (Object.values(negativeImpact).every((value) => value === 0)) {
+          negativeImpact.mental = -1;
+        }
+
+        const eventId = `missed-${task.id}-${previousDayKey}`;
+        if (!pendingEvents.some((event) => event.id === eventId)) {
+          pendingEvents.push({
+            id: eventId,
+            userId: user?.id ?? "local-user",
+            time: Math.floor(new Date(`${previousDayKey}T23:59:00`).getTime() / 1000),
+            type: "negative",
+            text: language === "ru" ? `Не выполнена задача: ${task.text}` : `Missed task: ${task.text}`,
+            impactMental: negativeImpact.mental,
+            impactPhysical: negativeImpact.physical,
+            impactMoral: negativeImpact.moral,
+            impactFinancial: negativeImpact.financial,
+            media: null,
+            createdAt: new Date(),
+          });
+        }
+
+        return {
+          ...task,
+          missedDates: [...missedDates, previousDayKey],
+        };
+      });
+
+      return {
+        ...current,
+        dailyTasks,
+        pendingEvents,
+      };
+    }));
+  }, [
+    dailyTasksQuery.isSuccess,
+    isAuthenticated,
+    language,
+    markDailyTasksOverdueMutation,
+    overdueCheckKey,
+    previousDayKey,
+    user?.id,
+  ]);
 
   const handleAddNews = (data: { text: string; time: number; impact: { mental: number; physical: number; moral: number; financial: number }; media?: { type: "image" | "video"; url: string }[] }) => {
     createNewsEventMutation.mutate({ ...data, type: newsModalType });
@@ -557,6 +647,7 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
       impact: normalizeTaskImpact(draftTaskImpact),
       createdAt: new Date().toISOString(),
       completedDates: [],
+      missedDates: [],
       pinned: false,
       orderIndex: dailyTasks.length,
     };
@@ -579,16 +670,24 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
   };
 
   const handleCompleteDailyTask = (task: DailyTask) => {
-    if (task.completedDates.includes(todayKey)) return;
+    const missedDates = task.missedDates ?? [];
+    const completionDayKey = missedDates[0] ?? todayKey;
+    if (task.completedDates.includes(completionDayKey)) return;
 
     if (isAuthenticated) {
-      completeDailyTaskMutation.mutate({ taskId: task.id, dayKey: todayKey });
+      completeDailyTaskMutation.mutate({ taskId: task.id, dayKey: completionDayKey });
     } else {
       setLocalState(updateLocalDashboardState((current) => ({
         ...current,
         dailyTasks: current.dailyTasks.map((currentTask) =>
           currentTask.id === task.id
-            ? { ...currentTask, completedDates: [...currentTask.completedDates, todayKey] }
+            ? {
+                ...currentTask,
+                completedDates: currentTask.completedDates.includes(completionDayKey)
+                  ? currentTask.completedDates
+                  : [...currentTask.completedDates, completionDayKey],
+                missedDates: (currentTask.missedDates ?? []).filter((date) => date !== completionDayKey),
+              }
             : currentTask,
         ),
       })));
@@ -597,7 +696,9 @@ export default function Dashboard({ onOpenFriends }: DashboardProps) {
     createNewsEventMutation.mutate({
       type: task.impact.mental + task.impact.physical + task.impact.moral + task.impact.financial >= 0 ? "positive" : "negative",
       time: Math.floor(Date.now() / 1000),
-      text: language === "ru" ? `Выполнена задача: ${task.text}` : `Completed task: ${task.text}`,
+      text: missedDates.length > 0
+        ? (language === "ru" ? `Закрыта просроченная задача: ${task.text}` : `Overdue task completed: ${task.text}`)
+        : (language === "ru" ? `Выполнена задача: ${task.text}` : `Completed task: ${task.text}`),
       impact: normalizeTaskImpact(task.impact),
     });
 

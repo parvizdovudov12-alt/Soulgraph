@@ -280,6 +280,9 @@ function DailyTasksPanel({
   const pinTaskLabel = t.pinTask ?? "Закрепить задачу";
   const unpinTaskLabel = t.unpinTask ?? "Открепить задачу";
 
+  const completedTodayCount = tasks.filter((task) => task.completedDates.includes(todayKey)).length;
+  const overdueCount = tasks.filter((task) => (task.missedDates ?? []).length > 0).length;
+
   const sortedTaskIds = sortedTasks.map((task) => task.id);
   const orderedTasks = reorderTaskIds.length === sortedTasks.length
     ? reorderTaskIds.map((taskId) => sortedTasks.find((task) => task.id === taskId)).filter((task): task is DailyTask => Boolean(task))
@@ -306,7 +309,8 @@ function DailyTasksPanel({
         <div className="min-w-0">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[#ffd6e6] drop-shadow-[0_0_10px_rgba(255,77,141,0.5)]">{t.tasks}</p>
           <p className="mt-0.5 text-[11px] font-medium text-[#e8fff1]">
-            {tasks.filter((task) => task.completedDates.includes(todayKey)).length}/{tasks.length} {t.done}
+            {completedTodayCount}/{tasks.length} {t.done}
+            {overdueCount > 0 ? <span className="ml-2 text-[#ff9ca3]">{overdueCount} {t.overdueTasks}</span> : null}
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-white/86">{t.taskCompletionHint}</p>
         </div>
@@ -373,6 +377,7 @@ function DailyTasksPanel({
             <Reorder.Group axis="y" values={reorderTaskIds} onReorder={setReorderTaskIds} className="mt-3 space-y-2">
               {orderedTasks.map((task) => {
                 const completedToday = task.completedDates.includes(todayKey);
+                const isOverdue = (task.missedDates ?? []).length > 0;
 
                 return (
                   <Reorder.Item
@@ -387,9 +392,11 @@ function DailyTasksPanel({
                     className={`flex cursor-grab touch-none select-none items-center gap-2 rounded-md border p-2 active:cursor-grabbing ${
                       draggedTaskId === task.id
                         ? "relative z-20 border-[#ff9ca3]/70 bg-[#1f4f3d] shadow-[0_18px_32px_rgba(0,0,0,0.34),0_0_0_1px_rgba(255,156,163,0.28)]"
-                        : task.pinned
-                          ? "border-[#36C98B]/30 bg-[#36C98B]/10"
-                          : "border-white/8 bg-white/[0.03]"
+                        : isOverdue
+                          ? "border-[#ff5b73]/55 bg-[#4d1018]/72 shadow-[0_0_18px_rgba(255,91,115,0.14)]"
+                          : task.pinned
+                            ? "border-[#36C98B]/30 bg-[#36C98B]/10"
+                            : "border-white/8 bg-white/[0.03]"
                     }`}
                     title="Зажми и перетащи задачу"
                     data-testid={`daily-task-row-${task.id}`}
@@ -399,21 +406,23 @@ function DailyTasksPanel({
                       data-no-task-drag="true"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={() => onCompleteDailyTask(task)}
-                      disabled={completedToday}
+                      disabled={completedToday && !isOverdue}
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition ${
-                        completedToday
+                        isOverdue
+                          ? "border-[#ff9ca3]/50 bg-[#ff5b73]/15 text-[#ffd6de] hover:bg-[#ff5b73]/25"
+                          : completedToday
                           ? "border-[#36C98B]/40 bg-[#36C98B]/15 text-[#8ef0bb]"
                           : "border-white/10 bg-white/5 text-[#d7f7e3] hover:bg-white/10 hover:text-white"
                       }`}
-                      aria-label={completedToday ? t.doneToday : t.completeTask}
+                      aria-label={isOverdue ? t.overdueTask : completedToday ? t.doneToday : t.completeTask}
                       data-testid={`button-complete-task-${task.id}`}
                     >
                       <Check className="h-4 w-4" />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <p className={`whitespace-normal break-words text-sm leading-snug ${completedToday ? "text-[#bfeccc] line-through" : "text-white"}`}>{task.text}</p>
-                      <p className="mt-1 whitespace-normal break-words text-[11px] leading-snug text-[#bfeccc]">
-                        {completedToday ? t.doneToday : t.completeTask} - {formatTaskImpact(task.impact, t)}
+                      <p className={`whitespace-normal break-words text-sm leading-snug ${completedToday && !isOverdue ? "text-[#bfeccc] line-through" : "text-white"}`}>{task.text}</p>
+                      <p className={`mt-1 whitespace-normal break-words text-[11px] leading-snug ${isOverdue ? "text-[#ffd6de]" : "text-[#bfeccc]"}`}>
+                        {isOverdue ? `${t.overdueTask}: ${task.missedDates[0]}` : completedToday ? t.doneToday : t.completeTask} - {formatTaskImpact(task.impact, t)}
                       </p>
                     </div>
                     <button

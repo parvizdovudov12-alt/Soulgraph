@@ -143,6 +143,7 @@ export const dailyTasks = pgTable("daily_tasks", {
   text: text("text").notNull(),
   impact: jsonb("impact").$type<{ mental: number; physical: number; moral: number; financial: number }>().notNull(),
   completedDates: jsonb("completed_dates").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  missedDates: jsonb("missed_dates").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   pinned: boolean("pinned").notNull().default(false),
   orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),

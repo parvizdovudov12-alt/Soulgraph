@@ -149,6 +149,8 @@ export interface ControlPanelText {
   done: string;
   doneToday: string;
   completeTask: string;
+  overdueTask: string;
+  overdueTasks: string;
   noTasks: string;
   deleteTask: string;
   pinTask?: string;

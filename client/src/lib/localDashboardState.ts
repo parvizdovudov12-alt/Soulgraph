@@ -24,6 +24,7 @@ export interface DailyTask {
   impact: TaskImpact;
   createdAt: string;
   completedDates: string[];
+  missedDates: string[];
   pinned: boolean;
   orderIndex: number;
 }
@@ -94,6 +95,9 @@ function normalizeDailyTask(task: DailyTask): DailyTask {
     completedDates: Array.isArray(task.completedDates)
       ? task.completedDates.filter((date) => typeof date === "string")
       : [],
+    missedDates: Array.isArray(task.missedDates)
+      ? task.missedDates.filter((date) => typeof date === "string")
+      : [],
     pinned: task.pinned === true,
     orderIndex: typeof task.orderIndex === "number" && Number.isFinite(task.orderIndex) ? task.orderIndex : 0,
   };
@@ -119,6 +123,12 @@ export function getLocalDayKey(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function getPreviousLocalDayKey(date = new Date()) {
+  const previous = new Date(date);
+  previous.setDate(previous.getDate() - 1);
+  return getLocalDayKey(previous);
 }
 
 export function writeLocalDashboardState(nextState: LocalDashboardState) {

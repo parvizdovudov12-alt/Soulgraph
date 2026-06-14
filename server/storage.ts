@@ -154,6 +154,7 @@ function mapDailyTask(row: any): DBDailyTask {
     text: row.text,
     impact: normalizeTaskImpact(row.impact),
     completedDates: Array.isArray(row.completed_dates) ? row.completed_dates.filter((date: unknown) => typeof date === "string") : [],
+    missedDates: Array.isArray(row.missed_dates) ? row.missed_dates.filter((date: unknown) => typeof date === "string") : [],
     pinned: row.pinned === true,
     orderIndex: Number.isFinite(Number(row.order_index)) ? Number(row.order_index) : 0,
     createdAt: row.created_at ? new Date(row.created_at) : null,
@@ -263,6 +264,7 @@ export interface IStorage {
   deletePortfolioAsset(userId: string, assetId: string): Promise<void>;
   getUserDailyTasks(userId: string): Promise<DBDailyTask[]>;
   createDailyTask(userId: string, task: InsertDailyTask): Promise<DBDailyTask>;
+  markDailyTasksOverdue(userId: string, previousDayKey: string): Promise<DBDailyTask[]>;
   completeDailyTask(userId: string, taskId: string, dayKey: string): Promise<DBDailyTask | undefined>;
   updateDailyTaskPinned(userId: string, taskId: string, pinned: boolean): Promise<DBDailyTask | undefined>;
   reorderDailyTasks(userId: string, taskIds: string[]): Promise<DBDailyTask[]>;
@@ -622,6 +624,7 @@ export class MemStorage implements IStorage {
       text: insertTask.text,
       impact: normalizeTaskImpact(insertTask.impact),
       completedDates: Array.isArray(insertTask.completedDates) ? insertTask.completedDates.filter((date) => typeof date === "string") : [],
+      missedDates: Array.isArray(insertTask.missedDates) ? insertTask.missedDates.filter((date) => typeof date === "string") : [],
       pinned: insertTask.pinned === true,
       orderIndex: typeof insertTask.orderIndex === "number" ? insertTask.orderIndex : this.dailyTasks.size,
       createdAt: now,
@@ -635,9 +638,32 @@ export class MemStorage implements IStorage {
     const task = this.dailyTasks.get(taskId);
     if (!task || task.userId !== userId) return undefined;
     const completedDates = task.completedDates.includes(dayKey) ? task.completedDates : [...task.completedDates, dayKey];
-    const updated = { ...task, completedDates, updatedAt: new Date() };
+    const updated = { ...task, completedDates, missedDates: task.missedDates.filter((date) => date !== dayKey), updatedAt: new Date() };
     this.dailyTasks.set(taskId, updated);
     return updated;
+  }
+
+  async markDailyTasksOverdue(userId: string, previousDayKey: string): Promise<DBDailyTask[]> {
+    const updatedTasks: DBDailyTask[] = [];
+    const now = new Date();
+
+    for (const [taskId, task] of Array.from(this.dailyTasks.entries())) {
+      if (task.userId !== userId) continue;
+      if (task.completedDates.includes(previousDayKey) || task.missedDates.includes(previousDayKey) || task.missedDates.length > 0) continue;
+
+      const createdDayKey = task.createdAt ? task.createdAt.toISOString().slice(0, 10) : previousDayKey;
+      if (createdDayKey > previousDayKey) continue;
+
+      const updated = {
+        ...task,
+        missedDates: [...task.missedDates, previousDayKey],
+        updatedAt: now,
+      };
+      this.dailyTasks.set(taskId, updated);
+      updatedTasks.push(updated);
+    }
+
+    return updatedTasks;
   }
 
   async updateDailyTaskPinned(userId: string, taskId: string, pinned: boolean): Promise<DBDailyTask | undefined> {
@@ -877,12 +903,14 @@ export class PostgresStorage implements IStorage {
           text text NOT NULL,
           impact jsonb NOT NULL,
           completed_dates jsonb NOT NULL DEFAULT '[]'::jsonb,
+          missed_dates jsonb NOT NULL DEFAULT '[]'::jsonb,
           pinned boolean NOT NULL DEFAULT false,
           order_index integer NOT NULL DEFAULT 0,
           created_at timestamp DEFAULT now(),
           updated_at timestamp DEFAULT now()
         )
       `);
+      await client.query(`ALTER TABLE daily_tasks ADD COLUMN IF NOT EXISTS missed_dates jsonb NOT NULL DEFAULT '[]'::jsonb`);
       await client.query(`ALTER TABLE daily_tasks ADD COLUMN IF NOT EXISTS order_index integer NOT NULL DEFAULT 0`);
       await client.query(`
         WITH ordered AS (
@@ -1424,15 +1452,17 @@ export class PostgresStorage implements IStorage {
     const taskId = typeof insertTask.id === "string" && insertTask.id ? insertTask.id : randomUUID();
     const impact = normalizeTaskImpact(insertTask.impact);
     const completedDates = Array.isArray(insertTask.completedDates) ? insertTask.completedDates.filter((date) => typeof date === "string") : [];
+    const missedDates = Array.isArray(insertTask.missedDates) ? insertTask.missedDates.filter((date) => typeof date === "string") : [];
 
     return withClient(async (client) => {
       const result = await client.query(
-        `insert into daily_tasks (id, user_id, text, impact, completed_dates, pinned, order_index)
-         values ($1, $2, $3, $4, $5, $6, $7)
+        `insert into daily_tasks (id, user_id, text, impact, completed_dates, missed_dates, pinned, order_index)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)
          on conflict (id) do update
          set text = excluded.text,
              impact = excluded.impact,
              completed_dates = excluded.completed_dates,
+             missed_dates = excluded.missed_dates,
              pinned = excluded.pinned,
              order_index = excluded.order_index,
              updated_at = now()
@@ -1443,6 +1473,7 @@ export class PostgresStorage implements IStorage {
           insertTask.text,
           JSON.stringify(impact),
           JSON.stringify(completedDates),
+          JSON.stringify(missedDates),
           insertTask.pinned === true,
           typeof insertTask.orderIndex === "number" ? insertTask.orderIndex : Date.now(),
         ]
@@ -1459,12 +1490,40 @@ export class PostgresStorage implements IStorage {
                when completed_dates ? $3 then completed_dates
                else completed_dates || to_jsonb($3::text)
              end,
+             missed_dates = coalesce((
+               select jsonb_agg(value)
+               from jsonb_array_elements_text(missed_dates) as dates(value)
+               where value <> $3
+             ), '[]'::jsonb),
              updated_at = now()
          where id = $1 and user_id = $2
          returning *`,
         [taskId, userId, dayKey]
       );
       return result.rows[0] ? mapDailyTask(result.rows[0]) : undefined;
+    });
+  }
+
+  async markDailyTasksOverdue(userId: string, previousDayKey: string): Promise<DBDailyTask[]> {
+    return withClient(async (client) => {
+      const result = await client.query(
+        `with updated as (
+           update daily_tasks
+           set missed_dates = missed_dates || to_jsonb($2::text),
+               updated_at = now()
+           where user_id = $1
+             and not (completed_dates ? $2)
+             and not (missed_dates ? $2)
+             and jsonb_array_length(missed_dates) = 0
+             and created_at::date <= $2::date
+           returning *
+         )
+         select *
+         from updated
+         order by pinned desc, order_index asc, created_at asc`,
+        [userId, previousDayKey]
+      );
+      return result.rows.map(mapDailyTask);
     });
   }
 
