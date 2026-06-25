@@ -698,7 +698,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const currency = typeof req.body?.currency === "string" ? req.body.currency.trim().toUpperCase() : undefined;
-      const result = await storage.createPortfolioMovement(req.session.userId, direction, amount, currency);
+      const description = typeof req.body?.description === "string" ? req.body.description.trim().slice(0, 160) : null;
+      const result = await storage.createPortfolioMovement(req.session.userId, direction, amount, currency, description);
       res.json(result);
     } catch (error) {
       console.error("Failed to add portfolio movement:", error);

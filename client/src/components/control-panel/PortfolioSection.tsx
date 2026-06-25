@@ -311,6 +311,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           category: "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f",
           currency: "\u0412\u0430\u043b\u044e\u0442\u0430",
           name: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435",
+          description: "\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435: \u043a\u0443\u0434\u0430 / \u043e\u0442\u043a\u0443\u0434\u0430",
           quantity: "\u041a\u043e\u043b-\u0432\u043e",
           price: "\u0426\u0435\u043d\u0430",
           addFamily: "\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u0435\u043c\u044c\u044e",
@@ -325,6 +326,9 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           addError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0430\u043a\u0442\u0438\u0432. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043a\u043e\u043b-\u0432\u043e \u0438 \u0446\u0435\u043d\u0443.",
           records: "\u0417\u0430\u043f\u0438\u0441\u0438",
           allRecords: "\u0412\u0441\u0435 \u0437\u0430\u043f\u0438\u0441\u0438, \u0432\u043b\u0438\u044f\u044e\u0449\u0438\u0435 \u043d\u0430 USD",
+          moneyIn: "\u041f\u0440\u0438\u0448\u043b\u0438",
+          moneyOut: "\u0423\u0448\u043b\u0438",
+          noDescription: "\u0411\u0435\u0437 \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u044f",
           update: "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c",
           delete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c",
           real_estate: "\u041d\u0435\u0434\u0432\u0438\u0436\u0438\u043c\u043e\u0441\u0442\u044c",
@@ -347,6 +351,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           category: "Category",
           currency: "Currency",
           name: "Name",
+          description: "Description: where / from",
           quantity: "Qty",
           price: "Price",
           addFamily: "Add family",
@@ -361,6 +366,9 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
           addError: "Could not add asset. Check quantity and price.",
           records: "Records",
           allRecords: "All records affecting USD",
+          moneyIn: "Came in",
+          moneyOut: "Went out",
+          noDescription: "No description",
           update: "Update",
           delete: "Delete",
           real_estate: "Real estate",
@@ -419,6 +427,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
         direction,
         amount,
         currency,
+        description: name.trim() || null,
       });
       return response.json() as Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
     },
@@ -579,7 +588,7 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
             ))}
           </SelectContent>
         </Select>
-        <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t.name} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
+        <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={type === "children" ? t.name : t.description} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
         <Input value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="decimal" placeholder={t.quantity} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
         <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" placeholder={`${t.price} ${currency}`} className="h-8 border-white/10 bg-black/40 text-xs text-white" />
       </div>
@@ -628,11 +637,15 @@ export function PortfolioSection({ isAuthenticated }: { isAuthenticated: boolean
             {allPortfolioMovements.slice(-8).reverse().map((transaction) => {
               const isProfit = transaction.side === "profit";
               const movementCurrency = getMovementCurrency(transaction.symbol) ?? currency;
+              const description = transaction.description?.trim() || t.noDescription;
               return (
                 <div key={transaction.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded border border-white/10 bg-white/[0.025] px-2 py-1.5">
                   <div className="min-w-0">
                     <p className={`text-xs font-semibold ${isProfit ? "text-emerald-300" : "text-red-300"}`}>
                       {isProfit ? t.profit : t.loss} {formatMoney(Math.abs(transaction.price), movementCurrency)}
+                    </p>
+                    <p className="truncate text-[11px] font-medium text-white/72">
+                      {isProfit ? t.moneyIn : t.moneyOut}: {description}
                     </p>
                     <p className="truncate text-[10px] text-white/38">
                       {movementCurrency} {formatMoney(transaction.portfolioValue, movementCurrency)}

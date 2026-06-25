@@ -99,6 +99,7 @@ function mapPortfolioTransaction(row: any): PortfolioTransaction {
     assetId: row.asset_id ?? null,
     symbol: row.symbol,
     side: row.side,
+    description: typeof row.description === "string" ? row.description : null,
     quantity: Number(row.quantity),
     price: Number(row.price),
     portfolioValue: Number(row.portfolio_value),
@@ -258,7 +259,7 @@ export interface IStorage {
   deleteAllUserNewsEvents(userId: string): Promise<void>;
   getUserPortfolio(userId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   createPortfolioAsset(userId: string, asset: PortfolioAssetInput): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
-  createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency?: string): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
+  createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency?: string, description?: string | null): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }>;
   deletePortfolioMovement(userId: string, movementId: string): Promise<{ assets: PortfolioAsset[]; transactions: PortfolioTransaction[] }>;
   updatePortfolioAssetPrice(userId: string, assetId: string, currentPrice: number): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction } | undefined>;
   deletePortfolioAsset(userId: string, assetId: string): Promise<void>;
@@ -512,6 +513,7 @@ export class MemStorage implements IStorage {
       assetId: asset.id,
       symbol: asset.symbol,
       side: asset.quantity < 0 ? "loss" : "profit",
+      description: asset.name,
       quantity: asset.quantity,
       price: asset.entryPrice,
       portfolioValue: this.getPortfolioValue(userId),
@@ -521,7 +523,7 @@ export class MemStorage implements IStorage {
     return { ...(await this.getUserPortfolio(userId)), transaction };
   }
 
-  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency = "RUB"): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency = "RUB", description?: string | null): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
     const now = new Date();
     const normalizedAmount = normalizeMoneyValue(amount);
     const symbol = getPortfolioMovementSymbol(currency);
@@ -536,6 +538,7 @@ export class MemStorage implements IStorage {
       assetId: null,
       symbol,
       side: direction,
+      description: typeof description === "string" && description.trim() ? description.trim().slice(0, 160) : null,
       quantity: direction === "loss" ? -1 : 1,
       price: normalizedAmount,
       portfolioValue: previousValue + signedAmount,
@@ -583,6 +586,7 @@ export class MemStorage implements IStorage {
       assetId,
       symbol: updated.symbol,
       side: "update",
+      description: updated.name,
       quantity: updated.quantity,
       price: updated.currentPrice,
       portfolioValue: this.getPortfolioValue(userId),
@@ -602,6 +606,7 @@ export class MemStorage implements IStorage {
       assetId: null,
       symbol: asset.symbol,
       side: "sell",
+      description: asset.name,
       quantity: asset.quantity,
       price: asset.currentPrice,
       portfolioValue: this.getPortfolioValue(userId),
@@ -889,12 +894,14 @@ export class PostgresStorage implements IStorage {
           asset_id varchar REFERENCES portfolio_assets(id) ON DELETE SET NULL,
           symbol text NOT NULL,
           side text NOT NULL,
+          description text,
           quantity double precision NOT NULL,
           price double precision NOT NULL,
           portfolio_value double precision NOT NULL,
           created_at timestamp DEFAULT now()
         )
       `);
+      await client.query(`ALTER TABLE portfolio_transactions ADD COLUMN IF NOT EXISTS description text`);
       await client.query(`CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_id ON portfolio_transactions (user_id, created_at)`);
       await client.query(`
         CREATE TABLE IF NOT EXISTS daily_tasks (
@@ -1243,8 +1250,8 @@ export class PostgresStorage implements IStorage {
           [userId]
         );
         const transactionResult = await client.query(
-          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
-           values ($1, $2, $3, $4, $5, $6, $7, $8)
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, description, quantity, price, portfolio_value)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            returning *`,
           [
             randomUUID(),
@@ -1252,6 +1259,7 @@ export class PostgresStorage implements IStorage {
             asset.id,
             asset.symbol,
             asset.quantity < 0 ? "loss" : "profit",
+            asset.name,
             asset.quantity,
             asset.entryPrice,
             Number(valueResult.rows[0]?.value ?? 0),
@@ -1273,7 +1281,7 @@ export class PostgresStorage implements IStorage {
     });
   }
 
-  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency = "RUB"): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
+  async createPortfolioMovement(userId: string, direction: "profit" | "loss", amount: number, currency = "RUB", description?: string | null): Promise<{ assets: PortfolioAsset[]; transaction: PortfolioTransaction }> {
     return withClient(async (client) => {
       await client.query("begin");
       try {
@@ -1290,14 +1298,15 @@ export class PostgresStorage implements IStorage {
         const previousValue = Number(previousResult.rows[0]?.portfolio_value ?? 0);
         const signedAmount = direction === "loss" ? -normalizedAmount : normalizedAmount;
         const transactionResult = await client.query(
-          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
-           values ($1, $2, null, $3, $4, $5, $6, $7)
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, description, quantity, price, portfolio_value)
+           values ($1, $2, null, $3, $4, $5, $6, $7, $8)
            returning *`,
           [
             randomUUID(),
             userId,
             symbol,
             direction,
+            typeof description === "string" && description.trim() ? description.trim().slice(0, 160) : null,
             direction === "loss" ? -1 : 1,
             normalizedAmount,
             previousValue + signedAmount,
@@ -1386,10 +1395,10 @@ export class PostgresStorage implements IStorage {
           [userId]
         );
         const transactionResult = await client.query(
-          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
-           values ($1, $2, $3, $4, 'update', $5, $6, $7)
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, description, quantity, price, portfolio_value)
+           values ($1, $2, $3, $4, 'update', $5, $6, $7, $8)
            returning *`,
-          [randomUUID(), userId, asset.id, asset.symbol, asset.quantity, asset.currentPrice, Number(valueResult.rows[0]?.value ?? 0)]
+          [randomUUID(), userId, asset.id, asset.symbol, asset.name, asset.quantity, asset.currentPrice, Number(valueResult.rows[0]?.value ?? 0)]
         );
         const assetsResult = await client.query(
           `select * from portfolio_assets where user_id = $1 order by updated_at desc, created_at desc`,
@@ -1423,9 +1432,9 @@ export class PostgresStorage implements IStorage {
           [userId]
         );
         await client.query(
-          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, quantity, price, portfolio_value)
-           values ($1, $2, null, $3, 'sell', $4, $5, $6)`,
-          [randomUUID(), userId, asset.symbol, asset.quantity, asset.currentPrice, Number(valueResult.rows[0]?.value ?? 0)]
+          `insert into portfolio_transactions (id, user_id, asset_id, symbol, side, description, quantity, price, portfolio_value)
+           values ($1, $2, null, $3, 'sell', $4, $5, $6, $7)`,
+          [randomUUID(), userId, asset.symbol, asset.name, asset.quantity, asset.currentPrice, Number(valueResult.rows[0]?.value ?? 0)]
         );
         await client.query("commit");
       } catch (error) {

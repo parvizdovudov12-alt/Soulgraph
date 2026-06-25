@@ -100,6 +100,7 @@ export const portfolioTransactions = pgTable("portfolio_transactions", {
   assetId: varchar("asset_id").references(() => portfolioAssets.id, { onDelete: "set null" }),
   symbol: text("symbol").notNull(),
   side: text("side").notNull(),
+  description: text("description"),
   quantity: doublePrecision("quantity").notNull(),
   price: doublePrecision("price").notNull(),
   portfolioValue: doublePrecision("portfolio_value").notNull(),
